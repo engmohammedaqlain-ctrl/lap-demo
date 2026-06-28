@@ -123,6 +123,33 @@ body {
   letter-spacing: 0.01em;
 }
 
+.hud-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hud-heading-row .hud-heading { margin-bottom: 10px; flex: 1; }
+
+.delete-body-btn {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ps-red);
+  border: none;
+  border-radius: 16px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.12s;
+}
+
+.delete-body-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.delete-body-btn:active { transform: translateY(0); }
+
 .hud-body {
   top: 14px;
   left: 16px;
@@ -443,6 +470,17 @@ body {
 
   .hud-body .hud-heading,
   .hud-body .mat-hint { display: none; }
+
+  /* صف العنوان يُختزل لزر الحذف فقط على الجوال (العنوان نفسه مخفي أعلى) */
+  .hud-heading-row {
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+  .delete-body-btn {
+    margin-bottom: 0;
+    font-size: 0.62rem;
+    padding: 6px 9px;
+  }
 
   .material-tray {
     display: flex;

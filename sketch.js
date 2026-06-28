@@ -1,5 +1,6 @@
 /**
  * sketch.js — مشهد تفاعلي بملء الشاشة
+ * يدعم حتى ٣ أجسام مستقلة في الإناء في الوقت نفسه (state.bodies).
  */
 
 /**
@@ -45,19 +46,34 @@ const MATERIALS = {
   stone: { nameAr: "حجر", density: 2700, color: [175, 168, 155], pattern: "stone" },
 };
 
+const MAX_BODIES = 3;
+
+/**
+ * كل جسم في الإناء كائن مستقل بمادته/شكله/حجمه وحالته الفيزيائية الخاصة،
+ * فيمكن وضع حتى ٣ أجسام معاً ومقارنة طفوها في الوقت نفسه. الإعدادات
+ * المشتركة (السائل، الصوت، إظهار القوى...) تبقى على مستوى state العام.
+ */
+function makeBody(materialKey, shapeType, shapeSize, offsetX = 0) {
+  return {
+    materialKey,
+    shapeType,
+    shapeSize,
+    depth: 0,
+    velocity: 0,
+    offsetX,
+    offsetXVelocity: 0,
+    hasSettledOnce: false,
+  };
+}
+
 const state = {
-  shapeType: "cube",
-  shapeSize: 0.38,
-  materialKey: "wood",
   liquidKey: "water",
-  depth: 0,
-  velocity: 0,
-  offsetX: 0,
-  offsetXVelocity: 0,
+  bodies: [],          // تُملأ في setup()
+  activeIndex: 0,      // الجسم الذي تتحكّم به اللوحات وتُعرض قياساته
   isDragging: false,
+  dragIndex: -1,       // أي جسم يُسحب حالياً (-1 = لا شيء)
   dragOffsetX: 0,
   dragOffsetY: 0,
-  hasSettledOnce: false,
   soundEnabled: true,
   showGravity: true,
   showBuoyancy: true,
@@ -65,17 +81,27 @@ const state = {
   showDepthLines: true,
 };
 
+function activeBody() {
+  return state.bodies[state.activeIndex] || state.bodies[0] || null;
+}
+
 let bubbles = [];
 let lastFrameTime = 0;
 let groundY, waterLevelY;
 let containerX, containerY, containerW, containerH;
 let poolBounds = { left: 0, top: 0, right: 0, bottom: 0 };
 
+/**
+ * مقياس بكسل/متر ثابت لكل الأجسام (لا يعتمد على جسم بعينه) حتى تتعايش عدة
+ * أجسام بمقاييس متناسبة فيما بينها وتتسع جنباً إلى جنب داخل الإناء. نشتقّه
+ * من عرض الإناء وبُعد مرجعي ثابت بدل حجم الجسم الحالي — فلو ربطناه بحجم
+ * جسم واحد لتغيّر مقاس كل الأجسام عند تكبير ذلك الجسم.
+ */
+const REFERENCE_DIM_M = 0.55;
 function getPixelsPerMeter() {
-  const maxDimM = state.shapeType === "cube" ? state.shapeSize : state.shapeSize * 2;
   const poolInnerW = containerW - 24;
-  const scale = (poolInnerW * 0.52) / maxDimM;
-  return constrain(scale, 110, 210);
+  const scale = (poolInnerW * 0.32) / REFERENCE_DIM_M;
+  return constrain(scale, 70, 230);
 }
 
 function metersToPixels(m) {
@@ -87,7 +113,9 @@ function setup() {
   canvas.parent("canvas-holder");
   pixelDensity(Math.min(2, window.devicePixelRatio || 1));
   layoutScene();
-  resetToEquilibrium();
+  state.bodies = [makeBody("wood", "cube", 0.38, 0)];
+  state.activeIndex = 0;
+  resetAllEquilibrium();
   setupControls();
   setupSoundToggle();
   updatePanelData();
@@ -97,20 +125,24 @@ function setup() {
   // ارتفاع .hud-body الفعلي قد يتغيّر قليلاً بين الخط الافتراضي والخط
   // النهائي، فنعيد الحساب فور اكتمال تحميل الخطوط لتطابق دقيق.
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => { layoutScene(); resetToEquilibrium(); });
+    document.fonts.ready.then(() => { layoutScene(); resetAllEquilibrium(); });
   }
 }
 
-function resetToEquilibrium() {
+function resetBodyEquilibrium(body) {
   const liquid = LIQUIDS[state.liquidKey];
-  const material = MATERIALS[state.materialKey];
+  const material = MATERIALS[body.materialKey];
   const eq = findEquilibriumDepth(
-    { type: state.shapeType, size: state.shapeSize },
+    { type: body.shapeType, size: body.shapeSize },
     material.density,
     liquid.density
   );
-  state.depth = eq.depth;
-  state.velocity = 0;
+  body.depth = eq.depth;
+  body.velocity = 0;
+}
+
+function resetAllEquilibrium() {
+  state.bodies.forEach(resetBodyEquilibrium);
 }
 
 /**
@@ -137,25 +169,26 @@ function layoutScene() {
   if (mobile) {
     const { topReserve, bottomReserve } = getReservedSpace();
     const available = Math.max(120, height - topReserve - bottomReserve);
-    containerW = min(width * 0.9, width - 16);
+    containerW = min(width * 0.92, width - 14);
     // الحوض يأخذ معظم المساحة المتاحة (التجربة هي المحتوى الأساسي)
     // بدل سقف ثابت صغير كان يترك فجوة سماء فارغة قبل المنظر الخلفي
-    containerH = constrain(available * 0.74, 150, 540);
+    containerH = constrain(available * 0.76, 150, 560);
     containerX = (width - containerW) / 2;
     // توسيط رأسي ضمن المساحة المتاحة بدل دفع الحوض للأعلى وترك شريط تربة فارغ أسفله
     containerY = topReserve + (available - containerH) * 0.5;
     // غالب ارتفاع الحوض "مدفون" تحت خط الأرض (نفس طابع البئر الحجري
     // المُغروس بالتربة على سطح المكتب)، لا عائماً كاملاً في السماء
-    groundY = containerY + containerH * 0.2;
+    groundY = containerY + containerH * 0.18;
   } else {
-    groundY = height * 0.54;
-    containerW = min(width * 0.40, 400);
-    containerH = min(height * 0.36, 280);
+    // حوض أكبر على سطح المكتب: أعرض وأعمق ليأخذ مساحة أوضح ويتّسع لعدة أجسام
+    groundY = height * 0.44;
+    containerW = min(width * 0.52, 620);
+    containerH = min(height * 0.56, 480);
     containerX = (width - containerW) / 2;
-    containerY = groundY - 22;
+    containerY = groundY - 28;
   }
 
-  waterLevelY = containerY + containerH * 0.38;
+  waterLevelY = containerY + containerH * 0.36;
 
   poolBounds = {
     left: containerX - 16,
@@ -163,12 +196,14 @@ function layoutScene() {
     right: containerX + containerW + 16,
     bottom: containerY + containerH + 16,
   };
+
+  clampAllBodiesHorizontal();
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   layoutScene();
-  resetToEquilibrium();
+  resetAllEquilibrium();
 }
 
 function draw() {
@@ -185,9 +220,9 @@ function draw() {
   if (state.showDepthLines) drawGrid(22, waterLevelY, containerY + containerH);
   updateAndDrawBubbles(dt);
   drawWaterSurface();
-  drawFloatingObject();
-  drawObjectLabel();
-  drawForceArrows();
+  drawBodies();
+  drawBodiesLabels();
+  drawBodiesForces();
   if (state.showDepthLines) drawDepthGuide();
   drawHoverHint();
   updatePanelData();
@@ -342,7 +377,7 @@ function drawLiquid() {
 
 function drawWaterSurface() {
   const liquid = LIQUIDS[state.liquidKey];
-  const turb = constrain(abs(state.velocity) * 4, 0, 5);
+  const turb = constrain(maxAbsBodyVelocity() * 4, 0, 5);
   noFill();
   stroke(liquid.colorDeep[0], liquid.colorDeep[1], liquid.colorDeep[2], 200);
   strokeWeight(2);
@@ -353,12 +388,18 @@ function drawWaterSurface() {
   endShape();
 }
 
-function spawnBubble() {
-  const cx = containerX + containerW / 2;
-  const sp = metersToPixels(state.shapeSize);
+function maxAbsBodyVelocity() {
+  let m = 0;
+  for (const b of state.bodies) m = Math.max(m, Math.abs(b.velocity));
+  return m;
+}
+
+function spawnBubbleAt(body) {
+  const c = getBodyCenterPx(body);
+  const sp = c.sizePx;
   bubbles.push({
-    x: cx + random(-sp * 0.3, sp * 0.3),
-    y: waterLevelY + metersToPixels(state.depth) * 0.5,
+    x: c.x + random(-sp * 0.3, sp * 0.3),
+    y: waterLevelY + metersToPixels(body.depth) * 0.5,
     r: random(2, 4),
     vy: random(-35, -20),
     life: 1,
@@ -378,32 +419,55 @@ function updateAndDrawBubbles(dt) {
   }
 }
 
-function getObjectCenterPx() {
-  const sizePx = metersToPixels(state.shapeSize);
-  const cx = containerX + containerW / 2 + state.offsetX;
-  const depthPx = metersToPixels(state.depth);
+function getBodyCenterPx(body) {
+  const sizePx = metersToPixels(body.shapeSize);
+  const cx = containerX + containerW / 2 + body.offsetX;
+  const depthPx = metersToPixels(body.depth);
 
-  if (state.shapeType === "cube") {
+  if (body.shapeType === "cube") {
     return { x: cx, y: waterLevelY - sizePx + depthPx + sizePx / 2, sizePx };
   }
   return { x: cx, y: waterLevelY - sizePx + depthPx, sizePx };
 }
 
-function drawFloatingObject() {
-  const mat = MATERIALS[state.materialKey];
-  const { x, y, sizePx } = getObjectCenterPx();
+function drawBodies() {
+  const hovered = hoveredBodyIndex();
+  state.bodies.forEach((body, i) => {
+    const mat = MATERIALS[body.materialKey];
+    const { x, y, sizePx } = getBodyCenterPx(body);
 
+    push();
+    if (i === hovered || (state.isDragging && state.dragIndex === i)) {
+      drawingContext.shadowColor = "rgba(0,0,0,0.3)";
+      drawingContext.shadowBlur = 10;
+    }
+    if (body.shapeType === "cube") {
+      drawMaterialCube(x, y, sizePx, mat);
+    } else {
+      drawMaterialSphere(x, y, sizePx, mat);
+    }
+    pop();
+
+    // حلقة تمييز حول الجسم الفعّال (الذي تتحكّم به اللوحات) عند وجود أكثر من جسم
+    if (i === state.activeIndex && state.bodies.length > 1) {
+      drawActiveRing(x, y, sizePx, body.shapeType);
+    }
+  });
+}
+
+function drawActiveRing(x, y, sizePx, shapeType) {
   push();
-  if (isMouseOverObject() || state.isDragging) {
-    drawingContext.shadowColor = "rgba(0,0,0,0.3)";
-    drawingContext.shadowBlur = 10;
-  }
-
-  if (state.shapeType === "cube") {
-    drawMaterialCube(x, y, sizePx, mat);
+  noFill();
+  stroke(27, 115, 64, 235);
+  strokeWeight(2.5);
+  drawingContext.setLineDash([5, 4]);
+  if (shapeType === "cube") {
+    rectMode(CENTER);
+    rect(x, y, sizePx + 12, sizePx + 12, 5);
   } else {
-    drawMaterialSphere(x, y, sizePx, mat);
+    circle(x, y, sizePx * 2 + 12);
   }
+  drawingContext.setLineDash([]);
   pop();
 }
 
@@ -441,19 +505,23 @@ function drawMaterialSphere(x, y, r, mat) {
   ellipse(x - r * 0.25, y - r * 0.25, r * 0.5, r * 0.35);
 }
 
-function drawObjectLabel() {
-  const mat = MATERIALS[state.materialKey];
-  const vol = state.shapeType === "cube"
-    ? cubeFullVolume(state.shapeSize)
-    : sphereFullVolume(state.shapeSize);
+function drawBodiesLabels() {
+  state.bodies.forEach((body) => drawBodyLabel(body));
+}
+
+function drawBodyLabel(body) {
+  const mat = MATERIALS[body.materialKey];
+  const vol = body.shapeType === "cube"
+    ? cubeFullVolume(body.shapeSize)
+    : sphereFullVolume(body.shapeSize);
   const mass = mat.density * vol;
-  const { x, y, sizePx } = getObjectCenterPx();
+  const { x, y, sizePx } = getBodyCenterPx(body);
 
   const label = mass < 1
     ? (mass * 1000).toLocaleString("ar-EG", { maximumFractionDigits: 1 }) + " غم"
     : mass.toLocaleString("ar-EG", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " كغ";
 
-  const labelOffset = state.shapeType === "sphere" ? sizePx + 14 : sizePx * 0.55;
+  const labelOffset = body.shapeType === "sphere" ? sizePx + 14 : sizePx * 0.55;
 
   push();
   textAlign(CENTER, CENTER);
@@ -469,47 +537,62 @@ function drawObjectLabel() {
   pop();
 }
 
-function isMouseOverObject() {
-  const { x, y, sizePx } = getObjectCenterPx();
-  const hit = state.shapeType === "cube" ? sizePx / 2 : sizePx;
-  const pad = width < 768 ? 18 : 8;
-  return dist(mouseX, mouseY, x, y) < hit + pad;
+function isPointOverBody(body, px, py) {
+  const { x, y, sizePx } = getBodyCenterPx(body);
+  const hit = body.shapeType === "cube" ? sizePx / 2 : sizePx;
+  const pad = width < 768 ? 14 : 8;
+  return dist(px, py, x, y) < hit + pad;
+}
+
+/** فهرس الجسم تحت المؤشر (نمرّ بالعكس فالأخير مرسوم فوق البقية) أو -1 */
+function hoveredBodyIndex() {
+  for (let i = state.bodies.length - 1; i >= 0; i--) {
+    if (isPointOverBody(state.bodies[i], mouseX, mouseY)) return i;
+  }
+  return -1;
 }
 
 function drawHoverHint() {
-  cursor(isMouseOverObject() || state.isDragging ? (state.isDragging ? "grabbing" : "grab") : ARROW);
+  const over = hoveredBodyIndex() >= 0 || state.isDragging;
+  cursor(over ? (state.isDragging ? "grabbing" : "grab") : ARROW);
 }
 
-function drawForceArrows() {
+function drawBodiesForces() {
   if (!state.showGravity && !state.showBuoyancy) return;
+  // الأسهم والقيم تظهر فقط على الجسم المحدَّد (الفعّال) لا على كل الأجسام
+  // معاً — لو وجد أكثر من جسم بصير المشهد مزدحماً بأسهم متراكبة بلا فائدة.
+  const body = activeBody();
+  if (body) drawBodyForces(body, true);
+}
 
+function drawBodyForces(body, showLabels) {
   const liquid = LIQUIDS[state.liquidKey];
-  const mat = MATERIALS[state.materialKey];
-  const vol = state.shapeType === "cube"
-    ? cubeFullVolume(state.shapeSize)
-    : sphereFullVolume(state.shapeSize);
-  const clampedDepth = max(0, state.depth);
-  const subVol = state.shapeType === "cube"
-    ? cubeSubmergedVolume(clampedDepth, state.shapeSize)
-    : sphereSubmergedVolume(clampedDepth, state.shapeSize);
+  const mat = MATERIALS[body.materialKey];
+  const vol = body.shapeType === "cube"
+    ? cubeFullVolume(body.shapeSize)
+    : sphereFullVolume(body.shapeSize);
+  const clampedDepth = max(0, body.depth);
+  const subVol = body.shapeType === "cube"
+    ? cubeSubmergedVolume(clampedDepth, body.shapeSize)
+    : sphereSubmergedVolume(clampedDepth, body.shapeSize);
 
   const weight = calcWeight(mat.density, vol);
   const buoyant = calcBuoyantForce(liquid.density, subVol);
-  const { x, y, sizePx } = getObjectCenterPx();
+  const { x, y, sizePx } = getBodyCenterPx(body);
 
   const wLen = forceToArrowLength(weight);
   const bLen = forceToArrowLength(buoyant);
-  const off = max(16, sizePx * 0.22);
+  const off = max(14, sizePx * 0.22);
   const arrowFill = [255, 252, 245];
   const arrowOutline = [18, 52, 88];
 
   if (state.showGravity && wLen >= 4) {
     drawOutlinedArrow(x - off, y, x - off, y + wLen, arrowFill, arrowOutline);
-    drawForceLabel("الوزن", x - off, y + wLen, weight, "down");
+    if (showLabels) drawForceLabel("الوزن", x - off, y + wLen, weight, "down");
   }
   if (state.showBuoyancy && bLen >= 4) {
     drawOutlinedArrow(x + off, y, x + off, y - bLen, arrowFill, arrowOutline);
-    drawForceLabel("الطفو", x + off, y - bLen, buoyant, "up");
+    if (showLabels) drawForceLabel("الطفو", x + off, y - bLen, buoyant, "up");
   }
 }
 
@@ -591,90 +674,160 @@ function drawDepthGuide() {
   pop();
 }
 
+/** يقصر الموضع الأفقي لجسم ضمن حدود الإناء (بالبكسل، نسبةً لمركز الإناء) */
+function horizontalLimit(body) {
+  const sp = metersToPixels(body.shapeSize);
+  const half = body.shapeType === "cube" ? sp / 2 : sp;
+  return Math.max(0, containerW / 2 - half - 8);
+}
+
+function clampAllBodiesHorizontal() {
+  state.bodies.forEach((body) => {
+    const limit = horizontalLimit(body);
+    body.offsetX = constrain(body.offsetX, -limit, limit);
+  });
+}
+
+/**
+ * فصل أفقي بسيط بين الأجسام المتقاربة عند العمق نفسه حتى لا تتراكب تماماً
+ * فتظهر جنباً إلى جنب. ليست محاكاة تصادم دقيقة — مجرد دفع لطيف يحسّن الوضوح.
+ */
+function resolveHorizontalOverlap() {
+  for (let a = 0; a < state.bodies.length; a++) {
+    for (let b = a + 1; b < state.bodies.length; b++) {
+      if (state.isDragging && (state.dragIndex === a || state.dragIndex === b)) continue;
+      const A = state.bodies[a], B = state.bodies[b];
+      const ca = getBodyCenterPx(A), cb = getBodyCenterPx(B);
+      const ra = A.shapeType === "cube" ? ca.sizePx / 2 : ca.sizePx;
+      const rb = B.shapeType === "cube" ? cb.sizePx / 2 : cb.sizePx;
+      if (Math.abs(ca.y - cb.y) > ra + rb) continue; // لا تراكب رأسي
+      const dx = cb.x - ca.x;
+      const minDx = ra + rb + 4;
+      const overlap = minDx - Math.abs(dx);
+      if (overlap > 0) {
+        const pushPx = (overlap / 2) * (dx >= 0 ? 1 : -1);
+        A.offsetX -= pushPx;
+        B.offsetX += pushPx;
+      }
+    }
+  }
+  clampAllBodiesHorizontal();
+}
+
 function updatePhysics(dt) {
-  // الموضع الأفقي يبقى حيث وضعه المستخدم (سحب حر يميناً/يساراً) ولا يعود
-  // تلقائياً للمركز — نقصره فقط ضمن حدود الإناء تحسّباً لتغيّر المقاس/التدوير.
-  if (!state.isDragging) {
-    const sp = metersToPixels(state.shapeSize);
-    const half = state.shapeType === "cube" ? sp / 2 : sp;
-    const limit = Math.max(0, containerW / 2 - half - 8);
-    state.offsetX = constrain(state.offsetX, -limit, limit);
-    state.offsetXVelocity = 0;
-  }
-  if (state.isDragging) return;
-
   const liquid = LIQUIDS[state.liquidKey];
-  const mat = MATERIALS[state.materialKey];
-  const body = { type: state.shapeType, size: state.shapeSize, density: mat.density };
-
-  const wasMoving = abs(state.velocity) > 0.02;
-  const floor = (containerY + containerH - 5 - waterLevelY) / getPixelsPerMeter();
-  const ceiling = -(waterLevelY - containerY - 12) / getPixelsPerMeter();
-
+  const ppm = getPixelsPerMeter();
+  const floor = (containerY + containerH - 5 - waterLevelY) / ppm;
+  const ceiling = -(waterLevelY - containerY - 12) / ppm;
   const damping = dampingFromViscosity(liquid.viscosity);
-  const result = stepSimulation(body, liquid.density, state.depth, state.velocity, dt, damping, floor, ceiling);
-  state.depth = result.depth;
-  state.velocity = result.velocity;
 
-  if (abs(state.velocity) > 0.15 && random() < 0.25) spawnBubble();
+  state.bodies.forEach((body, i) => {
+    if (state.isDragging && state.dragIndex === i) return; // الجسم المسحوب يتبع الإصبع
 
-  const settled = abs(state.velocity) < 0.015;
-  if (wasMoving && settled && !state.hasSettledOnce) {
-    state.hasSettledOnce = true;
-    if (state.soundEnabled) SoundEngine.playSettleChime();
-  }
-  if (!settled) state.hasSettledOnce = false;
+    // الموضع الأفقي يبقى حيث وضعه المستخدم (سحب حر) ولا يعود تلقائياً للمركز
+    body.offsetX = constrain(body.offsetX, -horizontalLimit(body), horizontalLimit(body));
+    body.offsetXVelocity = 0;
+
+    const mat = MATERIALS[body.materialKey];
+    const sim = { type: body.shapeType, size: body.shapeSize, density: mat.density };
+    const wasMoving = abs(body.velocity) > 0.02;
+
+    const result = stepSimulation(sim, liquid.density, body.depth, body.velocity, dt, damping, floor, ceiling);
+    body.depth = result.depth;
+    body.velocity = result.velocity;
+
+    if (abs(body.velocity) > 0.15 && random() < 0.12) spawnBubbleAt(body);
+
+    const settled = abs(body.velocity) < 0.015;
+    if (wasMoving && settled && !body.hasSettledOnce) {
+      body.hasSettledOnce = true;
+      if (state.soundEnabled) SoundEngine.playSettleChime();
+    }
+    if (!settled) body.hasSettledOnce = false;
+  });
+
+  resolveHorizontalOverlap();
 }
 
 function updatePanelData() {
+  const body = activeBody();
+  if (!body) return;
   const liquid = LIQUIDS[state.liquidKey];
-  const mat = MATERIALS[state.materialKey];
+  const mat = MATERIALS[body.materialKey];
   updateMeasurementPanel(computePhysicsSnapshot({
-    shapeType: state.shapeType,
-    shapeSize: state.shapeSize,
+    shapeType: body.shapeType,
+    shapeSize: body.shapeSize,
     materialDensity: mat.density,
     liquidDensity: liquid.density,
-    depth: state.depth,
-    velocity: state.velocity,
+    depth: body.depth,
+    velocity: body.velocity,
   }));
 }
 
 function mousePressed() {
-  if (isMouseOverObject()) {
-    state.isDragging = true;
-    const { x, y } = getObjectCenterPx();
-    state.dragOffsetX = mouseX - x;
-    state.dragOffsetY = mouseY - y;
-    state.offsetXVelocity = 0;
-    state.velocity = 0;
-    if (state.soundEnabled) SoundEngine.playClick();
-  }
+  const i = hoveredBodyIndex();
+  if (i < 0) return;
+  state.isDragging = true;
+  state.dragIndex = i;
+  state.activeIndex = i;
+  if (typeof syncControlsToActive === "function") syncControlsToActive();
+  const { x, y } = getBodyCenterPx(state.bodies[i]);
+  state.dragOffsetX = mouseX - x;
+  state.dragOffsetY = mouseY - y;
+  state.bodies[i].offsetXVelocity = 0;
+  state.bodies[i].velocity = 0;
+  updatePanelData();
+  if (state.soundEnabled) SoundEngine.playClick();
 }
 
 function mouseDragged() {
-  if (!state.isDragging) return;
-  const sp = metersToPixels(state.shapeSize);
+  if (!state.isDragging || state.dragIndex < 0) return;
+  const body = state.bodies[state.dragIndex];
+  const sp = metersToPixels(body.shapeSize);
   const baseY = waterLevelY - sp;
-  const maxD = state.shapeType === "cube" ? sp : sp * 2;
+  const maxD = body.shapeType === "cube" ? sp : sp * 2;
 
   const depthPx = constrain(mouseY - state.dragOffsetY - baseY, -sp * 0.4, maxD + sp * 0.2);
-  state.depth = depthPx / getPixelsPerMeter();
-  state.velocity = 0;
+  body.depth = depthPx / getPixelsPerMeter();
+  body.velocity = 0;
 
   const cx = containerX + containerW / 2;
-  const half = state.shapeType === "cube" ? sp / 2 : sp;
-  state.offsetX = constrain(mouseX - state.dragOffsetX - cx, -(containerW / 2 - half - 8), containerW / 2 - half - 8);
-  state.offsetXVelocity = 0;
+  const limit = horizontalLimit(body);
+  body.offsetX = constrain(mouseX - state.dragOffsetX - cx, -limit, limit);
+  body.offsetXVelocity = 0;
 }
 
 function mouseReleased() {
-  if (!state.isDragging) return;
+  if (!state.isDragging || state.dragIndex < 0) {
+    state.isDragging = false;
+    state.dragIndex = -1;
+    return;
+  }
+  const idx = state.dragIndex;
+  const body = state.bodies[idx];
+
+  // أُفلِت خارج البركة (مثلاً رُفع للسماء) → احذف الجسم، شرط بقاء جسم واحد على الأقل
+  const outside =
+    mouseX < poolBounds.left || mouseX > poolBounds.right ||
+    mouseY < poolBounds.top || mouseY > poolBounds.bottom;
+
   state.isDragging = false;
-  if (state.soundEnabled) SoundEngine.playSplash(constrain(abs(state.depth) * 1.2, 0.2, 1));
+  state.dragIndex = -1;
+
+  if (outside && state.bodies.length > 1) {
+    state.bodies.splice(idx, 1);
+    state.activeIndex = Math.min(state.activeIndex, state.bodies.length - 1);
+    if (typeof syncControlsToActive === "function") syncControlsToActive();
+    updatePanelData();
+    if (state.soundEnabled) SoundEngine.playClick();
+    return;
+  }
+
+  if (state.soundEnabled) SoundEngine.playSplash(constrain(abs(body.depth) * 1.2, 0.2, 1));
 }
 
 function touchStarted() {
-  if (isMouseOverObject()) {
+  if (hoveredBodyIndex() >= 0) {
     mousePressed();
     return false;
   }

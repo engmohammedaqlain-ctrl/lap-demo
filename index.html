@@ -20,7 +20,10 @@
 
     <!-- يسار: الجسم + المواد -->
     <div class="hud hud-body">
-      <div class="hud-heading">الجسم — اسحب المادة للبركة</div>
+      <div class="hud-heading-row">
+        <div class="hud-heading">الجسم — اسحب المادة للبركة</div>
+        <button id="delete-body-btn" class="delete-body-btn" title="حذف الجسم المحدَّد" hidden>✕ حذف</button>
+      </div>
       <div class="material-tray shape-cube" id="material-tray">
         <div class="mat-chip" data-material="cork" title="فلّين — يطفو">
           <span class="chip-preview mat-cork"></span>

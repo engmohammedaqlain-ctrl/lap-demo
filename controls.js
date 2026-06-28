@@ -1,27 +1,37 @@
 /**
- * controls.js — تحكم HUD + سحب وإفلات المواد
+ * controls.js — تحكم HUD + سحب وإفلات المواد (يدعم حتى ٣ أجسام)
+ *
+ * الأزرار (الشكل/الحجم/المادة بالضغط) تعمل على "الجسم الفعّال"
+ * (state.activeIndex). إفلات مادة فوق البركة يضيف جسماً جديداً (حتى ٣)،
+ * والضغط على جسم في البركة يجعله الفعّال.
  */
 
 function setupControls() {
   document.querySelectorAll('input[name="shape"]').forEach((radio) => {
     radio.addEventListener("change", (e) => {
       if (!e.target.checked) return;
-      state.shapeType = e.target.value;
+      const body = activeBody();
+      if (!body) return;
+      body.shapeType = e.target.value;
       updateShapeUI();
-      updateSizeSliderRange();
-      resetToEquilibrium();
+      applyShapeSizeRangeToActive();
+      resetBodyEquilibrium(body);
+      updatePanelData();
       if (state.soundEnabled) SoundEngine.playClick();
     });
   });
 
   document.querySelectorAll(".shape-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const body = activeBody();
+      if (!body) return;
       const radio = btn.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
-      state.shapeType = btn.dataset.shape;
+      body.shapeType = btn.dataset.shape;
       updateShapeUI();
-      updateSizeSliderRange();
-      resetToEquilibrium();
+      applyShapeSizeRangeToActive();
+      resetBodyEquilibrium(body);
+      updatePanelData();
     });
   });
 
@@ -29,7 +39,8 @@ function setupControls() {
   if (liquidSelect) {
     liquidSelect.addEventListener("change", (e) => {
       state.liquidKey = e.target.value;
-      resetToEquilibrium();
+      resetAllEquilibrium();
+      updatePanelData();
       if (state.soundEnabled) SoundEngine.playClick();
     });
   }
@@ -37,15 +48,14 @@ function setupControls() {
   const sizeSlider = document.getElementById("size-slider");
   if (sizeSlider) {
     sizeSlider.addEventListener("input", (e) => {
-      state.shapeSize = parseFloat(e.target.value);
-      resetToEquilibrium();
-      updateSizeLabel(state.shapeSize);
+      const body = activeBody();
+      if (!body) return;
+      body.shapeSize = parseFloat(e.target.value);
+      resetBodyEquilibrium(body);
+      updateSizeLabel(body.shapeSize);
+      updatePanelData();
     });
   }
-
-  updateShapeUI();
-  updateSizeSliderRange();
-  updateSizeLabel(state.shapeSize);
 
   bindCheckbox("show-gravity", "showGravity");
   bindCheckbox("show-buoyancy", "showBuoyancy");
@@ -54,7 +64,27 @@ function setupControls() {
 
   setupMaterialDragDrop();
   setupDockToggle();
-  highlightActiveMaterial("wood");
+  setupDeleteButton();
+  syncControlsToActive();
+}
+
+/** زر "حذف" يحذف الجسم المحدَّد بضغطة واحدة - أسهل من السحب خارج البركة */
+function setupDeleteButton() {
+  const btn = document.getElementById("delete-body-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    removeActiveBody();
+    if (state.soundEnabled) SoundEngine.playClick();
+  });
+}
+
+/** يحذف الجسم الفعّال شرط بقاء جسم واحد على الأقل */
+function removeActiveBody() {
+  if (state.bodies.length <= 1) return;
+  state.bodies.splice(state.activeIndex, 1);
+  state.activeIndex = Math.min(state.activeIndex, state.bodies.length - 1);
+  syncControlsToActive();
+  updatePanelData();
 }
 
 /**
@@ -93,45 +123,54 @@ function syncLayoutToDockTransition(durationMs = 320) {
   requestAnimationFrame(tick);
 }
 
+/** يعكس شكل الجسم الفعّال على معاينات المواد وأزرار الشكل وأزرار الراديو */
 function updateShapeUI() {
+  const body = activeBody();
+  const shape = body ? body.shapeType : "cube";
+
   const tray = document.getElementById("material-tray");
   if (tray) {
     tray.classList.remove("shape-cube", "shape-sphere");
-    tray.classList.add(state.shapeType === "sphere" ? "shape-sphere" : "shape-cube");
+    tray.classList.add(shape === "sphere" ? "shape-sphere" : "shape-cube");
   }
   document.querySelectorAll(".shape-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.shape === state.shapeType);
+    btn.classList.toggle("active", btn.dataset.shape === shape);
+  });
+  document.querySelectorAll('input[name="shape"]').forEach((r) => {
+    r.checked = r.value === shape;
   });
 }
 
-function updateSizeSliderRange() {
+/** يضبط مدى شريط الحجم حسب شكل الجسم الفعّال ويثبّت قيمته على حجم الجسم */
+function applyShapeSizeRangeToActive() {
+  const body = activeBody();
   const slider = document.getElementById("size-slider");
-  if (!slider) return;
+  if (!body || !slider) return;
 
-  if (state.shapeType === "sphere") {
+  if (body.shapeType === "sphere") {
     slider.min = "0.16";
     slider.max = "0.30";
     slider.step = "0.01";
-    if (parseFloat(slider.value) < 0.16) slider.value = "0.24";
-    if (parseFloat(slider.value) > 0.30) slider.value = "0.24";
+    if (body.shapeSize < 0.16 || body.shapeSize > 0.3) body.shapeSize = 0.24;
   } else {
     slider.min = "0.22";
     slider.max = "0.45";
     slider.step = "0.01";
-    if (parseFloat(slider.value) < 0.22) slider.value = "0.38";
+    if (body.shapeSize < 0.22 || body.shapeSize > 0.45) body.shapeSize = 0.38;
   }
 
-  state.shapeSize = parseFloat(slider.value);
-  updateSizeLabel(state.shapeSize);
+  slider.value = String(body.shapeSize);
+  updateSizeLabel(body.shapeSize);
 }
 
 /**
  * سحب وإفلات مبني على Pointer Events (لا HTML5 Drag and Drop).
  * الـ Drag and Drop الأصلي (dragstart/dragover/drop) لا يعمل إطلاقاً من
  * اللمس على أي متصفح جوال (Safari iOS، Chrome Android) - قيد فعلي بالمنصّة
- * وليس مجرد خلل إعداد، لذلك السحب لم يكن يعمل سوى بالماوس فقط من الأساس.
- * Pointer Events توحّد الماوس واللمس بمسار واحد، فيعمل السحب فعلياً
- * بالإصبع تماماً كما يعمل بالماوس.
+ * وليس مجرد خلل إعداد. Pointer Events توحّد الماوس واللمس بمسار واحد.
+ *
+ * الإفلات فوق البركة = إضافة جسم جديد (حتى MAX_BODIES) بمادة الشريحة.
+ * الضغط دون سحب = تبديل مادة الجسم الفعّال.
  */
 function setupMaterialDragDrop() {
   const tray = document.getElementById("material-tray");
@@ -172,8 +211,15 @@ function setupMaterialDragDrop() {
     }
 
     function setDropZoneActive(active) {
-      canvasHolder.classList.toggle("drop-active", active);
-      if (dropIndicator) dropIndicator.hidden = !active;
+      const full = state.bodies.length >= MAX_BODIES;
+      canvasHolder.classList.toggle("drop-active", active && !full);
+      if (dropIndicator) {
+        dropIndicator.hidden = !active;
+        // عند اكتمال العدد نوضّح أن الإفلات سيبدّل مادة الجسم الفعّال
+        dropIndicator.textContent = full
+          ? "العدد مكتمل — سيتبدّل الجسم الفعّال"
+          : "أفلت فوق البركة ↓";
+      }
     }
 
     function cleanup() {
@@ -213,14 +259,12 @@ function setupMaterialDragDrop() {
 
       if (dragging) {
         if (isPointInPool(e.clientX, e.clientY)) {
-          applyMaterial(chip.dataset.material);
-          state.offsetX = 0;
-          state.offsetXVelocity = 0;
+          addBodyFromDrop(chip.dataset.material, e.clientX);
           if (state.soundEnabled) SoundEngine.playSplash(0.6);
         }
       } else {
-        // لم تتجاوز الحركة حد السحب - ضغطة اختيار عادية
-        applyMaterial(chip.dataset.material);
+        // لم تتجاوز الحركة حد السحب - ضغطة اختيار: بدّل مادة الجسم الفعّال
+        applyMaterialToActive(chip.dataset.material);
         if (state.soundEnabled) SoundEngine.playClick();
       }
       cleanup();
@@ -230,17 +274,83 @@ function setupMaterialDragDrop() {
   });
 }
 
-function applyMaterial(materialKey) {
-  state.materialKey = materialKey;
-  resetToEquilibrium();
+/** يبدّل مادة الجسم الفعّال (ضغطة على شريحة المادة) */
+function applyMaterialToActive(materialKey) {
+  const body = activeBody();
+  if (!body) return;
+  body.materialKey = materialKey;
+  resetBodyEquilibrium(body);
   highlightActiveMaterial(materialKey);
   updatePanelData();
+}
+
+/**
+ * يضيف جسماً جديداً عند نقطة الإفلات (حتى MAX_BODIES). عند اكتمال العدد
+ * يبدّل مادة الجسم الفعّال بدل تجاهل الإفلات. الشكل/الحجم يُورَثان من الجسم
+ * الفعّال الحالي ليكون السلوك متوقّعاً.
+ */
+function addBodyFromDrop(materialKey, clientX) {
+  if (state.bodies.length >= MAX_BODIES) {
+    applyMaterialToActive(materialKey);
+    return;
+  }
+
+  const ref = activeBody();
+  const shapeType = ref ? ref.shapeType : "cube";
+  const shapeSize = ref ? ref.shapeSize : 0.38;
+
+  const pt = clientToCanvas(clientX, 0);
+  const sp = metersToPixels(shapeSize);
+  const half = shapeType === "cube" ? sp / 2 : sp;
+  const limit = Math.max(0, containerW / 2 - half - 8);
+  const offsetX = constrain(pt.x - (containerX + containerW / 2), -limit, limit);
+
+  const body = makeBody(materialKey, shapeType, shapeSize, offsetX);
+  state.bodies.push(body);
+  state.activeIndex = state.bodies.length - 1;
+  resetBodyEquilibrium(body);
+  syncControlsToActive();
+  updatePanelData();
+}
+
+/** يزامن كل اللوحات (الشكل/الحجم/المادة/العدّاد) مع الجسم الفعّال */
+function syncControlsToActive() {
+  updateShapeUI();
+  applyShapeSizeRangeToActive();
+  const body = activeBody();
+  if (body) highlightActiveMaterial(body.materialKey);
+  updateBodyCount();
 }
 
 function highlightActiveMaterial(materialKey) {
   document.querySelectorAll(".mat-chip").forEach((chip) => {
     chip.classList.toggle("active", chip.dataset.material === materialKey);
   });
+}
+
+/** يعرض عدد الأجسام الحالي (n/3) في عنوان لوحة الجسم وفي التلميح */
+function updateBodyCount() {
+  const n = state.bodies.length;
+  const max = toArabicNum(MAX_BODIES);
+  const cur = toArabicNum(n);
+
+  const heading = document.querySelector(".hud-body .hud-heading");
+  if (heading) heading.textContent = `الأجسام (${cur}/${max}) — اسحب مادة للبركة`;
+
+  const hint = document.querySelector(".mat-hint");
+  if (hint) {
+    hint.textContent = n >= MAX_BODIES
+      ? `اكتمل العدد (${cur}/${max}) — اضغط "حذف" لإزالة المحدَّد`
+      : `اسحب مادة للبركة لإضافة جسم (${cur}/${max})`;
+  }
+
+  // زر الحذف يظهر فقط عندما يوجد أكثر من جسم واحد - حذف الجسم الأخير غير مسموح
+  const deleteBtn = document.getElementById("delete-body-btn");
+  if (deleteBtn) deleteBtn.hidden = n <= 1;
+}
+
+function toArabicNum(n) {
+  return String(n).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
 }
 
 function bindCheckbox(id, stateKey) {
