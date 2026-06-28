@@ -1,0 +1,588 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  --ps-green: #1B7340;
+  --ps-green-dark: #0F4D2A;
+  --ps-red: #CE1126;
+  --ps-black: #1A1A1A;
+  --ps-cream: #FAF6EE;
+  --ps-stone: #D4C4A8;
+  --ps-terracotta: #B5522A;
+  --ps-olive: #4A6741;
+  --ps-gold: #C9A227;
+  --keffiyeh: repeating-linear-gradient(
+    45deg, transparent, transparent 3px,
+    rgba(27,115,64,0.07) 3px, rgba(27,115,64,0.07) 4px
+  );
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  background: var(--ps-cream);
+}
+
+#sim-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#canvas-holder {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+#canvas-holder canvas { display: block; }
+
+#canvas-holder.drop-active {
+  outline: 3px dashed var(--ps-green);
+  outline-offset: -5px;
+  background: rgba(27, 115, 64, 0.06);
+}
+
+/* ===== عنوان — يسار أعلى بعيداً عن اللوحات ===== */
+.sim-title {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  right: auto;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(250, 246, 238, 0.85);
+  padding: 8px 16px 8px 12px;
+  border-radius: 10px;
+  border-right: 4px solid var(--ps-green);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.title-accent {
+  width: 6px;
+  height: 32px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom,
+    var(--ps-black) 0%, var(--ps-black) 22%,
+    #fff 22%, #fff 44%,
+    var(--ps-green) 44%, var(--ps-green) 66%,
+    var(--ps-red) 66%, var(--ps-red) 100%
+  );
+}
+
+.title-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+  line-height: 1.1;
+}
+
+.title-sub {
+  font-size: 0.68rem;
+  color: var(--ps-terracotta);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* ===== HUD — طابع فلسطيني ===== */
+.hud {
+  position: absolute;
+  background: var(--ps-cream);
+  background-image: var(--keffiyeh);
+  border: 1px solid rgba(27, 115, 64, 0.25);
+  border-top: 3px solid var(--ps-green);
+  border-radius: 12px;
+  padding: 12px 15px;
+  box-shadow: 0 3px 14px rgba(15, 77, 42, 0.12);
+  z-index: 10;
+  font-size: 0.82rem;
+  color: var(--ps-black);
+}
+
+.hud-heading {
+  font-weight: 700;
+  font-size: 0.74rem;
+  margin-bottom: 10px;
+  color: var(--ps-green-dark);
+  letter-spacing: 0.01em;
+}
+
+.hud-body {
+  top: 14px;
+  left: 16px;
+  min-width: 240px;
+  max-width: 280px;
+}
+
+.hud-forces {
+  bottom: 16px;
+  left: 16px;
+}
+
+/* يمين: عمود — سائل → حجم → قياسات */
+.hud-column {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 178px;
+  z-index: 10;
+}
+
+.hud-column .hud {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  width: 100%;
+}
+
+.hud-size {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#size-slider {
+  width: 100%;
+  accent-color: var(--ps-green);
+  cursor: pointer;
+  direction: rtl;
+  height: 5px;
+}
+
+.hud-readout {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* القياسات — قائمة هادئة */
+.hud-readouts .hud-heading { margin-bottom: 6px; }
+
+.readouts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.readout-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  border: 1px solid rgba(27, 115, 64, 0.1);
+}
+
+.readout-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ps-olive);
+}
+
+.readout-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ps-black);
+}
+
+.val-weight,
+.val-buoyant {
+  color: var(--ps-black);
+}
+
+/* ===== مواد — بدون تكرار ===== */
+.material-tray {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 3px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: #fff;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.mat-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(27,115,64,0.15);
+  border-color: rgba(27,115,64,0.3);
+}
+
+.mat-chip.active {
+  border-color: var(--ps-green);
+  background: rgba(27,115,64,0.06);
+  box-shadow: 0 0 0 1px var(--ps-green);
+}
+
+.mat-chip.dragging { opacity: 0.4; transform: scale(0.9); }
+
+.chip-preview {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  transition: border-radius 0.2s;
+}
+
+/* الشكل يتغير حسب اختيار المكعب/الكرة */
+.shape-cube .chip-preview { border-radius: 5px; }
+.shape-sphere .chip-preview { border-radius: 50%; }
+
+.mat-cork    { background: linear-gradient(135deg, #E8D5B0, #C4A87C); }
+.mat-wood    { background: linear-gradient(135deg, #C4956A, #8B6340); }
+.mat-stone   { background: linear-gradient(135deg, #C8C0B0, #908880); }
+.mat-ice     { background: linear-gradient(135deg, #EAF6FB, #BFDFEC); }
+.mat-plastic { background: linear-gradient(135deg, #7FD4E0, #2E8FA3); }
+
+.chip-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #333;
+}
+
+/* ===== اختيار الشكل ===== */
+.shape-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(27,115,64,0.2);
+}
+
+.shape-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ps-olive);
+}
+
+.shape-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(27,115,64,0.25);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #444;
+}
+
+.shape-btn:hover {
+  border-color: var(--ps-green);
+  background: rgba(27,115,64,0.05);
+}
+
+.shape-btn.active {
+  background: var(--ps-green);
+  border-color: var(--ps-green-dark);
+  color: #fff;
+}
+
+.mat-hint {
+  margin-top: 8px;
+  font-size: 0.65rem;
+  color: #999;
+  text-align: center;
+}
+
+.drop-indicator {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--ps-green);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  z-index: 20;
+  pointer-events: none;
+  border: 2px solid var(--ps-gold);
+  animation: pulse 0.7s ease infinite alternate;
+}
+
+@keyframes pulse {
+  from { transform: translate(-50%,-50%) scale(1); box-shadow: 0 4px 20px rgba(27,115,64,0.4); }
+  to   { transform: translate(-50%,-50%) scale(1.04); box-shadow: 0 6px 28px rgba(27,115,64,0.55); }
+}
+
+/* ===== تحكم ===== */
+.hud-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  padding: 2px 0;
+  font-size: 0.77rem;
+}
+
+.hud-check input {
+  accent-color: var(--ps-green);
+  width: 14px; height: 14px;
+  cursor: pointer;
+}
+
+.hud-select {
+  font-family: inherit;
+  font-size: 0.82rem;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid rgba(27,115,64,0.25);
+  border-radius: 8px;
+  background: #fff;
+  direction: rtl;
+  color: var(--ps-black);
+}
+
+.hud-sound {
+  position: absolute;
+  bottom: 16px; right: 16px;
+  z-index: 10;
+  width: 40px; height: 40px;
+  border: 2px solid rgba(27,115,64,0.2);
+  border-radius: 50%;
+  background: var(--ps-cream);
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* ===== لوحة التحكم السفلية (control-dock) =====
+   على الشاشات الكبيرة: غلاف بلا تأثير، أبناؤها (hud-forces/hud-column)
+   تبقى absolute بالضبط كما كانت. التحويل إلى "ورقة قابلة للطي" يحدث
+   فقط على الجوال عبر media query أسفل. */
+.dock-toggle { display: none; }
+
+@media (max-width: 768px), (max-height: 480px) and (orientation: landscape) {
+  .sim-title {
+    top: 6px;
+    padding: 5px 10px;
+    gap: 6px;
+    max-width: calc(100% - 56px);
+  }
+
+  .title-text { font-size: 1.1rem; }
+  .title-sub { display: none; }
+  .title-accent { height: 24px; width: 5px; }
+
+  .hud {
+    padding: 8px 10px;
+    font-size: 0.76rem;
+    border-radius: 10px;
+  }
+
+  .hud-heading {
+    font-size: 0.68rem;
+    margin-bottom: 6px;
+  }
+
+  /* مواد — شريط علوي واحد مضغوط (صف أفقي قابل للتمرير) بدل بطاقة طويلة،
+     لتحرير أقصى مساحة رأسية ممكنة لحوض المحاكاة */
+  .hud-body {
+    top: 44px;
+    left: 6px;
+    right: 6px;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .hud-body .hud-heading,
+  .hud-body .mat-hint { display: none; }
+
+  .material-tray {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .mat-chip { flex-shrink: 0; min-width: 42px; padding: 4px; }
+  .chip-preview { width: 24px; height: 24px; }
+  .chip-name { font-size: 0.55rem; }
+
+  .shape-row {
+    padding-top: 0;
+    border-top: none;
+    border-right: 1px dashed rgba(27,115,64,0.2);
+    padding-right: 8px;
+    margin-right: 2px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .shape-label { display: none; }
+  .shape-btn { padding: 5px 8px; font-size: 0.62rem; }
+
+  .hud-sound {
+    top: 6px;
+    left: 6px;
+    right: auto;
+    bottom: auto;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .drop-indicator {
+    font-size: 0.9rem;
+    padding: 10px 22px;
+  }
+
+  /* ===== لوحة سفلية قابلة للطي (bottom sheet) =====
+     تجمع القوى + السائل + الحجم + القياسات في ورقة واحدة، مطوية بشكل
+     افتراضي وتعرض فقط القياسات الأساسية في شريط رفيع، فيبقى حوض
+     المحاكاة مرئياً بالكامل بدل أن تغطّيه لوحات متراكمة. */
+  .control-dock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 15;
+    background: var(--ps-cream);
+    border-top: 3px solid var(--ps-green);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -4px 16px rgba(15, 77, 42, 0.18);
+  }
+
+  .dock-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: 8px 14px max(8px, env(safe-area-inset-bottom)) 14px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .dock-mini {
+    display: flex;
+    flex: 1;
+    justify-content: space-around;
+    gap: 4px;
+  }
+
+  .dock-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.25;
+  }
+
+  .dock-stat-val {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ps-green-dark);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dock-stat-label {
+    font-size: 0.58rem;
+    color: var(--ps-olive);
+  }
+
+  .dock-chevron {
+    font-size: 0.85rem;
+    color: var(--ps-green-dark);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .control-dock.expanded .dock-chevron { transform: rotate(180deg); }
+
+  .dock-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+  }
+
+  .control-dock.expanded .dock-body {
+    max-height: min(62dvh, 420px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dock-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 12px 14px;
+  }
+
+  /* داخل اللوحة المطوية: العناصر تتدفّق بشكل طبيعي بدل absolute */
+  .dock-body .hud,
+  .dock-body .hud-column {
+    position: relative;
+    top: auto; left: auto; right: auto; bottom: auto;
+    width: auto;
+    flex: 1 1 140px;
+  }
+
+  .dock-body .hud-column {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .dock-body .hud-column .hud { flex: 1 1 110px; }
+
+  .hud-check { font-size: 0.68rem; gap: 5px; }
+  .mat-chip { min-height: 40px; justify-content: center; }
+  .readout-row { padding: 4px 6px; }
+  .readout-label { font-size: 0.62rem; }
+  .readout-value { font-size: 0.72rem; }
+}
+
+@media (max-width: 400px) {
+  .dock-stat-label { display: none; }
+  .dock-mini { gap: 10px; }
+}
+
+/* جوال بالعرض (ارتفاع قليل): شريط المواد رفيع جداً + تقليص الهوامش العمودية */
+@media (max-height: 480px) and (orientation: landscape) {
+  .sim-title { top: 4px; padding: 4px 8px; }
+  .hud-body { top: 32px; padding: 6px 10px; }
+  .chip-preview { width: 22px; height: 22px; }
+  .control-dock.expanded .dock-body { max-height: 50dvh; }
+}

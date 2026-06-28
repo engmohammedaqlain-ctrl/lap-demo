@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>الطفو</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1B7340">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="sim-stage">
+    <div id="canvas-holder"></div>
+
+    <div class="sim-title">
+      <span class="title-accent"></span>
+      <span class="title-text">الطفو</span>
+      <span class="title-sub">تجربة أرخميدس</span>
+    </div>
+
+    <!-- يسار: الجسم + المواد -->
+    <div class="hud hud-body">
+      <div class="hud-heading">الجسم — اسحب المادة للبركة</div>
+      <div class="material-tray shape-cube" id="material-tray">
+        <div class="mat-chip" draggable="true" data-material="cork" title="فلّين — يطفو">
+          <span class="chip-preview mat-cork"></span>
+          <span class="chip-name">فلّين</span>
+        </div>
+        <div class="mat-chip active" draggable="true" data-material="wood" title="خشب — يطفو">
+          <span class="chip-preview mat-wood"></span>
+          <span class="chip-name">خشب</span>
+        </div>
+        <div class="mat-chip" draggable="true" data-material="ice" title="جليد — يطفو بالكاد">
+          <span class="chip-preview mat-ice"></span>
+          <span class="chip-name">جليد</span>
+        </div>
+        <div class="mat-chip" draggable="true" data-material="plastic" title="بلاستيك — يغرق بالماء، يطفو بالعسل">
+          <span class="chip-preview mat-plastic"></span>
+          <span class="chip-name">بلاستيك</span>
+        </div>
+        <div class="mat-chip" draggable="true" data-material="stone" title="حجر — يغرق">
+          <span class="chip-preview mat-stone"></span>
+          <span class="chip-name">حجر</span>
+        </div>
+      </div>
+      <div class="shape-row">
+        <span class="shape-label">الشكل:</span>
+        <label class="shape-btn active" data-shape="cube">
+          <input type="radio" name="shape" value="cube" checked hidden> ■ مكعب
+        </label>
+        <label class="shape-btn" data-shape="sphere">
+          <input type="radio" name="shape" value="sphere" hidden> ● كرة
+        </label>
+      </div>
+      <p class="mat-hint">اسحب أو اضغط — الشكل من الأزرار أعلاه</p>
+    </div>
+
+    <!-- لوحة تحكم سفلية: تتحول على الجوال إلى ورقة قابلة للطي (bottom sheet)
+         لتفسح أقصى مساحة ممكنة للبركة؛ على الشاشات الكبيرة تبقى كما كانت
+         (عمودان ثابتان) لأن CSS لا تفرض موضعها إلا على الجوال -->
+    <div class="control-dock" id="control-dock">
+      <button class="dock-toggle" id="dock-toggle" aria-expanded="false" aria-controls="dock-body">
+        <span class="dock-mini">
+          <span class="dock-stat"><span class="dock-stat-val" id="mini-mass">—</span><span class="dock-stat-label">كتلة</span></span>
+          <span class="dock-stat"><span class="dock-stat-val" id="mini-weight">—</span><span class="dock-stat-label">وزن</span></span>
+          <span class="dock-stat"><span class="dock-stat-val" id="mini-buoyant">—</span><span class="dock-stat-label">طفو</span></span>
+          <span class="dock-stat"><span class="dock-stat-val" id="mini-submerged">—</span><span class="dock-stat-label">غمر</span></span>
+        </span>
+        <span class="dock-chevron" aria-hidden="true">︿</span>
+      </button>
+
+      <div class="dock-body" id="dock-body">
+        <!-- يسار أسفل: القوى -->
+        <div class="hud hud-forces">
+          <div class="hud-heading">القوى</div>
+          <label class="hud-check"><input type="checkbox" id="show-gravity" checked> الجاذبية</label>
+          <label class="hud-check"><input type="checkbox" id="show-buoyancy" checked> الطفو</label>
+          <label class="hud-check"><input type="checkbox" id="show-values-checkbox" checked> القيم</label>
+          <label class="hud-check"><input type="checkbox" id="show-depth-lines" checked> خطوط العمق</label>
+        </div>
+
+        <!-- يمين: السائل → الحجم → القياسات (عمود واحد) -->
+        <aside class="hud-column hud-right">
+          <div class="hud hud-fluid">
+            <div class="hud-heading">السائل</div>
+            <select id="liquid-select" class="hud-select">
+              <option value="water" selected>💧 ماء عذب</option>
+              <option value="seawater">🌊 ماء البحر</option>
+              <option value="oliveOil">🫒 زيت زيتون</option>
+              <option value="honey">🍯 عسل</option>
+              <option value="glycerin">جليسرين</option>
+            </select>
+          </div>
+
+          <div class="hud hud-size">
+            <div class="hud-heading">الحجم</div>
+            <input type="range" id="size-slider" min="0.22" max="0.45" step="0.01" value="0.38">
+            <span class="hud-readout" id="size-value">٠٫٣٨ م</span>
+          </div>
+
+          <div class="hud hud-readouts">
+            <div class="hud-heading">القياسات</div>
+            <div class="readouts-list">
+              <div class="readout-row">
+                <span class="readout-label">الكتلة</span>
+                <span class="readout-value" id="tag-mass">—</span>
+              </div>
+              <div class="readout-row">
+                <span class="readout-label">الوزن</span>
+                <span class="readout-value val-weight" id="tag-weight">—</span>
+              </div>
+              <div class="readout-row">
+                <span class="readout-label">الطفو</span>
+                <span class="readout-value val-buoyant" id="tag-buoyant">—</span>
+              </div>
+              <div class="readout-row">
+                <span class="readout-label">الغمر</span>
+                <span class="readout-value" id="tag-submerged">—</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="drop-indicator" class="drop-indicator" hidden>أفلت فوق البركة ↓</div>
+    <button id="sound-toggle" class="hud-sound" aria-label="إيقاف الصوت">🔊</button>
+  </div>
+
+  <script src="p5.min.js"></script>
+  <script src="physics.js"></script>
+  <script src="forces.js"></script>
+  <script src="audio.js"></script>
+  <script src="ui-panel.js"></script>
+  <script src="controls.js"></script>
+  <script src="sketch.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "الطفو — تجربة أرخميدس",
+  "short_name": "الطفو",
+  "description": "محاكاة تفاعلية لمبدأ أرخميدس في الطفو",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAF6EE",
+  "theme_color": "#1B7340",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": []
+}
