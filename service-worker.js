@@ -1,4 +1,6 @@
-const CACHE_NAME = "tafu-cache-v1";
+// نرفع رقم النسخة عند كل تحديث للأصول حتى يُعيد الـ service worker تخزينها
+// (الاستراتيجية cache-first، فبدون رفع الرقم يظل يقدّم النسخة القديمة للأبد)
+const CACHE_NAME = "tafu-cache-v2";
 const ASSETS = [
   "./",
   "./index.html",

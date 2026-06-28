@@ -137,15 +137,16 @@ function layoutScene() {
   if (mobile) {
     const { topReserve, bottomReserve } = getReservedSpace();
     const available = Math.max(120, height - topReserve - bottomReserve);
-    containerW = min(width * 0.84, width - 20);
+    containerW = min(width * 0.9, width - 16);
     // الحوض يأخذ معظم المساحة المتاحة (التجربة هي المحتوى الأساسي)
     // بدل سقف ثابت صغير كان يترك فجوة سماء فارغة قبل المنظر الخلفي
-    containerH = constrain(available * 0.62, 140, 460);
+    containerH = constrain(available * 0.74, 150, 540);
     containerX = (width - containerW) / 2;
-    containerY = topReserve + (available - containerH) * 0.25;
+    // توسيط رأسي ضمن المساحة المتاحة بدل دفع الحوض للأعلى وترك شريط تربة فارغ أسفله
+    containerY = topReserve + (available - containerH) * 0.5;
     // غالب ارتفاع الحوض "مدفون" تحت خط الأرض (نفس طابع البئر الحجري
     // المُغروس بالتربة على سطح المكتب)، لا عائماً كاملاً في السماء
-    groundY = containerY + containerH * 0.22;
+    groundY = containerY + containerH * 0.2;
   } else {
     groundY = height * 0.54;
     containerW = min(width * 0.40, 400);
@@ -591,10 +592,14 @@ function drawDepthGuide() {
 }
 
 function updatePhysics(dt) {
+  // الموضع الأفقي يبقى حيث وضعه المستخدم (سحب حر يميناً/يساراً) ولا يعود
+  // تلقائياً للمركز — نقصره فقط ضمن حدود الإناء تحسّباً لتغيّر المقاس/التدوير.
   if (!state.isDragging) {
-    const sr = stepSpringReturn(state.offsetX, state.offsetXVelocity, dt);
-    state.offsetX = sr.offset;
-    state.offsetXVelocity = sr.velocity;
+    const sp = metersToPixels(state.shapeSize);
+    const half = state.shapeType === "cube" ? sp / 2 : sp;
+    const limit = Math.max(0, containerW / 2 - half - 8);
+    state.offsetX = constrain(state.offsetX, -limit, limit);
+    state.offsetXVelocity = 0;
   }
   if (state.isDragging) return;
 
@@ -689,14 +694,21 @@ function touchEnded() {
   }
 }
 
-/** تحويل إحداثيات اللمس/الإفلات إلى إحداثيات الـ canvas */
+/**
+ * تحويل إحداثيات اللمس/الإفلات (client) إلى إحداثيات p5 المنطقية.
+ * مهم: نقسم على المقاس المنطقي (width/height) لا على مقاس الـ buffer الداخلي
+ * (canvas.width = width × pixelDensity). poolBounds وكل إحداثيات الرسم تُحسب
+ * بإحداثيات p5 المنطقية، فاستخدام canvas.width كان يضرب الإحداثيات في كثافة
+ * البكسل (1.5–3 على الجوال/الشاشات عالية الدقة)، فيقع الإفلات "خارج" البركة
+ * رغم أنه فوقها بصرياً — وهذا ما كان يعطّل السحب والإفلات فعلياً.
+ */
 function clientToCanvas(clientX, clientY) {
   const canvas = document.querySelector("#canvas-holder canvas");
   if (!canvas) return { x: clientX, y: clientY };
   const rect = canvas.getBoundingClientRect();
   return {
-    x: (clientX - rect.left) * (canvas.width / rect.width),
-    y: (clientY - rect.top) * (canvas.height / rect.height),
+    x: (clientX - rect.left) * (width / rect.width),
+    y: (clientY - rect.top) * (height / rect.height),
   };
 }
 

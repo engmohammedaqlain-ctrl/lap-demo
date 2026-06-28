@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>الطفو</title>
-  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1B7340">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -23,23 +22,23 @@
     <div class="hud hud-body">
       <div class="hud-heading">الجسم — اسحب المادة للبركة</div>
       <div class="material-tray shape-cube" id="material-tray">
-        <div class="mat-chip" draggable="true" data-material="cork" title="فلّين — يطفو">
+        <div class="mat-chip" data-material="cork" title="فلّين — يطفو">
           <span class="chip-preview mat-cork"></span>
           <span class="chip-name">فلّين</span>
         </div>
-        <div class="mat-chip active" draggable="true" data-material="wood" title="خشب — يطفو">
+        <div class="mat-chip active" data-material="wood" title="خشب — يطفو">
           <span class="chip-preview mat-wood"></span>
           <span class="chip-name">خشب</span>
         </div>
-        <div class="mat-chip" draggable="true" data-material="ice" title="جليد — يطفو بالكاد">
+        <div class="mat-chip" data-material="ice" title="جليد — يطفو بالكاد">
           <span class="chip-preview mat-ice"></span>
           <span class="chip-name">جليد</span>
         </div>
-        <div class="mat-chip" draggable="true" data-material="plastic" title="بلاستيك — يغرق بالماء، يطفو بالعسل">
+        <div class="mat-chip" data-material="plastic" title="بلاستيك — يغرق بالماء، يطفو بالعسل">
           <span class="chip-preview mat-plastic"></span>
           <span class="chip-name">بلاستيك</span>
         </div>
-        <div class="mat-chip" draggable="true" data-material="stone" title="حجر — يغرق">
+        <div class="mat-chip" data-material="stone" title="حجر — يغرق">
           <span class="chip-preview mat-stone"></span>
           <span class="chip-name">حجر</span>
         </div>
@@ -136,10 +135,28 @@
   <script src="controls.js"></script>
   <script src="sketch.js"></script>
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("service-worker.js").catch(() => {});
-      });
+    /**
+     * المانيفست والـ service worker لا يعملان إطلاقاً على بروتوكول file://
+     * (فتح index.html بنقرتين مباشرة) — قيد متصفح أساسي، ليس خللاً بالكود.
+     * كل المتصفحات تتعامل مع كل ملف file:// كمصدر (origin) منفصل، فلا CORS
+     * يسمح بجلب المانيفست، ولا service worker يُسجَّل إلا على http/https
+     * (أو localhost). لذلك نُلحقهما فقط عند التشغيل عبر خادم حقيقي،
+     * بدل وضعهما ثابتين بالـ HTML ليحاول المتصفح جلبهما دوماً ويطبع أخطاء
+     * بالـ console حتى عند الفتح المباشر من الملف.
+     */
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = "manifest.json";
+      document.head.appendChild(manifestLink);
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        });
+      }
+    } else {
+      console.info("فُتح الملف مباشرة (file://) — ميزات العمل دون اتصال (PWA) تحتاج خادماً محلياً، انظر التعليمات.");
     }
   </script>
 

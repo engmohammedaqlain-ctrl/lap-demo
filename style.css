@@ -233,6 +233,10 @@ body {
   background: #fff;
   cursor: grab;
   user-select: none;
+  /* تمنع المتصفح من تفسير لمسة السحب على الشريحة كتمرير لشريط المواد
+     الأفقي (overflow-x:auto على الجوال) - بدونها يصير السحب باللمس
+     تمريراً للقائمة بدل سحب فعلي للمادة */
+  touch-action: none;
   transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
 
@@ -249,6 +253,17 @@ body {
 }
 
 .mat-chip.dragging { opacity: 0.4; transform: scale(0.9); }
+
+/* الشبح الذي يتبع المؤشر/الإصبع أثناء السحب (Pointer Events) */
+.chip-ghost {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 30;
+  transform: translate(-50%, -50%) scale(1.15);
+  pointer-events: none;
+  opacity: 0.85;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+}
 
 .chip-preview {
   width: 32px;

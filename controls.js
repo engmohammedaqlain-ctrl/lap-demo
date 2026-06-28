@@ -125,62 +125,108 @@ function updateSizeSliderRange() {
   updateSizeLabel(state.shapeSize);
 }
 
+/**
+ * سحب وإفلات مبني على Pointer Events (لا HTML5 Drag and Drop).
+ * الـ Drag and Drop الأصلي (dragstart/dragover/drop) لا يعمل إطلاقاً من
+ * اللمس على أي متصفح جوال (Safari iOS، Chrome Android) - قيد فعلي بالمنصّة
+ * وليس مجرد خلل إعداد، لذلك السحب لم يكن يعمل سوى بالماوس فقط من الأساس.
+ * Pointer Events توحّد الماوس واللمس بمسار واحد، فيعمل السحب فعلياً
+ * بالإصبع تماماً كما يعمل بالماوس.
+ */
 function setupMaterialDragDrop() {
   const tray = document.getElementById("material-tray");
   const canvasHolder = document.getElementById("canvas-holder");
   const dropIndicator = document.getElementById("drop-indicator");
   if (!tray || !canvasHolder) return;
 
-  let dragPayload = null;
+  const DRAG_THRESHOLD = 8; // بكسل - أقل من هذا = ضغطة اختيار، أكثر = سحب
 
   tray.querySelectorAll(".mat-chip").forEach((chip) => {
-    chip.addEventListener("dragstart", (e) => {
-      dragPayload = { material: chip.dataset.material };
-      e.dataTransfer.setData("text/plain", dragPayload.material);
-      e.dataTransfer.effectAllowed = "copy";
-      chip.classList.add("dragging");
-      canvasHolder.classList.add("drop-active");
-      if (dropIndicator) dropIndicator.hidden = false;
-    });
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let dragging = false;
+    let ghost = null;
 
-    chip.addEventListener("dragend", () => {
+    function showGhost(clientX, clientY) {
+      ghost = document.createElement("div");
+      ghost.className = "chip-ghost";
+      const preview = chip.querySelector(".chip-preview");
+      if (preview) ghost.appendChild(preview.cloneNode(true));
+      document.body.appendChild(ghost);
+      moveGhost(clientX, clientY);
+    }
+
+    function moveGhost(clientX, clientY) {
+      if (ghost) {
+        ghost.style.left = clientX + "px";
+        ghost.style.top = clientY + "px";
+      }
+    }
+
+    function removeGhost() {
+      if (ghost) {
+        ghost.remove();
+        ghost = null;
+      }
+    }
+
+    function setDropZoneActive(active) {
+      canvasHolder.classList.toggle("drop-active", active);
+      if (dropIndicator) dropIndicator.hidden = !active;
+    }
+
+    function cleanup() {
       chip.classList.remove("dragging");
-      canvasHolder.classList.remove("drop-active");
-      if (dropIndicator) dropIndicator.hidden = true;
-      dragPayload = null;
+      setDropZoneActive(false);
+      removeGhost();
+      dragging = false;
+      pointerId = null;
+    }
+
+    chip.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = false;
+      chip.setPointerCapture(pointerId);
     });
 
-    chip.addEventListener("click", () => {
-      applyMaterial(chip.dataset.material);
-      if (state.soundEnabled) SoundEngine.playClick();
+    chip.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      if (!dragging) {
+        const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (moved < DRAG_THRESHOLD) return;
+        dragging = true;
+        chip.classList.add("dragging");
+        showGhost(e.clientX, e.clientY);
+      }
+      moveGhost(e.clientX, e.clientY);
+      setDropZoneActive(isPointInPool(e.clientX, e.clientY));
+      e.preventDefault();
     });
-  });
 
-  canvasHolder.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  });
+    chip.addEventListener("pointerup", (e) => {
+      if (e.pointerId !== pointerId) return;
+      chip.releasePointerCapture(pointerId);
 
-  canvasHolder.addEventListener("dragleave", (e) => {
-    if (!canvasHolder.contains(e.relatedTarget)) {
-      canvasHolder.classList.remove("drop-active");
-      if (dropIndicator) dropIndicator.hidden = true;
-    }
-  });
+      if (dragging) {
+        if (isPointInPool(e.clientX, e.clientY)) {
+          applyMaterial(chip.dataset.material);
+          state.offsetX = 0;
+          state.offsetXVelocity = 0;
+          if (state.soundEnabled) SoundEngine.playSplash(0.6);
+        }
+      } else {
+        // لم تتجاوز الحركة حد السحب - ضغطة اختيار عادية
+        applyMaterial(chip.dataset.material);
+        if (state.soundEnabled) SoundEngine.playClick();
+      }
+      cleanup();
+    });
 
-  canvasHolder.addEventListener("drop", (e) => {
-    e.preventDefault();
-    canvasHolder.classList.remove("drop-active");
-    if (dropIndicator) dropIndicator.hidden = true;
-    if (!dragPayload) return;
-
-    if (isPointInPool(e.clientX, e.clientY)) {
-      applyMaterial(dragPayload.material);
-      state.offsetX = 0;
-      state.offsetXVelocity = 0;
-      if (state.soundEnabled) SoundEngine.playSplash(0.6);
-    }
-    dragPayload = null;
+    chip.addEventListener("pointercancel", cleanup);
   });
 }
 
