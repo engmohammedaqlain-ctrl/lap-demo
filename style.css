@@ -490,7 +490,7 @@ body {
     gap: 6px;
     background: transparent;
     border: none;
-    padding: 8px 14px max(8px, env(safe-area-inset-bottom)) 14px;
+    padding: 6px 12px max(6px, env(safe-area-inset-bottom)) 12px;
     font-family: inherit;
     cursor: pointer;
   }
@@ -506,23 +506,23 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    line-height: 1.25;
+    line-height: 1.15;
   }
 
   .dock-stat-val {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
     color: var(--ps-green-dark);
     font-variant-numeric: tabular-nums;
   }
 
   .dock-stat-label {
-    font-size: 0.58rem;
+    font-size: 0.54rem;
     color: var(--ps-olive);
   }
 
   .dock-chevron {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--ps-green-dark);
     transition: transform 0.2s;
     flex-shrink: 0;
@@ -536,8 +536,10 @@ body {
     transition: max-height 0.25s ease;
   }
 
+  /* مضغوطة عمداً (شبكة 2×2 للقوى + بطاقات أصغر) فتغطي مساحة أقل
+     من الشاشة وقت التوسيع، بدل بطاقات طويلة تأخذ ٦٢٪ من الارتفاع */
   .control-dock.expanded .dock-body {
-    max-height: min(62dvh, 420px);
+    max-height: min(44dvh, 320px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -545,33 +547,53 @@ body {
   .dock-body {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 0 12px 14px;
+    gap: 6px;
+    padding: 0 10px 10px;
   }
 
-  /* داخل اللوحة المطوية: العناصر تتدفّق بشكل طبيعي بدل absolute */
+  /* داخل اللوحة المطوية: العناصر تتدفّق بشكل طبيعي بدل absolute،
+     وكل بطاقة مضغوطة (حشو وخطوط أصغر) لتصغير الورقة بالكامل */
   .dock-body .hud,
   .dock-body .hud-column {
     position: relative;
     top: auto; left: auto; right: auto; bottom: auto;
     width: auto;
     flex: 1 1 140px;
+    padding: 6px 8px;
+  }
+
+  .dock-body .hud-heading {
+    font-size: 0.6rem;
+    margin-bottom: 4px;
   }
 
   .dock-body .hud-column {
     display: flex;
     flex-direction: row;
     flex: 1 1 100%;
-    gap: 8px;
+    gap: 6px;
+    padding: 0;
   }
 
-  .dock-body .hud-column .hud { flex: 1 1 110px; }
+  .dock-body .hud-column .hud { flex: 1 1 100px; }
 
-  .hud-check { font-size: 0.68rem; gap: 5px; }
+  /* القوى: شبكة ٢×٢ بدل قائمة عمودية من ٤ صفوف - توفّر نصف الارتفاع */
+  .dock-body .hud-forces {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 8px;
+  }
+
+  .dock-body .hud-check { font-size: 0.64rem; gap: 4px; padding: 1px 0; }
+  .dock-body .readouts-list { gap: 3px; }
+  .dock-body .readout-row { padding: 3px 6px; }
+  .dock-body .readout-label { font-size: 0.6rem; }
+  .dock-body .readout-value { font-size: 0.68rem; }
+  .dock-body .hud-select { padding: 5px 8px; font-size: 0.76rem; }
+  .dock-body .hud-readout { font-size: 0.74rem; }
+  .dock-body .hud-size { gap: 5px; }
+
   .mat-chip { min-height: 40px; justify-content: center; }
-  .readout-row { padding: 4px 6px; }
-  .readout-label { font-size: 0.62rem; }
-  .readout-value { font-size: 0.72rem; }
 }
 
 @media (max-width: 400px) {
