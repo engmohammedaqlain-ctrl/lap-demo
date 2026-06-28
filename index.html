@@ -16,6 +16,59 @@
       <span class="title-accent"></span>
       <span class="title-text">الطفو</span>
       <span class="title-sub">تجربة أرخميدس</span>
+      <button id="help-toggle" class="help-toggle" aria-label="عن التجربة والقوانين" title="عن التجربة والقوانين">؟</button>
+    </div>
+
+    <!-- نافذة "عن التجربة": تعريف التجربة، مبدأ أرخميدس، طريقة الاستخدام،
+         وجدول كثافات المواد/السوائل (يُبنى ديناميكياً من sketch.js حتى لا
+         تتكرر الأرقام في مصدرين قد يختلفان لاحقاً) -->
+    <div id="help-overlay" class="help-overlay" hidden>
+      <div class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button id="help-close" class="help-close" aria-label="إغلاق">✕</button>
+
+        <h2 id="help-title">الطفو <span class="help-title-sub">— تجربة أرخميدس</span></h2>
+        <p class="help-intro">
+          محاكاة تفاعلية لمبدأ أرخميدس: ضع جسماً (أو حتى ٣ أجسام معاً) من مادة
+          مختلفة داخل سائل مختلف، وشاهد متى يطفو ومتى يغرق ولماذا، مع قياس
+          القوى الفعلية المؤثّرة عليه لحظة بلحظة.
+        </p>
+
+        <section class="help-section">
+          <h3>📐 القانون الأساسي — مبدأ أرخميدس</h3>
+          <div class="help-formula">قوة الطفو = كثافة السائل × الحجم المغمور × ٩٫٨١ (الجاذبية)</div>
+          <div class="help-formula">الوزن = كثافة الجسم × حجمه الكامل × ٩٫٨١</div>
+          <ul class="help-list">
+            <li>الجسم <strong>يطفو</strong> إذا كانت <strong>كثافته أقل</strong> من كثافة السائل.</li>
+            <li>الجسم <strong>يغرق</strong> إذا كانت <strong>كثافته أكبر</strong> من كثافة السائل.</li>
+            <li>يتوازن الجسم مغموراً جزئياً عندما تتساوى قوة الطفو مع وزنه تماماً.</li>
+            <li>نفس الجسم قد يطفو بسائل ويغرق بآخر — الطفو خاصية تعتمد على <strong>السائل أيضاً</strong>، لا الجسم وحده.</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>🧩 طريقة الاستخدام</h3>
+          <ul class="help-list">
+            <li><strong>اسحب</strong> مادة من الشريط وأفلتها فوق البركة لإضافة جسم (حتى ٣ أجسام معاً).</li>
+            <li><strong>اضغط</strong> على شريحة مادة (بدون سحب) لتغيير مادة الجسم المحدَّد.</li>
+            <li><strong>اضغط</strong> على أي جسم داخل البركة لتحديده — تظهر عليه حلقة خضراء وأسهم القوى وقياساته.</li>
+            <li><strong>اسحب</strong> الجسم المحدَّد يمين/يسار/فوق/تحت لتحريكه بحرية.</li>
+            <li>زر <strong>"✕ حذف"</strong> يحذف الجسم المحدَّد (لا يمكن حذف آخر جسم متبقٍ).</li>
+            <li>اختر <strong>الشكل</strong> (مكعب/كرة) و<strong>الحجم</strong> من الأزرار والشريط.</li>
+            <li>غيّر <strong>السائل</strong> من القائمة، وتحكّم بعرض الجاذبية/الطفو/القيم/خطوط العمق من خانات الاختيار.</li>
+            <li>زر 🔊 يشغّل أو يوقف المؤثرات الصوتية.</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>⚖️ كثافة المواد (كغم/م³)</h3>
+          <div class="help-table" id="help-materials-table"></div>
+        </section>
+
+        <section class="help-section">
+          <h3>🌊 كثافة السوائل (كغم/م³)</h3>
+          <div class="help-table" id="help-liquids-table"></div>
+        </section>
+      </div>
     </div>
 
     <!-- يسار: الجسم + المواد -->

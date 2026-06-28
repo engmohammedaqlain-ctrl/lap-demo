@@ -65,7 +65,68 @@ function setupControls() {
   setupMaterialDragDrop();
   setupDockToggle();
   setupDeleteButton();
+  setupHelpModal();
   syncControlsToActive();
+}
+
+/**
+ * نافذة "عن التجربة" — تعريف، مبدأ أرخميدس، طريقة الاستخدام، وجدولا
+ * كثافة المواد/السوائل. الجدولان يُبنَيان هنا من MATERIALS/LIQUIDS
+ * (المُعرَّفتين في sketch.js) بدل تكرار الأرقام بالـ HTML، حتى يبقى مصدر
+ * الحقيقة الوحيد هو محرك الفيزياء نفسه ولا يختلف عنه عرض اللوحة لاحقاً.
+ */
+function setupHelpModal() {
+  const toggle = document.getElementById("help-toggle");
+  const overlay = document.getElementById("help-overlay");
+  const closeBtn = document.getElementById("help-close");
+  if (!toggle || !overlay || !closeBtn) return;
+
+  populateHelpTable("help-materials-table", MATERIALS);
+  populateHelpTable("help-liquids-table", LIQUIDS, true);
+
+  overlay.hidden = true;
+
+  function open() {
+    overlay.hidden = false;
+    if (state.soundEnabled) SoundEngine.playClick();
+  }
+  function close() {
+    overlay.hidden = true;
+  }
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    open();
+  });
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    close();
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close(); // إغلاق بالضغط على الخلفية المعتمة فقط
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) close();
+  });
+}
+
+/** يبني صفوف جدول كثافة من كائن مواد/سوائل، مرتّبة تصاعدياً بالكثافة */
+function populateHelpTable(containerId, source, isLiquid = false) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const entries = Object.values(source).sort((a, b) => a.density - b.density);
+  container.innerHTML = entries.map((item) => {
+    const swatchColor = isLiquid ? item.color : item.color;
+    const rgb = `rgb(${swatchColor[0]}, ${swatchColor[1]}, ${swatchColor[2]})`;
+    const density = Math.round(item.density).toLocaleString("ar-EG");
+    return `
+      <div class="help-table-row">
+        <span class="ht-name"><span class="help-table-swatch" style="background:${rgb}"></span>${item.nameAr}</span>
+        <span class="ht-density">${density}</span>
+      </div>
+    `;
+  }).join("");
 }
 
 /** زر "حذف" يحذف الجسم المحدَّد بضغطة واحدة - أسهل من السحب خارج البركة */

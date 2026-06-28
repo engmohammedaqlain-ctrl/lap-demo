@@ -100,6 +100,178 @@ body {
   margin-right: 4px;
 }
 
+/* زر "؟" — الوحيد القابل للنقر داخل العنوان (الذي pointer-events:none) */
+.help-toggle {
+  pointer-events: auto;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ps-green);
+  background: #fff;
+  color: var(--ps-green-dark);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.help-toggle:hover { background: rgba(27,115,64,0.1); transform: scale(1.06); }
+
+/* ===== نافذة "عن التجربة" ===== */
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(20, 30, 22, 0.55);
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  display: none;
+}
+
+.help-overlay:not([hidden]) {
+  display: flex;
+}
+
+.help-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(82dvh, 720px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--ps-cream);
+  background-image: var(--keffiyeh);
+  border-radius: 16px;
+  border-top: 5px solid var(--ps-green);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  padding: 22px 22px 26px;
+  direction: rtl;
+}
+
+.help-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.08);
+  color: var(--ps-black);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.help-close:hover { background: rgba(0,0,0,0.16); }
+
+#help-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+  margin-bottom: 4px;
+  padding-left: 36px;
+}
+
+.help-title-sub {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ps-terracotta);
+}
+
+.help-intro {
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: #3a3a3a;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed rgba(27,115,64,0.25);
+}
+
+.help-section { margin-bottom: 16px; }
+.help-section:last-child { margin-bottom: 0; }
+
+.help-section h3 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+  margin-bottom: 8px;
+}
+
+.help-formula {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: rgba(27,115,64,0.08);
+  border: 1px solid rgba(27,115,64,0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  color: var(--ps-green-dark);
+}
+
+.help-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.help-list li {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #3a3a3a;
+  padding-right: 16px;
+  position: relative;
+}
+
+.help-list li::before {
+  content: "•";
+  position: absolute;
+  right: 0;
+  color: var(--ps-green);
+  font-weight: 700;
+}
+
+.help-table { font-size: 0.78rem; }
+
+.help-table-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.65);
+  border: 1px solid rgba(27,115,64,0.1);
+  margin-bottom: 4px;
+}
+
+.help-table-row .ht-name { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+
+.help-table-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+.help-table-row .ht-density {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+}
+
+@media (max-width: 480px) {
+  .help-modal { padding: 18px 16px 20px; border-radius: 14px; }
+  #help-title { font-size: 1.15rem; padding-left: 32px; }
+  .help-intro { font-size: 0.8rem; }
+}
+
 /* ===== HUD — طابع فلسطيني ===== */
 .hud {
   position: absolute;
