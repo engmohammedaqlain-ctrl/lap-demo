@@ -26,17 +26,31 @@ export function concentrationOH(pH) {
 /**
  * يحسب الأس الهيدروجيني الناتج عن خلط حجم من مادة (بـ pH معيّن) مع حجم من
  * الماء النقي. يُرجع قيمة مقيّدة بين ٠ و ١٤.
+ *
+ * يستخدم نموذج "الأيون المهيمن" (PhET ph-scale):
+ *  - للأحماض (pH ≤ 7): نتتبّع H3O⁺ لأنه الأيون ذو التركيز الأعلى.
+ *  - للقواعد (pH > 7): نتتبّع OH⁻ ثم نحوّل عبر pH = 14 − pOH.
+ * هذا يضمن أن التخفيف يكون تدريجياً وواقعياً لكلا الجانبين.
  */
 export function computePH({ soluteVolume, waterVolume, solutePH }) {
   const totalVolume = soluteVolume + waterVolume;
   if (totalVolume <= 0) return NEUTRAL_PH;
 
-  const molesH3O =
-    concentrationH3O(solutePH) * soluteVolume + concentrationH3O(NEUTRAL_PH) * waterVolume;
-  const concentration = molesH3O / totalVolume;
-  const pH = -Math.log10(concentration);
-
-  return Math.max(0, Math.min(14, pH));
+  if (solutePH <= NEUTRAL_PH) {
+    // حمض أو متعادل: حساب H3O⁺
+    const molesH3O =
+      concentrationH3O(solutePH) * soluteVolume + concentrationH3O(NEUTRAL_PH) * waterVolume;
+    const concentration = molesH3O / totalVolume;
+    const pH = -Math.log10(concentration);
+    return Math.max(0, Math.min(14, pH));
+  } else {
+    // قاعدة: حساب OH⁻ ثم تحويل إلى pH
+    const molesOH =
+      concentrationOH(solutePH) * soluteVolume + concentrationOH(NEUTRAL_PH) * waterVolume;
+    const cOH = molesOH / totalVolume;
+    const pOH = -Math.log10(cOH);
+    return Math.max(0, Math.min(14, 14 - pOH));
+  }
 }
 
 /** نسبة امتلاء الكأس (٠..١) من الحجم الكلي */

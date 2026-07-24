@@ -19,7 +19,7 @@ import CustomControls from "./components/CustomControls.jsx";
 import Beaker from "./components/Beaker.jsx";
 import ModeTabs from "./components/ModeTabs.jsx";
 import PhHelpModal from "./components/PhHelpModal.jsx";
-import { SOLUTIONS, DEFAULT_SOLUTION, solutionColorCSS, solutionColorSolid } from "./phData.js";
+import { SOLUTIONS, DEFAULT_SOLUTION, blendedColorCSS, solutionColorSolid } from "./phData.js";
 import { phColorCSS } from "./phColor.js";
 import {
   computePH,
@@ -66,7 +66,7 @@ export default function PhApp({ onHome }) {
       ? NEUTRAL_PH
       : computePH({ soluteVolume: volumes.solute, waterVolume: volumes.water, solutePH });
 
-  const liquidColor = mode === "custom" ? phColorCSS(customPH) : solutionColorCSS(solutionKey);
+  const liquidColor = mode === "custom" ? phColorCSS(customPH) : blendedColorCSS(solutionKey, volumes.solute, volumes.water);
   const dropperColor = solutionColorSolid(solutionKey);
 
   /* ===== حلقة الصبّ/الإسقاط/التصريف ===== */
@@ -147,6 +147,10 @@ export default function PhApp({ onHome }) {
 
   /* ===== أفعال ===== */
   function selectSolution(key) {
+    // إيقاف جميع التدفقات قبل تغيير السائل لمنع تضارب الحالة
+    stopWater();
+    stopDrip();
+    stopDrain();
     setSolutionKey(key);
     applyVolumes({ solute: DEFAULT_SOLUTE_VOLUME, water: 0 });
     if (soundEnabled) PhSound.playClick();

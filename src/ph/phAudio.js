@@ -77,7 +77,7 @@ export const PhSound = (() => {
 
   /** قطرة صغيرة (القطّارة) */
   function playDrip() {
-    if (isMuted || !canPlay("drip", 70)) return;
+    if (isMuted || !canPlay("drip", 150)) return;
     ensureContext();
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();

@@ -54,3 +54,25 @@ export function solutionColorSolid(key) {
   const [r, g, b] = s.color;
   return `rgb(${r}, ${g}, ${b})`;
 }
+
+/** لون الماء النقي */
+const WATER_COLOR = [200, 228, 240];
+const WATER_ALPHA = 0.5;
+
+/**
+ * يمزج لون المادة مع لون الماء حسب نسبة حجم كل منهما.
+ * كلما زاد حجم الماء اقترب اللون من لون الماء الشفاف.
+ */
+export function blendedColorCSS(key, soluteVolume, waterVolume) {
+  const s = SOLUTIONS[key];
+  if (!s) return `rgba(${WATER_COLOR[0]}, ${WATER_COLOR[1]}, ${WATER_COLOR[2]}, ${WATER_ALPHA})`;
+  const total = soluteVolume + waterVolume;
+  if (total <= 0) return `rgba(${WATER_COLOR[0]}, ${WATER_COLOR[1]}, ${WATER_COLOR[2]}, ${WATER_ALPHA})`;
+  const ratio = soluteVolume / total; // 1 = مادة خالصة، 0 = ماء خالص
+  const [sr, sg, sb] = s.color;
+  const r = Math.round(sr * ratio + WATER_COLOR[0] * (1 - ratio));
+  const g = Math.round(sg * ratio + WATER_COLOR[1] * (1 - ratio));
+  const b = Math.round(sb * ratio + WATER_COLOR[2] * (1 - ratio));
+  const a = +(s.alpha * ratio + WATER_ALPHA * (1 - ratio)).toFixed(3);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
