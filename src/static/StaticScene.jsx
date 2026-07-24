@@ -263,12 +263,13 @@ const StaticScene = forwardRef(function StaticScene(
     } else {
       let ax = 0;
       let ay = 0;
-      // جذب نحو السترة (سطحها الأيمن)
+      // جذب نحو السترة (سطحها الأيمن). سقوط ١/د² حادّ حتى يفوز الأقرب —
+      // وإلا تساوت القوّتان عند السقف فتلاشى الصافي وتجمّد البالون.
       const sy = CLAMP(b.y, SWEATER.y + 40, SWEATER.y + SWEATER.h - 40);
       const dsx = SWEATER_RIGHT - b.x;
       const dsy = sy - b.y;
       const ds = Math.hypot(dsx, dsy) + 1;
-      const fS = Math.min(0.55, (q * 9000) / (ds * ds));
+      const fS = Math.min(0.85, (q * 1400) / (ds * ds));
       ax += (dsx / ds) * fS;
       ay += (dsy / ds) * fS;
       // جذب نحو الجدار
@@ -276,7 +277,7 @@ const StaticScene = forwardRef(function StaticScene(
         const dwx = WALL.x - b.x;
         if (dwx > 0) {
           const dw = dwx + 1;
-          const fW = Math.min(0.55, (q * 7200) / (dw * dw));
+          const fW = Math.min(0.85, (q * 1300) / (dw * dw));
           ax += fW;
           ay += (b.y < WALL.y + 40 ? 1 : b.y > WALL.y + WALL.h - 40 ? -1 : 0) * 0.05;
         }
