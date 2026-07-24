@@ -186,6 +186,22 @@ body {
 
 .help-toggle:hover { background: rgba(27,115,64,0.1); transform: scale(1.06); }
 
+/* زر الرئيسية داخل شريط العنوان (بجانب "؟") */
+.home-toggle {
+  pointer-events: auto;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ps-green);
+  background: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+.home-toggle:hover { background: rgba(27,115,64,0.1); transform: scale(1.06); }
+
 /* ===== نافذة "عن التجربة" ===== */
 .help-overlay {
   position: fixed;
