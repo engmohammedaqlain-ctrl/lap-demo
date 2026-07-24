@@ -21,6 +21,14 @@ const EXPERIMENTS = [
     emoji: "🧪",
     accent: "violet",
   },
+  {
+    key: "static",
+    title: "الكهرباء الساكنة",
+    subtitle: "البالونات والشحنات",
+    desc: "افرك البالون بالسترة لتنقل إلكترونات، ثم أفلته وشاهده يلتصق بالسترة أو الجدار.",
+    emoji: "🎈",
+    accent: "amber",
+  },
 ];
 
 export default function HomeScreen({ onOpen }) {

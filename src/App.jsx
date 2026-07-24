@@ -8,8 +8,9 @@ import { useEffect, useState } from "react";
 import HomeScreen from "./HomeScreen.jsx";
 import BuoyancyApp from "./BuoyancyApp.jsx";
 import PhApp from "./ph/PhApp.jsx";
+import StaticApp from "./static/StaticApp.jsx";
 
-const ROUTES = new Set(["buoyancy", "ph"]);
+const ROUTES = new Set(["buoyancy", "ph", "static"]);
 
 function viewFromHash() {
   const h = window.location.hash.replace(/^#\/?/, "");
@@ -36,5 +37,6 @@ export default function App() {
 
   if (view === "buoyancy") return <BuoyancyApp onHome={home} />;
   if (view === "ph") return <PhApp onHome={home} />;
+  if (view === "static") return <StaticApp onHome={home} />;
   return <HomeScreen onOpen={open} />;
 }
