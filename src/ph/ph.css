@@ -175,11 +175,14 @@
 .ph-scale-box-label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; }
 .ph-scale-box-value { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 
-/* ---- منضدة المختبر (بطاقة بيضاء نظيفة) ---- */
+/* ---- منضدة المختبر (بطاقة بيضاء نظيفة) ----
+   ملاحظة: البطاقة داخل عمود (flex column)، لذا نُحجّمها بالعرض فقط
+   ونترك الارتفاع تلقائياً ليتبع نسبة رسم المشهد، وإلا تحوّل flex-basis
+   إلى ارتفاع ثابت فيظهر فراغ أبيض كبير أسفل الكأس. */
 .ph-scene-card {
-  flex: 0 1 560px;
-  max-width: 600px;
-  min-width: 300px;
+  width: 100%;
+  max-width: 620px;
+  align-self: center;
   background: #ffffff;
   border-radius: 18px;
   border: 1px solid rgba(0, 0, 0, 0.07);
@@ -285,7 +288,7 @@
 .ph-legend-dot.base { background: #3652c0; }
 
 /* ---- عمود المشهد (المشهد + التذييل) ---- */
-.ph-scene-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ph-scene-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; max-width: 620px; }
 
 /* ---- اختيار السائل ---- */
 .ph-picker {
@@ -404,22 +407,32 @@
 .ph-volume-value { font-size: 1rem; font-variant-numeric: tabular-nums; }
 .ph-volume-unit { font-size: 0.72rem; color: var(--ps-olive); }
 
-/* ---- سطح المكتب: بلا تمرير إطلاقاً (كل شيء ضمن الشاشة) ---- */
+/* ---- سطح المكتب: بلا تمرير إطلاقاً + تكبير التجربة قدر الإمكان ---- */
 @media (min-width: 901px) {
-  .ph-stage { overflow: hidden; gap: 6px; padding: 10px 14px; }
-  .ph-experiment { gap: 10px; }
+  .ph-stage { overflow: hidden; gap: 6px; padding: 8px 14px; }
+  .ph-experiment { gap: 8px; }
   .ph-workspace { flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: 16px; }
-  .ph-scalebar { padding: 10px 6px 4px 76px; }
-  .ph-scalebar-track { height: min(46vh, 340px); }
-  .ph-scene-card { flex: 0 1 auto; padding: 10px; min-width: 0; }
-  .ph-scene { height: min(48vh, 388px); width: auto; max-width: 100%; }
-  .ph-picker { width: 250px; padding: 10px 12px; }
+  /* المشهد هو البطل: نكبّره لأقصى ارتفاع يسمح به دون تمرير */
+  .ph-scene-col { flex: 0 1 auto; max-width: none; }
+  .ph-scene-card { width: auto; max-width: none; padding: 10px; }
+  /* الارتفاع محدود أيضاً بارتفاع النافذة ناقص بقيّة الصفوف (الشريط العلوي +
+     التبويبات + شريط النظرية) كي لا يُقتطع أيّ عنصر خارج الشاشة */
+  .ph-scene { height: min(62vh, 520px, calc(100vh - 320px)); width: auto; max-width: 100%; }
+  .ph-scalebar { padding: 8px 6px 4px 78px; }
+  .ph-scalebar-track { height: min(58vh, 470px, calc(100vh - 340px)); }
+  .ph-picker { width: 240px; padding: 10px 12px; }
   .ph-picker-heading { margin-bottom: 8px; }
-  .ph-pick-chip { padding: 5px 3px; }
+  .ph-pick-chip { padding: 6px 3px; }
   .ph-experiment > .ph-info { gap: 12px; }
   .ph-info-status { padding: 9px 12px; }
   .ph-info-fact { padding: 9px 12px; }
   .ph-info-legend { padding: 8px 14px; }
+}
+/* شاشات عريضة جداً: زيادة إضافية في حجم التجربة (مع إبقاء الحدّ بارتفاع النافذة) */
+@media (min-width: 1400px) {
+  .ph-scene { height: min(66vh, 580px, calc(100vh - 320px)); }
+  .ph-scalebar-track { height: min(62vh, 530px, calc(100vh - 340px)); }
+  .ph-picker { width: 260px; }
 }
 
 /* ---- جوال ---- */
@@ -427,11 +440,25 @@
   .ph-info { width: 100%; max-width: 560px; flex-direction: row; flex-wrap: wrap; }
   .ph-info-status, .ph-info-fact, .ph-info-legend { flex: 1 1 200px; }
 }
+/* لوحياً وجوّالاً: يبقى فراغ يسار الشريط محجوزاً لصندوق القراءة كي لا يُقتطع */
 @media (max-width: 820px) {
-  .ph-scalebar { padding: 18px 30px 8px 4px; }
+  .ph-scalebar { padding: 16px 6px 8px 72px; }
   .ph-scalebar-track { height: 300px; }
 }
+@media (max-width: 600px) {
+  .ph-lab { gap: 4px; }
+  .ph-scene-card { min-width: 0; }
+  .ph-scalebar { padding: 14px 2px 6px 64px; }
+  .ph-scalebar-track { height: 270px; width: 40px; }
+  .ph-scale-box { padding: 4px 9px; }
+  .ph-scale-box-value { font-size: 1.02rem; }
+}
 @media (max-width: 480px) {
-  .ph-scalebar-track { height: 250px; width: 40px; }
-  .ph-pick-chip { width: 74px; }
+  .ph-scalebar { padding: 12px 2px 6px 58px; }
+  .ph-scalebar-track { height: 248px; width: 36px; }
+  .ph-scale-word { font-size: 0.8rem; letter-spacing: 1px; }
+}
+/* شاشات ضيّقة جداً: كدّس الشريط أسفل المشهد أفقياً لتجنّب الازدحام */
+@media (max-width: 360px) {
+  .ph-picker-chips { grid-template-columns: repeat(2, 1fr); }
 }
