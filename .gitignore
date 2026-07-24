@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Vite PWA generated files
+dev-dist/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*

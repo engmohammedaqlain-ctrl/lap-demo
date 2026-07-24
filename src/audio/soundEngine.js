@@ -1,16 +1,15 @@
 /**
- * audio.js
+ * soundEngine.js
  * نظام صوت كامل مُولَّد برمجياً (Web Audio API) - بدون أي ملفات mp3/wav خارجية
  * كل صوت = دالة تركّب موجات/ضوضاء/مرشحات لحظياً
  */
 
-const SoundEngine = (() => {
+export const SoundEngine = (() => {
   let ctx = null;
   let masterGain = null;
   let isMuted = false;
   let ambientNodes = null;
 
-  // منع تكرار صوت بسرعة مبالغ فيها (audio throttling)
   const lastPlayedAt = {};
   function canPlay(key, minIntervalMs) {
     const now = performance.now();
@@ -32,7 +31,6 @@ const SoundEngine = (() => {
     return ctx;
   }
 
-  /** ضوضاء بيضاء قصيرة (أساس صوت الغطس والفقاعات) */
   function createNoiseBuffer(duration) {
     const bufferSize = ctx.sampleRate * duration;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -43,18 +41,12 @@ const SoundEngine = (() => {
     return buffer;
   }
 
-  /**
-   * صوت "غطس" (splash) - يُستخدم عند دخول الجسم في السائل بسرعة
-   * يتركّب من: ضوضاء مرشّحة (تشبه رشّ الماء) + نغمة منخفضة قصيرة (الارتطام)
-   * @param {number} intensity - 0 إلى 1 (حسب سرعة الاصطدام)
-   */
   function playSplash(intensity = 0.6) {
     if (isMuted || !canPlay("splash", 180)) return;
     ensureContext();
     const now = ctx.currentTime;
     const clampedIntensity = Math.max(0.15, Math.min(1, intensity));
 
-    // الطبقة 1: ضوضاء مرشّحة بفلتر تردد ينخفض (يحاكي صوت "شّش" للماء)
     const noise = ctx.createBufferSource();
     noise.buffer = createNoiseBuffer(0.4);
     const noiseFilter = ctx.createBiquadFilter();
@@ -71,7 +63,6 @@ const SoundEngine = (() => {
     noiseFilter.connect(noiseGain);
     noiseGain.connect(masterGain);
 
-    // الطبقة 2: نغمة "ارتطام" منخفضة قصيرة (sine ينزلق للأسفل)
     const thud = ctx.createOscillator();
     thud.type = "sine";
     thud.frequency.setValueAtTime(180 * clampedIntensity + 60, now);
@@ -90,7 +81,6 @@ const SoundEngine = (() => {
     thud.stop(now + 0.2);
   }
 
-  /** نقرة UI ناعمة (اختيار شكل/مادة/سائل) */
   function playClick() {
     if (isMuted || !canPlay("click", 60)) return;
     ensureContext();
@@ -111,13 +101,11 @@ const SoundEngine = (() => {
     osc.stop(now + 0.1);
   }
 
-  /** نغمة "توازن/نجاح" ناعمة - تُشغَّل عند استقرار الجسم تماماً */
   function playSettleChime() {
     if (isMuted || !canPlay("chime", 1200)) return;
     ensureContext();
     const now = ctx.currentTime;
 
-    // ثنائي نغمي هادئ (لا يشبه "فوز لعبة" صاخب، بل تأكيد هادئ)
     [523.25, 659.25].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       osc.type = "sine";
@@ -136,7 +124,6 @@ const SoundEngine = (() => {
     });
   }
 
-  /** فقاعة صغيرة فردية (تُستخدم بشكل متفرق أثناء الغطس) */
   function playBubble() {
     if (isMuted || !canPlay("bubble", 90)) return;
     ensureContext();
@@ -158,9 +145,8 @@ const SoundEngine = (() => {
     osc.stop(now + 0.12);
   }
 
-  /** تموّج سائل مستمر وخفيف جداً (ambient loop) - اختياري للتشغيل */
   function startAmbientRipple() {
-    if (ambientNodes) return; // يعمل فعلاً
+    if (ambientNodes) return;
     ensureContext();
 
     const noise = ctx.createBufferSource();
@@ -174,7 +160,7 @@ const SoundEngine = (() => {
     filter.Q.value = 0.5;
 
     const gain = ctx.createGain();
-    gain.gain.value = isMuted ? 0 : 0.025; // خفيف جداً جداً - خلفية فقط
+    gain.gain.value = isMuted ? 0 : 0.025;
 
     noise.connect(filter);
     filter.connect(gain);

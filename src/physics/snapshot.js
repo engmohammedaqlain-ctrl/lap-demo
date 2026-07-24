@@ -1,20 +1,30 @@
 /**
- * ui-panel.js — تحديث القياسات في لوحة يمين
+ * snapshot.js — حساب لقطة القياسات (كتلة/وزن/طفو/نسبة الغمر) من حالة جسم،
+ * وتنسيق الأرقام بالعربية. منطق حسابي خالص، بلا كتابة DOM (تُترجم هنا
+ * إلى JSX عبر مكوّنات React بدل textContent مباشر).
  */
+import {
+  cubeFullVolume,
+  sphereFullVolume,
+  cubeSubmergedVolume,
+  sphereSubmergedVolume,
+  calcWeight,
+  calcBuoyantForce,
+} from "./physics.js";
 
-function formatNumber(value, decimals = 1) {
+export function formatNumber(value, decimals = 1) {
   return value.toLocaleString("ar-EG", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-function formatMass(kg) {
+export function formatMass(kg) {
   if (kg < 1) return formatNumber(kg * 1000, 1) + " غم";
   return formatNumber(kg, 2) + " كغ";
 }
 
-function computePhysicsSnapshot(params) {
+export function computePhysicsSnapshot(params) {
   const { shapeType, shapeSize, materialDensity, liquidDensity, depth, velocity } = params;
 
   const fullVolume = shapeType === "cube" ? cubeFullVolume(shapeSize) : sphereFullVolume(shapeSize);
@@ -48,24 +58,6 @@ function computePhysicsSnapshot(params) {
   };
 }
 
-function updateMeasurementPanel(data) {
-  setText("tag-mass", formatMass(data.mass));
-  setText("tag-weight", formatNumber(data.weight, 1) + " N");
-  setText("tag-buoyant", formatNumber(data.buoyantForce, 1) + " N");
-  setText("tag-submerged", formatNumber(data.submergedPercent, 0) + "٪");
-
-  // نسخة مصغّرة تُعرض دوماً على مقبض الورقة السفلية المطوية في الجوال
-  setText("mini-mass", formatMass(data.mass));
-  setText("mini-weight", formatNumber(data.weight, 0) + "N");
-  setText("mini-buoyant", formatNumber(data.buoyantForce, 0) + "N");
-  setText("mini-submerged", formatNumber(data.submergedPercent, 0) + "٪");
-}
-
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-
-function updateSizeLabel(size) {
-  setText("size-value", formatNumber(size, 2) + " م");
+export function toArabicNum(n) {
+  return String(n).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
 }
