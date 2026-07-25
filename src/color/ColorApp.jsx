@@ -20,6 +20,7 @@ export default function ColorApp({ onHome }) {
   const [visionMode, setVisionMode] = useState("normal"); // "normal" | "protanopia" | "deuteranopia" | "tritanopia"
   const [filterEnabled, setFilterEnabled] = useState(false);
   const [filterColor, setFilterColor] = useState("red");
+  const [character, setCharacter] = useState("boy"); // "boy" | "girl"
 
   const [statusInfo, setStatusInfo] = useState({
     hex: "#FFFFFF",
@@ -30,7 +31,7 @@ export default function ColorApp({ onHome }) {
     b: 255,
   });
 
-  const handleValChangeFromCanvas = (id, val) => {
+  const handleValChange = (id, val) => {
     if (id === "red") setRVal(val);
     if (id === "green") setGVal(val);
     if (id === "blue") setBVal(val);
@@ -53,7 +54,7 @@ export default function ColorApp({ onHome }) {
       {/* Header — ستايل فاتح أنيق بدون إيموجي */}
       <header className="color-header">
         <button type="button" className="color-btn-home" onClick={onHome}>
-          الرئيسية
+          🏠 الرئيسية
         </button>
         <div className="color-header-title">
           <h1>رؤية الألوان وكيف يراها الدماغ</h1>
@@ -71,21 +72,40 @@ export default function ColorApp({ onHome }) {
             rVal={rVal}
             gVal={gVal}
             bVal={bVal}
-            onValChange={handleValChangeFromCanvas}
+            onValChange={handleValChange}
             isPlaying={isPlaying}
             beamMode={beamMode}
             visionMode={visionMode}
             filterEnabled={filterEnabled}
             filterColor={filterColor}
+            character={character}
             onStatus={setStatusInfo}
           />
           <div className="color-canvas-hint">
-            اسحب المقابض مباشرة على الكشافات فوق العرض للتحكم بالشدة
+            اسحب مقياس الشدّة على كلّ كشّاف للتحكّم بكمّية الضوء
           </div>
         </div>
 
         {/* أدوات التحكم العلوية والخيارات (Pills & Controls) بدون إيموجي */}
         <div className="color-toolbar-light">
+          {/* اختيار الشخصية */}
+          <div className="color-pill-group">
+            <button
+              type="button"
+              className={`color-pill-btn ${character === "boy" ? "active" : ""}`}
+              onClick={() => { setCharacter("boy"); ColorSound.playClick(); }}
+            >
+              ولد
+            </button>
+            <button
+              type="button"
+              className={`color-pill-btn ${character === "girl" ? "active" : ""}`}
+              onClick={() => { setCharacter("girl"); ColorSound.playClick(); }}
+            >
+              بنت
+            </button>
+          </div>
+
           {/* نمط الضوء */}
           <div className="color-pill-group">
             <button
