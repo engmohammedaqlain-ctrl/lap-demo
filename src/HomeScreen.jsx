@@ -29,6 +29,14 @@ const EXPERIMENTS = [
     emoji: "🎈",
     accent: "amber",
   },
+  {
+    key: "color",
+    title: "رؤية الألوان",
+    subtitle: "كيف يراها الدماغ",
+    desc: "امزج أضواء RGB الثلاثية، وشاهد مسار الجسيمات الضوئية واستجابة خلايا العين وإدراك الدماغ.",
+    emoji: "👁️",
+    accent: "blue",
+  },
 ];
 
 export default function HomeScreen({ onOpen }) {
