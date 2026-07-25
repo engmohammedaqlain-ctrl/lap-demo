@@ -45,7 +45,13 @@ export const FLASHLIGHTS = [
    اليمين تتجمّع أشعّتها في العين. الإحداثيات بمقياس اللوحة (1000×540).
    PERSON: تحويل رسم الصورة (مقياس وإزاحة). EYE/CORTEX: مواضع بؤبؤ العين
    والقشرة البصرية داخل المشهد بعد التحويل. */
-export const PERSON = { scale: 0.6, dx: -66, dy: 29 };
+/* تحويل رسم كل شخصية (مقياس وإزاحة) بحيث تقع عينها على EYE_CENTER الثابت،
+   فلا تتغيّر الأشعّة/الكشّافات عند التبديل بين الولد والبنت. */
+export const CHARACTERS = {
+  boy: { scale: 0.6, dx: -66, dy: 29 },
+  girl: { scale: 0.757, dx: -83, dy: 16 },
+};
+export const DEFAULT_CHARACTER = "boy";
 export const EYE_CENTER = { x: 535, y: 231 };
 export const CORTEX_CENTER = { x: 332, y: 214 };
 export const BULB_LENS_X = 848; // مقدّمة عدسة الكشّاف (منها تنطلق الفوتونات)

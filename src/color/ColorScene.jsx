@@ -13,11 +13,14 @@ import {
   EYE_CENTER,
   CORTEX_CENTER,
   BUBBLE_CENTER,
-  PERSON,
+  CHARACTERS,
   BULB_LENS_X,
   calculatePerceivedColor,
 } from "./colorData.js";
-import personUrl from "./assets/person.png";
+import personBoyUrl from "./assets/person.png";
+import personGirlUrl from "./assets/person-girl.png";
+
+const CHARACTER_URLS = { boy: personBoyUrl, girl: personGirlUrl };
 
 const EYE = EYE_CENTER;
 const CORTEX = CORTEX_CENTER;
@@ -38,7 +41,7 @@ const TRACK_MIN = -128; // 0%
 const TRACK_MAX = -30; // 100%
 
 const ColorScene = forwardRef(function ColorScene(
-  { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, onStatus },
+  { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, character, onStatus },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -46,10 +49,10 @@ const ColorScene = forwardRef(function ColorScene(
   const particlesRef = useRef([]);
   const pulsesRef = useRef([]);
   const draggingRef = useRef(null); // 'red' | 'green' | 'blue'
-  const imgRef = useRef(null); // صورة الشخص التشريحية
+  const imgsRef = useRef({}); // صور الشخصيات المحمّلة { boy, girl }
 
   const propsRef = useRef({});
-  propsRef.current = { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, onStatus };
+  propsRef.current = { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, character, onStatus };
 
   useImperativeHandle(ref, () => ({
     reset: () => {
@@ -116,12 +119,13 @@ const ColorScene = forwardRef(function ColorScene(
     let t = 0;
     const beams = BEAMS;
 
-    // تحميل صورة الشخص (مضمّنة في الحزمة، تعمل دون اتصال)
-    if (!imgRef.current) {
+    // تحميل صور الشخصيات (مضمّنة في الحزمة، تعمل دون اتصال)
+    for (const key of Object.keys(CHARACTER_URLS)) {
+      if (imgsRef.current[key]) continue;
       const image = new Image();
-      image.src = personUrl;
+      image.src = CHARACTER_URLS[key];
       image.onload = () => {
-        imgRef.current = image;
+        imgsRef.current[key] = image;
       };
     }
 
@@ -190,9 +194,11 @@ const ColorScene = forwardRef(function ColorScene(
 
   /* ================= صورة الشخص التشريحية ================= */
   function drawPerson(ctx) {
-    const img = imgRef.current;
+    const key = propsRef.current.character || "boy";
+    const img = imgsRef.current[key] || imgsRef.current.boy;
     if (!img) return;
-    ctx.drawImage(img, PERSON.dx, PERSON.dy, img.width * PERSON.scale, img.height * PERSON.scale);
+    const tf = CHARACTERS[key] || CHARACTERS.boy;
+    ctx.drawImage(img, tf.dx, tf.dy, img.width * tf.scale, img.height * tf.scale);
   }
 
   /* ================= توهّج القشرة البصرية ================= */

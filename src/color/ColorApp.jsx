@@ -20,6 +20,7 @@ export default function ColorApp({ onHome }) {
   const [visionMode, setVisionMode] = useState("normal"); // "normal" | "protanopia" | "deuteranopia" | "tritanopia"
   const [filterEnabled, setFilterEnabled] = useState(false);
   const [filterColor, setFilterColor] = useState("red");
+  const [character, setCharacter] = useState("boy"); // "boy" | "girl"
 
   const [statusInfo, setStatusInfo] = useState({
     hex: "#FFFFFF",
@@ -77,6 +78,7 @@ export default function ColorApp({ onHome }) {
             visionMode={visionMode}
             filterEnabled={filterEnabled}
             filterColor={filterColor}
+            character={character}
             onStatus={setStatusInfo}
           />
           <div className="color-canvas-hint">
@@ -86,6 +88,24 @@ export default function ColorApp({ onHome }) {
 
         {/* أدوات التحكم العلوية والخيارات (Pills & Controls) بدون إيموجي */}
         <div className="color-toolbar-light">
+          {/* اختيار الشخصية */}
+          <div className="color-pill-group">
+            <button
+              type="button"
+              className={`color-pill-btn ${character === "boy" ? "active" : ""}`}
+              onClick={() => { setCharacter("boy"); ColorSound.playClick(); }}
+            >
+              ولد
+            </button>
+            <button
+              type="button"
+              className={`color-pill-btn ${character === "girl" ? "active" : ""}`}
+              onClick={() => { setCharacter("girl"); ColorSound.playClick(); }}
+            >
+              بنت
+            </button>
+          </div>
+
           {/* نمط الضوء */}
           <div className="color-pill-group">
             <button
