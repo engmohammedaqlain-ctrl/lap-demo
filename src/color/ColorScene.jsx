@@ -1,6 +1,11 @@
 /**
- * ColorScene.jsx — رسم وتفاعل مباشر على العرض نفسه (On-Canvas Interactive Controls)
- * ستايل فاتح ناصع بدون إيموجيات.
+ * ColorScene.jsx — محاكاة رؤية الألوان بأسلوب PhET: رأس جانبي بعين واقعية،
+ * ثلاثة كشّافات ملوّنة مائلة على اليمين تتجمّع أشعّتها في العين، ثم إشارة
+ * عصبية تسري عبر العصب البصري إلى القشرة البصرية في الدماغ التي تتوهّج
+ * باللون المُدرَك — ويظهر الاسم في فقاعة تفكير بارزة فوق الرأس.
+ *
+ * الرسم كلّه على canvas في حلقة requestAnimationFrame. التحكّم بالشدّة صار
+ * من منزلقات HTML أسفل المشهد (ColorApp) لا على العرض.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
@@ -9,559 +14,691 @@ import {
   FLASHLIGHTS,
   EYE_CENTER,
   HEAD_CENTER,
+  BULB_LENS_X,
   calculatePerceivedColor,
 } from "./colorData.js";
 
+const EYE = EYE_CENTER;
+const MAX_PARTICLES = 260;
+
+/* مركز القشرة البصرية (مؤخّرة الدماغ) — تتوهّج باللون المُدرَك */
+const CORTEX = { x: HEAD_CENTER.x - 96, y: HEAD_CENTER.y - 40 };
+
 const ColorScene = forwardRef(function ColorScene(
-  {
-    rVal,
-    gVal,
-    bVal,
-    onValChange,
-    isPlaying,
-    beamMode,
-    visionMode,
-    filterEnabled,
-    filterColor,
-    onStatus,
-  },
+  { rVal, gVal, bVal, isPlaying, beamMode, visionMode, filterEnabled, filterColor, onStatus },
   ref
 ) {
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
   const particlesRef = useRef([]);
-  const nervePulsesRef = useRef([]);
-  const draggingRef = useRef(null); // 'red' | 'green' | 'blue' | null
+  const pulsesRef = useRef([]);
 
-  const propsRef = useRef({
-    rVal,
-    gVal,
-    bVal,
-    onValChange,
-    isPlaying,
-    beamMode,
-    visionMode,
-    filterEnabled,
-    filterColor,
-    onStatus,
-  });
-  propsRef.current = {
-    rVal,
-    gVal,
-    bVal,
-    onValChange,
-    isPlaying,
-    beamMode,
-    visionMode,
-    filterEnabled,
-    filterColor,
-    onStatus,
-  };
+  const propsRef = useRef({});
+  propsRef.current = { rVal, gVal, bVal, isPlaying, beamMode, visionMode, filterEnabled, filterColor, onStatus };
 
   useImperativeHandle(ref, () => ({
     reset: () => {
       particlesRef.current = [];
-      nervePulsesRef.current = [];
+      pulsesRef.current = [];
     },
   }));
-
-  // تفاعل مباشر بالسحب والتغيير من العرض مباشرة
-  const getCanvasCoords = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const scaleX = SCENE_W / rect.width;
-    const scaleY = SCENE_H / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    };
-  };
-
-  const handlePointerDown = (e) => {
-    const { x, y } = getCanvasCoords(e);
-    // كشافات الضوء ومقابض التحكم
-    const flashlights = [
-      { id: "red", y: FLASHLIGHTS[0].y },
-      { id: "green", y: FLASHLIGHTS[1].y },
-      { id: "blue", y: FLASHLIGHTS[2].y },
-    ];
-
-    for (const fl of flashlights) {
-      // منطقة مقبض السلايدر على الكشاف (من x=740 إلى x=960)
-      if (x >= 740 && x <= 960 && Math.abs(y - fl.y) <= 30) {
-        draggingRef.current = fl.id;
-        updateValueFromX(fl.id, x);
-        break;
-      }
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (!draggingRef.current) return;
-    const { x } = getCanvasCoords(e);
-    updateValueFromX(draggingRef.current, x);
-  };
-
-  const handlePointerUp = () => {
-    draggingRef.current = null;
-  };
-
-  const updateValueFromX = (id, x) => {
-    const minX = 780;
-    const maxX = 940;
-    const percent = Math.round(Math.max(0, Math.min(100, ((x - minX) / (maxX - minX)) * 100)));
-    const { onValChange: cb } = propsRef.current;
-    cb && cb(id, percent);
-  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    let animTime = 0;
+    let t = 0;
 
-    function renderFrame() {
-      const {
-        rVal: r,
-        gVal: g,
-        bVal: b,
-        isPlaying: playing,
-        beamMode: bMode,
-        visionMode: vMode,
-        filterColor: fColor,
-        filterEnabled: fOn,
-        onStatus: cb,
-      } = propsRef.current;
+    // اتجاه كلّ شعاع من عدسة الكشاف إلى العين (للميل والتجمّع)
+    const beams = FLASHLIGHTS.map((fl) => {
+      const dx = EYE.x - BULB_LENS_X;
+      const dy = EYE.y - fl.y;
+      const len = Math.hypot(dx, dy);
+      return { ...fl, dirX: dx / len, dirY: dy / len, angle: Math.atan2(dy, dx), len };
+    });
 
-      if (playing) animTime += 0.04;
+    function frame() {
+      const p = propsRef.current;
+      if (p.isPlaying) t += 0.04;
 
-      let effR = r, effG = g, effB = b;
-      if (fOn) {
-        if (fColor === "red") { effG *= 0.1; effB *= 0.1; }
-        if (fColor === "green") { effR *= 0.1; effB *= 0.1; }
-        if (fColor === "blue") { effR *= 0.1; effG *= 0.1; }
-        if (fColor === "yellow") { effB *= 0.1; }
+      // شدّة فعّالة بعد المرشّح
+      let effR = p.rVal, effG = p.gVal, effB = p.bVal;
+      if (p.filterEnabled) {
+        if (p.filterColor === "red") { effG *= 0.08; effB *= 0.08; }
+        if (p.filterColor === "green") { effR *= 0.08; effB *= 0.08; }
+        if (p.filterColor === "blue") { effR *= 0.08; effG *= 0.08; }
+        if (p.filterColor === "yellow") { effB *= 0.08; }
       }
 
-      const colorInfo = calculatePerceivedColor(effR, effG, effB, vMode);
-      cb && cb(colorInfo);
+      const info = calculatePerceivedColor(effR, effG, effB, p.visionMode);
+      p.onStatus && p.onStatus(info);
 
-      // --- خلفية نمط فاتح (Light Mode Canvas) ---
-      ctx.fillStyle = "#F8FAFC";
-      ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+      ctx.clearRect(0, 0, SCENE_W, SCENE_H);
+      drawBackground(ctx);
 
-      // شبكة رمادية خفيفة جداً
-      ctx.strokeStyle = "#E2E8F0";
-      ctx.lineWidth = 1;
-      for (let x = 0; x < SCENE_W; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, SCENE_H); ctx.stroke();
-      }
-      for (let y = 0; y < SCENE_H; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SCENE_W, y); ctx.stroke();
-      }
+      const vals = [p.rVal, p.gVal, p.bVal];
+      const effVals = [effR, effG, effB];
 
-      // الفلتر الضوئي
-      const filterX = 640;
-      if (fOn) {
-        drawColorFilter(ctx, filterX, fColor);
+      // 1) الأشعّة خلف الرأس/العين
+      drawBeams(ctx, beams, vals, t, p.beamMode);
+
+      // 2) الفوتونات
+      if (p.beamMode === "particles") {
+        spawnPhotons(beams, vals, p.isPlaying);
+        updateAndDrawPhotons(ctx, p, effVals);
+      } else if (p.isPlaying) {
+        // في وضعَي الموجات/الشعاع نحدّث النبضات دون رسم فوتونات
+        maybeEmitPulses(beams, effVals, info);
       }
 
-      // الجسيمات
-      const flashlights = [
-        { ...FLASHLIGHTS[0], val: r, effVal: effR },
-        { ...FLASHLIGHTS[1], val: g, effVal: effG },
-        { ...FLASHLIGHTS[2], val: b, effVal: effB },
-      ];
+      // 3) المرشّح الضوئي (إن فُعّل)
+      if (p.filterEnabled) drawFilter(ctx, filterColorRGB(p.filterColor), p.filterColor);
 
-      if (playing) {
-        flashlights.forEach((fl) => {
-          if (fl.val > 0) {
-            const count = Math.ceil((fl.val / 100) * 3);
-            for (let i = 0; i < count; i++) {
-              if (Math.random() < 0.6) {
-                particlesRef.current.push({
-                  x: 750,
-                  y: fl.y + (Math.random() - 0.5) * 16,
-                  vx: -(3.8 + Math.random() * 2.2),
-                  vy: (EYE_CENTER.y - fl.y) * 0.0035 + (Math.random() - 0.5) * 0.3,
-                  size: 3.5,
-                  color: fl.particleColor,
-                  rgb: fl.rgb,
-                  life: 1,
-                  type: fl.id,
-                  passedFilter: false,
-                });
-              }
-            }
-          }
-        });
-      }
+      // 4) الكشّافات المائلة
+      drawBulbs(ctx, beams, vals);
 
-      // الأشعة الضوئية
-      flashlights.forEach((fl) => {
-        if (fl.val > 0) {
-          const alpha = (fl.val / 100) * 0.35;
-          if (bMode === "waves") {
-            ctx.strokeStyle = `rgba(${fl.rgb.join(",")}, ${alpha * 1.5})`;
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            for (let x = 750; x >= EYE_CENTER.x; x -= 3) {
-              const progress = (750 - x) / (750 - EYE_CENTER.x);
-              const curY = fl.y + (EYE_CENTER.y - fl.y) * progress;
-              const waveY = curY + Math.sin(x * 0.08 + animTime * 6) * 10;
-              if (x === 750) ctx.moveTo(x, waveY);
-              else ctx.lineTo(x, waveY);
-            }
-            ctx.stroke();
-          } else {
-            const grad = ctx.createLinearGradient(750, fl.y, EYE_CENTER.x, EYE_CENTER.y);
-            grad.addColorStop(0, `rgba(${fl.rgb.join(",")}, ${alpha * 0.85})`);
-            grad.addColorStop(1, `rgba(${fl.rgb.join(",")}, ${alpha * 0.15})`);
+      // 5) الرأس والعين والدماغ
+      drawHead(ctx);
+      drawBrain(ctx, info, t);
+      drawOpticNerve(ctx, info);
+      updateAndDrawPulses(ctx, p.isPlaying, info);
+      drawEye(ctx, info);
 
-            ctx.beginPath();
-            ctx.moveTo(750, fl.y - 14);
-            ctx.lineTo(750, fl.y + 14);
-            ctx.lineTo(EYE_CENTER.x + 8, EYE_CENTER.y + 10);
-            ctx.lineTo(EYE_CENTER.x + 8, EYE_CENTER.y - 10);
-            ctx.closePath();
-            ctx.fillStyle = grad;
-            ctx.fill();
-          }
-        }
-      });
+      // 6) فقاعة الإدراك البارزة
+      drawThoughtBubble(ctx, info, t);
 
-      // حركة وتحديث الجسيمات
-      particlesRef.current.forEach((p) => {
-        if (playing) {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.life -= 0.008;
-
-          if (fOn && p.x <= filterX && !p.passedFilter) {
-            p.passedFilter = true;
-            let blocked = false;
-            if (fColor === "red" && p.type !== "red") blocked = Math.random() < 0.9;
-            if (fColor === "green" && p.type !== "green") blocked = Math.random() < 0.9;
-            if (fColor === "blue" && p.type !== "blue") blocked = Math.random() < 0.9;
-            if (blocked) p.life = 0;
-          }
-        }
-
-        if (p.x <= EYE_CENTER.x + 5) {
-          p.life = 0;
-          if (playing && Math.random() < 0.28) {
-            nervePulsesRef.current.push({
-              progress: 0,
-              color: p.color,
-              speed: 0.025,
-            });
-          }
-        }
-
-        if (p.life > 0 && bMode !== "solid") {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
-        }
-      });
-      particlesRef.current = particlesRef.current.filter((p) => p.life > 0);
-
-      // رسم الرأس والدماغ
-      drawHeadAndBrain(ctx, animTime, colorInfo);
-
-      // النبضات العصبية
-      drawNervePulses(ctx, playing, colorInfo);
-
-      // الكشافات وعناصر التحكم المباشرة عليها
-      drawInteractiveFlashlights(ctx, flashlights);
-
-      // سحابة التفكير
-      drawThoughtCloud(ctx, colorInfo);
-
-      rafRef.current = requestAnimationFrame(renderFrame);
+      rafRef.current = requestAnimationFrame(frame);
     }
-
-    rafRef.current = requestAnimationFrame(renderFrame);
+    rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  /* ===== رسم الرأس والدماغ لستايل فاتح ===== */
-  function drawHeadAndBrain(ctx, t, colorInfo) {
-    ctx.save();
-    // الرأس الظلي الداكن الأنيق
-    ctx.beginPath();
-    ctx.fillStyle = "#1E293B";
-    ctx.moveTo(HEAD_CENTER.x - 130, HEAD_CENTER.y + 200);
-    ctx.lineTo(HEAD_CENTER.x - 130, HEAD_CENTER.y - 90);
-    ctx.quadraticCurveTo(HEAD_CENTER.x - 120, HEAD_CENTER.y - 190, HEAD_CENTER.x - 10, HEAD_CENTER.y - 200);
-    ctx.quadraticCurveTo(HEAD_CENTER.x + 90, HEAD_CENTER.y - 190, HEAD_CENTER.x + 110, HEAD_CENTER.y - 90);
-    ctx.quadraticCurveTo(HEAD_CENTER.x + 125, HEAD_CENTER.y - 30, HEAD_CENTER.x + 140, HEAD_CENTER.y);
-    ctx.lineTo(HEAD_CENTER.x + 115, HEAD_CENTER.y + 20);
-    ctx.quadraticCurveTo(HEAD_CENTER.x + 130, HEAD_CENTER.y + 50, HEAD_CENTER.x + 115, HEAD_CENTER.y + 80);
-    ctx.quadraticCurveTo(HEAD_CENTER.x + 40, HEAD_CENTER.y + 160, HEAD_CENTER.x + 40, HEAD_CENTER.y + 200);
-    ctx.closePath();
-    ctx.fill();
-
-    // تجويف الدماغ
-    const brainX = HEAD_CENTER.x - 20;
-    const brainY = HEAD_CENTER.y - 75;
-
-    ctx.beginPath();
-    ctx.ellipse(brainX, brainY, 85, 65, -0.1, 0, Math.PI * 2);
-    ctx.fillStyle = "#F1F5F9";
-    ctx.fill();
-    ctx.strokeStyle = "#94A3B8";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // مادة الدماغ الوردي الفاتح
-    ctx.beginPath();
-    ctx.ellipse(brainX, brainY, 80, 60, -0.1, 0, Math.PI * 2);
-    ctx.fillStyle = "#F472B6";
-    ctx.fill();
-
-    // تلافيف
-    ctx.strokeStyle = "#DB2777";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(brainX - 20, brainY - 15, 28, 0, Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.arc(brainX + 20, brainY - 10, 22, 0.2, Math.PI * 1.2); ctx.stroke();
-
-    // الفص البصري وتوهجه
-    if (colorInfo.total > 15) {
-      const vcX = brainX - 55;
-      const vcY = brainY + 15;
-      ctx.beginPath();
-      ctx.arc(vcX, vcY, 20, 0, Math.PI * 2);
-      ctx.fillStyle = colorInfo.hex;
-      ctx.fill();
-      ctx.strokeStyle = "#0F172A";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = "#0F172A";
-      ctx.font = "600 10px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("الفص البصري", vcX, vcY + 32);
+  /* ================= الخلفية ================= */
+  function drawBackground(ctx) {
+    const g = ctx.createLinearGradient(0, 0, 0, SCENE_H);
+    g.addColorStop(0, "#fbfdff");
+    g.addColorStop(1, "#eef4f8");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+    // شبكة نقطية خفيفة
+    ctx.fillStyle = "rgba(70,120,160,0.10)";
+    for (let x = 20; x < SCENE_W; x += 30) {
+      for (let y = 20; y < SCENE_H; y += 30) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+    // أرضية خفيفة
+    ctx.fillStyle = "rgba(120,150,120,0.08)";
+    ctx.fillRect(0, SCENE_H - 40, SCENE_W, 40);
+  }
 
-    // العين
+  /* ================= الأشعّة المائلة ================= */
+  function drawBeams(ctx, beams, vals, t, mode) {
+    beams.forEach((bm, i) => {
+      const val = vals[i];
+      if (val <= 0) return;
+      const a = val / 100;
+      const sx = BULB_LENS_X;
+      const sy = bm.y;
+      const ex = EYE.x;
+      const ey = EYE.y;
+
+      if (mode === "waves") {
+        // موجة جيبيّة على امتداد الشعاع — ترددها من الطول الموجي
+        const freq = bm.wavelength > 600 ? 0.5 : bm.wavelength > 500 ? 0.7 : 0.95;
+        const amp = 9 * a + 3;
+        const nx = -bm.dirY, ny = bm.dirX; // متجه عمودي
+        ctx.strokeStyle = `rgba(${bm.rgb.join(",")},${0.35 + a * 0.5})`;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let s = 0; s <= 1.001; s += 0.02) {
+          const px = sx + (ex - sx) * s;
+          const py = sy + (ey - sy) * s;
+          const off = Math.sin(s * bm.len * freq * 0.1 - t * 7) * amp * (0.4 + s * 0.6);
+          const wx = px + nx * off;
+          const wy = py + ny * off;
+          if (s === 0) ctx.moveTo(wx, wy);
+          else ctx.lineTo(wx, wy);
+        }
+        ctx.stroke();
+      } else {
+        // شعاع مخروطي متدرّج يتلاشى عند العين
+        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+        grad.addColorStop(0, `rgba(${bm.rgb.join(",")},${0.05 + a * 0.5})`);
+        grad.addColorStop(1, `rgba(${bm.rgb.join(",")},0.04)`);
+        const nx = -bm.dirY, ny = bm.dirX;
+        const wStart = 20 * (0.5 + a * 0.5);
+        const wEnd = 14;
+        ctx.beginPath();
+        ctx.moveTo(sx + nx * wStart, sy + ny * wStart);
+        ctx.lineTo(ex + nx * wEnd, ey + ny * wEnd);
+        ctx.lineTo(ex - nx * wEnd, ey - ny * wEnd);
+        ctx.lineTo(sx - nx * wStart, sy - ny * wStart);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+    });
+  }
+
+  /* ================= الفوتونات ================= */
+  function spawnPhotons(beams, vals, playing) {
+    if (!playing) return;
+    beams.forEach((bm, i) => {
+      const val = vals[i];
+      if (val <= 0) return;
+      const count = Math.ceil((val / 100) * 2.4);
+      for (let k = 0; k < count; k++) {
+        if (Math.random() > 0.55) continue;
+        if (particlesRef.current.length > MAX_PARTICLES) break;
+        const spread = (Math.random() - 0.5) * 14;
+        const nx = -bm.dirY, ny = bm.dirX;
+        const speed = 4.4 + Math.random() * 1.6;
+        particlesRef.current.push({
+          x: BULB_LENS_X + nx * spread,
+          y: bm.y + ny * spread,
+          vx: bm.dirX * speed,
+          vy: bm.dirY * speed,
+          size: 3.2 + Math.random() * 1.2,
+          color: bm.particleColor,
+          rgb: bm.rgb,
+          type: bm.id,
+          life: 1,
+          passedFilter: false,
+        });
+      }
+    });
+  }
+
+  function updateAndDrawPhotons(ctx, p, effVals) {
+    const filterX = 610;
+    const arr = particlesRef.current;
+    for (const pt of arr) {
+      if (p.isPlaying) {
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        // المرشّح يحجب الألوان غير المطابِقة
+        if (p.filterEnabled && pt.x <= filterX && !pt.passedFilter) {
+          pt.passedFilter = true;
+          let blocked = false;
+          if (p.filterColor === "red" && pt.type !== "red") blocked = true;
+          if (p.filterColor === "green" && pt.type !== "green") blocked = true;
+          if (p.filterColor === "blue" && pt.type !== "blue") blocked = true;
+          if (p.filterColor === "yellow" && pt.type === "blue") blocked = true;
+          if (blocked && Math.random() < 0.92) pt.life = 0;
+        }
+      }
+      // وصل العين؟ → أطلق نبضة عصبية
+      const d = Math.hypot(pt.x - EYE.x, pt.y - EYE.y);
+      if (d < 16) {
+        pt.life = 0;
+        if (p.isPlaying && Math.random() < 0.3) emitPulse(pt.color);
+      }
+      if (pt.life > 0) {
+        ctx.save();
+        ctx.shadowColor = pt.color;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    particlesRef.current = arr.filter((pt) => pt.life > 0 && pt.x > EYE.x - 30);
+  }
+
+  function maybeEmitPulses(beams, effVals, info) {
+    if (info.total <= 15) return;
+    if (Math.random() < 0.18) {
+      emitPulse(info.hex);
+    }
+  }
+
+  /* ================= النبضات العصبية ================= */
+  function emitPulse(color) {
+    if (pulsesRef.current.length > 40) return;
+    pulsesRef.current.push({ progress: 0, color, speed: 0.02 + Math.random() * 0.01 });
+  }
+
+  function updateAndDrawPulses(ctx, playing, info) {
+    if (info.total <= 15) {
+      pulsesRef.current = [];
+      return;
+    }
+    const p0 = { x: EYE.x - 6, y: EYE.y + 6 };
+    const p1 = { x: (EYE.x + CORTEX.x) / 2 - 6, y: EYE.y + 46 };
+    const p2 = { x: CORTEX.x, y: CORTEX.y };
+    for (const np of pulsesRef.current) {
+      if (playing) np.progress += np.speed;
+      const s = np.progress;
+      if (s > 1) continue;
+      const x = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * p1.x + s * s * p2.x;
+      const y = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * p1.y + s * s * p2.y;
+      ctx.save();
+      ctx.shadowColor = np.color;
+      ctx.shadowBlur = 9;
+      ctx.fillStyle = np.color;
+      ctx.beginPath();
+      ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    pulsesRef.current = pulsesRef.current.filter((np) => np.progress <= 1);
+  }
+
+  /* ================= الرأس الجانبي ================= */
+  function drawHead(ctx) {
+    const cx = HEAD_CENTER.x;
+    const cy = HEAD_CENTER.y;
+    ctx.save();
+
+    // ظلّ ناعم
+    ctx.shadowColor = "rgba(30,40,60,0.16)";
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 10;
+
+    // مسار الوجه الجانبي (يواجه اليمين): جبهة، أنف، شفتان، ذقن، فكّ، رقبة
     ctx.beginPath();
-    ctx.arc(EYE_CENTER.x, EYE_CENTER.y, 18, 0, Math.PI * 2);
-    ctx.fillStyle = "#FFFFFF";
+    ctx.moveTo(cx + 58, cy - 118); // أعلى الجبهة
+    ctx.quadraticCurveTo(cx + 92, cy - 60, cx + 94, cy - 18); // جبهة نازلة إلى الحاجب
+    ctx.quadraticCurveTo(cx + 95, cy - 6, cx + 86, cy + 2); // غؤور جسر الأنف
+    ctx.quadraticCurveTo(cx + 118, cy + 20, cx + 120, cy + 34); // ظهر الأنف إلى الأرنبة
+    ctx.quadraticCurveTo(cx + 121, cy + 44, cx + 96, cy + 46); // قاعدة الأنف
+    ctx.quadraticCurveTo(cx + 88, cy + 47, cx + 90, cy + 58); // الشفة العليا
+    ctx.quadraticCurveTo(cx + 104, cy + 62, cx + 92, cy + 72); // الفم
+    ctx.quadraticCurveTo(cx + 86, cy + 80, cx + 96, cy + 96); // الشفة السفلى إلى الذقن
+    ctx.quadraticCurveTo(cx + 92, cy + 116, cx + 60, cy + 120); // الذقن
+    ctx.quadraticCurveTo(cx + 20, cy + 122, cx - 20, cy + 116); // الفكّ للخلف
+    ctx.lineTo(cx - 26, cy + 190); // الرقبة أماماً
+    ctx.lineTo(cx - 92, cy + 190); // أسفل الرقبة
+    ctx.quadraticCurveTo(cx - 96, cy + 40, cx - 96, cy - 10); // مؤخّرة الرأس
+    ctx.quadraticCurveTo(cx - 92, cy - 96, cx - 20, cy - 122); // القوس العلوي الخلفي
+    ctx.quadraticCurveTo(cx + 24, cy - 138, cx + 58, cy - 118); // إلى أعلى الجبهة
+    ctx.closePath();
+
+    const skin = ctx.createLinearGradient(cx - 96, cy - 120, cx + 120, cy + 190);
+    skin.addColorStop(0, "#FCE0C2");
+    skin.addColorStop(0.55, "#F6CBA1");
+    skin.addColorStop(1, "#EBB98A");
+    ctx.fillStyle = skin;
     ctx.fill();
-    ctx.strokeStyle = "#0F172A";
+    ctx.shadowColor = "transparent";
+
+    // خطّ محيط ناعم
+    ctx.strokeStyle = "rgba(120,80,50,0.35)";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // القزحية والعدسة
+    // الشعر (أعلى ومؤخّرة الرأس)
     ctx.beginPath();
-    ctx.ellipse(EYE_CENTER.x + 6, EYE_CENTER.y, 4, 10, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#2563EB";
+    ctx.moveTo(cx + 58, cy - 118);
+    ctx.quadraticCurveTo(cx + 24, cy - 138, cx - 20, cy - 122);
+    ctx.quadraticCurveTo(cx - 92, cy - 96, cx - 96, cy - 10);
+    ctx.quadraticCurveTo(cx - 112, cy - 30, cx - 108, cy - 90);
+    ctx.quadraticCurveTo(cx - 96, cy - 150, cx - 10, cy - 162);
+    ctx.quadraticCurveTo(cx + 70, cy - 158, cx + 78, cy - 96);
+    ctx.quadraticCurveTo(cx + 70, cy - 118, cx + 58, cy - 118);
+    ctx.closePath();
+    const hair = ctx.createLinearGradient(cx - 100, cy - 160, cx + 60, cy - 90);
+    hair.addColorStop(0, "#4A3728");
+    hair.addColorStop(1, "#2E2117");
+    ctx.fillStyle = hair;
     ctx.fill();
 
-    // العصب البصري
-    const vcX = brainX - 50;
-    const vcY = brainY + 20;
-
+    // خدّ خفيف
+    ctx.fillStyle = "rgba(232,140,120,0.25)";
     ctx.beginPath();
-    ctx.moveTo(EYE_CENTER.x - 14, EYE_CENTER.y);
-    ctx.quadraticCurveTo(EYE_CENTER.x - 60, EYE_CENTER.y + 10, vcX, vcY);
-    ctx.strokeStyle = "#EAB308";
-    ctx.lineWidth = 4;
+    ctx.ellipse(cx + 44, cy + 58, 16, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // الأذن
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, cy + 26, 13, 20, -0.2, 0, Math.PI * 2);
+    ctx.fillStyle = "#F0C097";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(120,80,50,0.4)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, cy + 26, 6, 11, -0.2, -0.4, Math.PI);
+    ctx.stroke();
+
+    // حاجب
+    ctx.strokeStyle = "#4A3728";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx + 60, cy + 8);
+    ctx.quadraticCurveTo(cx + 78, cy + 2, cx + 92, cy + 8);
     ctx.stroke();
 
     ctx.restore();
   }
 
-  /* ===== رسم النبضات العصبية ===== */
-  function drawNervePulses(ctx, playing, colorInfo) {
-    if (colorInfo.total <= 15) return;
-    const brainX = HEAD_CENTER.x - 20;
-    const brainY = HEAD_CENTER.y - 75;
-    const vcX = brainX - 50;
-    const vcY = brainY + 20;
+  /* ================= العين ================= */
+  function drawEye(ctx, info) {
+    const ex = EYE.x;
+    const ey = EYE.y;
+    ctx.save();
 
-    nervePulsesRef.current.forEach((np) => {
-      if (playing) np.progress += np.speed;
-      if (np.progress <= 1) {
-        const t = np.progress;
-        const p0 = { x: EYE_CENTER.x - 14, y: EYE_CENTER.y };
-        const p1 = { x: EYE_CENTER.x - 60, y: EYE_CENTER.y + 10 };
-        const p2 = { x: vcX, y: vcY };
+    // بياض العين (لوز)
+    ctx.beginPath();
+    ctx.moveTo(ex - 22, ey);
+    ctx.quadraticCurveTo(ex, ey - 15, ex + 22, ey);
+    ctx.quadraticCurveTo(ex, ey + 15, ex - 22, ey);
+    ctx.closePath();
+    ctx.fillStyle = "#FDFEFF";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(60,50,45,0.55)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-        const nx = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
-        const ny = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
+    // القزحية (تلتقط انعكاس اللون المُدرَك)
+    const irisX = ex + 8;
+    ctx.beginPath();
+    ctx.arc(irisX, ey, 10.5, 0, Math.PI * 2);
+    const iris = ctx.createRadialGradient(irisX, ey, 1, irisX, ey, 10.5);
+    const glow = info.total > 15 ? info.hex : "#5B7A99";
+    iris.addColorStop(0, glow);
+    iris.addColorStop(0.7, "#3C5A78");
+    iris.addColorStop(1, "#22364a");
+    ctx.fillStyle = iris;
+    ctx.fill();
 
-        ctx.beginPath();
-        ctx.arc(nx, ny, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = np.color || "#000";
-        ctx.fill();
-      }
-    });
-    nervePulsesRef.current = nervePulsesRef.current.filter((np) => np.progress <= 1);
+    // بؤبؤ
+    ctx.beginPath();
+    ctx.arc(irisX, ey, 4.6, 0, Math.PI * 2);
+    ctx.fillStyle = "#12181f";
+    ctx.fill();
+
+    // بريق
+    ctx.beginPath();
+    ctx.arc(irisX + 3, ey - 3, 2.1, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fill();
+
+    // جفن علوي رفيع
+    ctx.beginPath();
+    ctx.moveTo(ex - 22, ey);
+    ctx.quadraticCurveTo(ex, ey - 16, ex + 22, ey);
+    ctx.strokeStyle = "rgba(80,55,40,0.6)";
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    ctx.restore();
   }
 
-  /* ===== الكشافات والمقابض التفاعلية المباشرة على العرض ===== */
-  function drawInteractiveFlashlights(ctx, flashlights) {
-    flashlights.forEach((fl) => {
-      const fx = 780;
-      const fy = fl.y;
-      const val = fl.val;
+  /* ================= الدماغ + القشرة البصرية ================= */
+  function drawBrain(ctx, info, t) {
+    const bx = HEAD_CENTER.x - 40;
+    const by = HEAD_CENTER.y - 58;
+    ctx.save();
 
-      ctx.save();
+    // كتلة الدماغ
+    ctx.beginPath();
+    ctx.ellipse(bx, by, 66, 50, -0.12, 0, Math.PI * 2);
+    ctx.fillStyle = "#F7B7C6";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(150,60,80,0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-      // جسم الكشاف الأبيض الفاخر
+    // تلافيف (gyri) — منحنيات متعرّجة
+    ctx.strokeStyle = "rgba(197,74,103,0.75)";
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    const folds = [
+      [-46, -8, -20, -26, 6, -12],
+      [-40, 14, -14, 2, 12, 16],
+      [4, -24, 26, -8, 44, -20],
+      [8, 8, 30, 22, 50, 8],
+      [-24, 30, 0, 20, 24, 32],
+    ];
+    for (const f of folds) {
       ctx.beginPath();
-      ctx.roundRect(fx, fy - 16, 170, 32, 8);
-      ctx.fillStyle = "#FFFFFF";
+      ctx.moveTo(bx + f[0], by + f[1]);
+      ctx.quadraticCurveTo(bx + f[2], by + f[3], bx + f[4], by + f[5]);
+      ctx.stroke();
+    }
+    // شقّ منتصف الدماغ
+    ctx.strokeStyle = "rgba(150,60,80,0.4)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx - 2, by - 46);
+    ctx.quadraticCurveTo(bx + 6, by, bx - 4, by + 46);
+    ctx.stroke();
+
+    // المُخيخ الصغير (مؤخّرة سفلية)
+    ctx.beginPath();
+    ctx.ellipse(bx - 52, by + 34, 18, 14, 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = "#EFA6B7";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(150,60,80,0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // القشرة البصرية (مؤخّرة الدماغ) تتوهّج باللون المُدرَك
+    if (info.total > 15) {
+      const pulse = 0.6 + Math.sin(t * 4) * 0.12;
+      ctx.save();
+      ctx.shadowColor = info.hex;
+      ctx.shadowBlur = 26 * pulse;
+      ctx.globalAlpha = 0.95;
+      ctx.beginPath();
+      ctx.arc(CORTEX.x, CORTEX.y, 17, 0, Math.PI * 2);
+      ctx.fillStyle = info.hex;
       ctx.fill();
-      ctx.strokeStyle = "#CBD5E1";
+      ctx.restore();
+      ctx.strokeStyle = "rgba(40,30,40,0.5)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(CORTEX.x, CORTEX.y, 17, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(CORTEX.x, CORTEX.y, 15, 0, Math.PI * 2);
+      ctx.fillStyle = "#E79FB0";
+      ctx.fill();
+    }
+
+    // تسمية القشرة البصرية
+    ctx.fillStyle = "#5A3B46";
+    ctx.font = "700 12px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("القشرة البصرية", CORTEX.x - 2, CORTEX.y + 34);
+
+    ctx.restore();
+  }
+
+  /* ================= العصب البصري ================= */
+  function drawOpticNerve(ctx, info) {
+    const active = info.total > 15;
+    ctx.save();
+    ctx.strokeStyle = active ? "#EAB308" : "#C9B48A";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(EYE.x - 6, EYE.y + 6);
+    ctx.quadraticCurveTo((EYE.x + CORTEX.x) / 2 - 6, EYE.y + 46, CORTEX.x, CORTEX.y);
+    ctx.stroke();
+    // غلاف أفتح
+    ctx.strokeStyle = active ? "rgba(250,220,120,0.55)" : "rgba(220,205,170,0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ================= الكشّافات المائلة ================= */
+  function drawBulbs(ctx, beams, vals) {
+    beams.forEach((bm, i) => {
+      const val = vals[i];
+      ctx.save();
+      ctx.translate(BULB_LENS_X, bm.y);
+      ctx.rotate(bm.angle); // يوجّه الكشّاف نحو العين
+
+      // جسم الكشّاف (يمتدّ إلى اليمين خلف العدسة)
+      ctx.beginPath();
+      ctx.roundRect(6, -20, 150, 40, 12);
+      const body = ctx.createLinearGradient(0, -20, 0, 20);
+      body.addColorStop(0, "#5b6b7a");
+      body.addColorStop(0.5, "#3c4956");
+      body.addColorStop(1, "#2a343e");
+      ctx.fillStyle = body;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // رأس الكشاف
+      // مقبض/زرّ
+      ctx.fillStyle = "#222b33";
       ctx.beginPath();
-      ctx.moveTo(fx, fy - 18);
-      ctx.lineTo(fx - 28, fy - 24);
-      ctx.lineTo(fx - 28, fy + 24);
-      ctx.lineTo(fx, fy + 18);
+      ctx.roundRect(60, -26, 40, 8, 4);
+      ctx.fill();
+
+      // عاكس مخروطي (رأس الكشّاف)
+      ctx.beginPath();
+      ctx.moveTo(6, -22);
+      ctx.lineTo(-16, -30);
+      ctx.lineTo(-16, 30);
+      ctx.lineTo(6, 22);
       ctx.closePath();
-      ctx.fillStyle = "#F1F5F9";
+      const refl = ctx.createLinearGradient(-16, 0, 6, 0);
+      refl.addColorStop(0, "#8a99a6");
+      refl.addColorStop(1, "#4a5763");
+      ctx.fillStyle = refl;
       ctx.fill();
-      ctx.strokeStyle = "#CBD5E1";
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
       ctx.stroke();
 
-      // عدسة الكشاف
+      // العدسة المتوهّجة
       ctx.beginPath();
-      ctx.ellipse(fx - 28, fy, 4, 23, 0, 0, Math.PI * 2);
-      ctx.fillStyle = val > 0 ? fl.color : "#E2E8F0";
-      ctx.fill();
+      ctx.ellipse(-16, 0, 6, 28, 0, 0, Math.PI * 2);
+      if (val > 0) {
+        ctx.save();
+        ctx.shadowColor = bm.color;
+        ctx.shadowBlur = 18 * (val / 100) + 4;
+        ctx.fillStyle = bm.color;
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#556170";
+        ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 1.4;
       ctx.stroke();
-
-      // مسار السلايدر التفاعلي على الكشاف (Direct On-Canvas Rail)
-      const railMinX = fx + 60;
-      const railMaxX = fx + 150;
-      const handleX = railMinX + (val / 100) * (railMaxX - railMinX);
-
-      // مجرى السلايدر
-      ctx.beginPath();
-      ctx.moveTo(railMinX, fy);
-      ctx.lineTo(railMaxX, fy);
-      ctx.strokeStyle = "#E2E8F0";
-      ctx.lineWidth = 6;
-      ctx.lineCap = "round";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(railMinX, fy);
-      ctx.lineTo(handleX, fy);
-      ctx.strokeStyle = fl.color;
-      ctx.lineWidth = 6;
-      ctx.stroke();
-
-      // مقبض التحكم التفاعلي (Interactive Handle Knob)
-      ctx.beginPath();
-      ctx.arc(handleX, fy, 9, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fill();
-      ctx.strokeStyle = fl.color;
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // عنوان الكشاف والنسبة
-      ctx.fillStyle = "#0F172A";
-      ctx.font = "600 12px sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(`${fl.name}: ${val}%`, fx + 50, fy + 4);
 
       ctx.restore();
     });
   }
 
-  /* ===== حاجز الفلتر الضوئي ===== */
-  function drawColorFilter(ctx, filterX, fColor) {
-    const colorsMap = {
-      red: "rgba(220, 38, 38, 0.4)",
-      green: "rgba(22, 163, 74, 0.4)",
-      blue: "rgba(37, 99, 235, 0.4)",
-      yellow: "rgba(234, 179, 8, 0.4)",
-    };
-
+  /* ================= المرشّح الضوئي ================= */
+  function drawFilter(ctx, rgb, name) {
+    const fx = 610;
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(filterX - 6, 40, 12, SCENE_H - 80, 6);
-    ctx.fillStyle = colorsMap[fColor] || "rgba(0, 0, 0, 0.2)";
+    ctx.roundRect(fx - 7, 60, 14, SCENE_H - 150, 7);
+    ctx.fillStyle = `rgba(${rgb.join(",")},0.45)`;
     ctx.fill();
-    ctx.strokeStyle = "#94A3B8";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(${rgb.join(",")},0.9)`;
+    ctx.lineWidth = 2;
     ctx.stroke();
-
     ctx.fillStyle = "#475569";
-    ctx.font = "600 11px sans-serif";
+    ctx.font = "700 12px 'IBM Plex Sans Arabic', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("مرشح ضوئي", filterX, 30);
+    ctx.fillText("مرشّح " + name, fx, 48);
     ctx.restore();
   }
 
-  /* ===== سحابة التفكير ===== */
-  function drawThoughtCloud(ctx, colorInfo) {
-    const cloudX = HEAD_CENTER.x - 10;
-    const cloudY = HEAD_CENTER.y - 200;
+  function filterColorRGB(name) {
+    if (name === "red") return [226, 59, 59];
+    if (name === "green") return [34, 176, 75];
+    if (name === "blue") return [47, 111, 224];
+    if (name === "yellow") return [234, 179, 8];
+    return [120, 120, 120];
+  }
 
+  /* ================= فقاعة الإدراك ================= */
+  function drawThoughtBubble(ctx, info, t) {
+    const cx = HEAD_CENTER.x + 6;
+    const cy = 84;
     ctx.save();
-    const bubbles = [
-      { x: HEAD_CENTER.x - 5, y: HEAD_CENTER.y - 115, r: 7 },
-      { x: HEAD_CENTER.x - 15, y: HEAD_CENTER.y - 135, r: 11 },
-      { x: HEAD_CENTER.x - 20, y: HEAD_CENTER.y - 160, r: 16 },
-    ];
 
-    bubbles.forEach((b) => {
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFFFF"; ctx.fill();
-      ctx.strokeStyle = "#CBD5E1"; ctx.lineWidth = 1.5; ctx.stroke();
+    // فقاعات صغيرة صاعدة من الرأس
+    const trail = [
+      { x: HEAD_CENTER.x - 20, y: HEAD_CENTER.y - 120, r: 6 },
+      { x: HEAD_CENTER.x - 8, y: HEAD_CENTER.y - 146, r: 9 },
+      { x: HEAD_CENTER.x - 2, y: HEAD_CENTER.y - 172, r: 13 },
+    ];
+    trail.forEach((b) => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(120,140,160,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     });
 
+    // جسم الفقاعة (سحابة بيضاء)
+    ctx.save();
+    ctx.shadowColor = "rgba(30,50,70,0.16)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 6;
     ctx.beginPath();
-    ctx.ellipse(cloudX, cloudY, 100, 48, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#FFFFFF";
+    ctx.ellipse(cx, cy, 116, 60, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
-    ctx.strokeStyle = "#94A3B8"; ctx.lineWidth = 2; ctx.stroke();
-
-    // دائرة اللون الناتج
+    ctx.restore();
+    ctx.strokeStyle = "rgba(120,140,160,0.5)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cloudX, cloudY - 4, 78, 26, 0, 0, Math.PI * 2);
-    ctx.fillStyle = colorInfo.hex;
+    ctx.ellipse(cx, cy, 116, 60, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // قرص اللون المُدرَك البارز (مع توهّج)
+    const swX = cx - 44;
+    const active = info.total > 15;
+    ctx.save();
+    if (active) {
+      ctx.shadowColor = info.hex;
+      ctx.shadowBlur = 22 + Math.sin(t * 3) * 4;
+    }
+    ctx.beginPath();
+    ctx.arc(swX, cy, 34, 0, Math.PI * 2);
+    ctx.fillStyle = active ? info.hex : "#1b1b1b";
     ctx.fill();
-    ctx.strokeStyle = "#CBD5E1"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(swX, cy, 34, 0, Math.PI * 2);
+    ctx.stroke();
+    // بريق على القرص
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(swX - 11, cy - 12, 10, 6, -0.5, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.fillStyle = colorInfo.total > 380 ? "#0F172A" : "#FFFFFF";
-    ctx.font = "600 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(colorInfo.arabicName, cloudX, cloudY);
+    // اسم اللون فقط (بلا رمز)
+    ctx.fillStyle = "#1f2937";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.font = "800 22px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.fillText(info.arabicName, cx + 66, cy - 6);
+    ctx.font = "600 12px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText("ما يراه الدماغ", cx + 66, cy + 18);
 
-    ctx.font = "500 10px monospace";
-    ctx.fillText(`${colorInfo.hex.toUpperCase()}`, cloudX, cloudY + 14);
     ctx.restore();
   }
 
   return (
     <div className="color-scene-wrapper">
-      <canvas
-        ref={canvasRef}
-        width={SCENE_W}
-        height={SCENE_H}
-        className="color-canvas"
-        onMouseDown={handlePointerDown}
-        onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerUp}
-        onTouchStart={handlePointerDown}
-        onTouchMove={handlePointerMove}
-        onTouchEnd={handlePointerUp}
-      />
+      <canvas ref={canvasRef} width={SCENE_W} height={SCENE_H} className="color-canvas" />
     </div>
   );
 });

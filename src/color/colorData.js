@@ -10,39 +10,42 @@ export const FLASHLIGHTS = [
     id: "red",
     name: "أحمر",
     nameEn: "Red",
-    color: "#DC2626",
-    rgb: [220, 38, 38],
-    glow: "rgba(220, 38, 38, 0.25)",
-    particleColor: "#EF4444",
-    y: 110,
+    color: "#E23B3B",
+    rgb: [226, 59, 59],
+    glow: "rgba(226, 59, 59, 0.3)",
+    particleColor: "#F05252",
+    y: 108,
     wavelength: 700,
   },
   {
     id: "green",
     name: "أخضر",
     nameEn: "Green",
-    color: "#16A34A",
-    rgb: [22, 163, 74],
-    glow: "rgba(22, 163, 74, 0.25)",
-    particleColor: "#22C55E",
-    y: 260,
+    color: "#22B04B",
+    rgb: [34, 176, 75],
+    glow: "rgba(34, 176, 75, 0.3)",
+    particleColor: "#2ECC5B",
+    y: 262,
     wavelength: 530,
   },
   {
     id: "blue",
     name: "أزرق",
     nameEn: "Blue",
-    color: "#2563EB",
-    rgb: [37, 99, 235],
-    glow: "rgba(37, 99, 235, 0.25)",
-    particleColor: "#3B82F6",
-    y: 410,
+    color: "#2F6FE0",
+    rgb: [47, 111, 224],
+    glow: "rgba(47, 111, 224, 0.3)",
+    particleColor: "#4A86F0",
+    y: 416,
     wavelength: 470,
   },
 ];
 
-export const HEAD_CENTER = { x: 320, y: 270 };
-export const EYE_CENTER = { x: 450, y: 275 };
+/* هندسة المشهد الجديدة: رأس جانبي يواجه اليمين، عين أمامية، وكشافات مائلة
+   على اليمين تتجمّع أشعّتها في العين. */
+export const HEAD_CENTER = { x: 268, y: 258 };
+export const EYE_CENTER = { x: 372, y: 256 };
+export const BULB_LENS_X = 800; // مقدّمة عدسة الكشاف (منها تنطلق الفوتونات)
 
 export const CLAMP = (v, min, max) => Math.max(min, Math.min(max, v));
 

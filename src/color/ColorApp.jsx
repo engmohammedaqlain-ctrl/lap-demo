@@ -30,11 +30,11 @@ export default function ColorApp({ onHome }) {
     b: 255,
   });
 
-  const handleValChangeFromCanvas = (id, val) => {
-    if (id === "red") setRVal(val);
-    if (id === "green") setGVal(val);
-    if (id === "blue") setBVal(val);
-  };
+  const CHANNELS = [
+    { id: "red", label: "أحمر", color: "#E23B3B", val: rVal, set: setRVal },
+    { id: "green", label: "أخضر", color: "#22B04B", val: gVal, set: setGVal },
+    { id: "blue", label: "أزرق", color: "#2F6FE0", val: bVal, set: setBVal },
+  ];
 
   const handleReset = () => {
     ColorSound.playClick();
@@ -71,7 +71,6 @@ export default function ColorApp({ onHome }) {
             rVal={rVal}
             gVal={gVal}
             bVal={bVal}
-            onValChange={handleValChangeFromCanvas}
             isPlaying={isPlaying}
             beamMode={beamMode}
             visionMode={visionMode}
@@ -79,8 +78,29 @@ export default function ColorApp({ onHome }) {
             filterColor={filterColor}
             onStatus={setStatusInfo}
           />
-          <div className="color-canvas-hint">
-            اسحب المقابض مباشرة على الكشافات فوق العرض للتحكم بالشدة
+        </div>
+
+        {/* أدوات التحكم بالشدة أسفل المشهد — منزلقات ملوّنة لكل قناة */}
+        <div className="color-intensity-panel">
+          <div className="color-intensity-title">شدّة الكشّافات</div>
+          <div className="color-intensity-rows">
+            {CHANNELS.map((ch) => (
+              <div className="color-intensity-row" key={ch.id}>
+                <span className="color-ch-dot" style={{ background: ch.color }} />
+                <span className="color-ch-label" style={{ color: ch.color }}>{ch.label}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={ch.val}
+                  onChange={(e) => ch.set(Number(e.target.value))}
+                  className="color-ch-slider"
+                  style={{ accentColor: ch.color }}
+                  aria-label={`شدة ${ch.label}`}
+                />
+                <span className="color-ch-value">{ch.val}%</span>
+              </div>
+            ))}
           </div>
         </div>
 
