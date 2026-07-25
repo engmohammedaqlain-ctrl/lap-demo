@@ -335,16 +335,45 @@ const ColorScene = forwardRef(function ColorScene(
       if (s > 1) continue;
       const x = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * p1.x + s * s * p2.x;
       const y = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * p1.y + s * s * p2.y;
+      const col = np.color && np.color !== "#FFFFFF" && np.color !== "#ffffff" ? np.color : "#FFD54A";
       ctx.save();
-      ctx.shadowColor = np.color;
-      ctx.shadowBlur = 9;
-      ctx.fillStyle = np.color;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // نواة بيضاء تُبرز الإشارة العصبية
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath();
+      ctx.arc(x, y, 1.6, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
     pulsesRef.current = pulsesRef.current.filter((np) => np.progress <= 1);
+  }
+
+  /* مسار حدود الوجه والرقبة (للتعبئة والقصّ والحدّ) */
+  function traceProfile(ctx, cx, cy) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 60, cy - 116);
+    ctx.quadraticCurveTo(cx + 100, cy - 70, cx + 100, cy - 18);
+    ctx.quadraticCurveTo(cx + 101, cy - 6, cx + 90, cy + 1);
+    ctx.quadraticCurveTo(cx + 120, cy + 16, cx + 127, cy + 33);
+    ctx.quadraticCurveTo(cx + 128, cy + 44, cx + 100, cy + 47);
+    ctx.quadraticCurveTo(cx + 90, cy + 49, cx + 96, cy + 59);
+    ctx.quadraticCurveTo(cx + 106, cy + 63, cx + 93, cy + 73);
+    ctx.quadraticCurveTo(cx + 85, cy + 82, cx + 101, cy + 103);
+    ctx.quadraticCurveTo(cx + 96, cy + 123, cx + 54, cy + 129);
+    ctx.quadraticCurveTo(cx + 12, cy + 131, cx - 24, cy + 118);
+    ctx.quadraticCurveTo(cx - 17, cy + 150, cx - 15, cy + 186);
+    ctx.lineTo(cx - 94, cy + 186);
+    ctx.quadraticCurveTo(cx - 99, cy + 120, cx - 101, cy + 58);
+    ctx.quadraticCurveTo(cx - 112, cy + 8, cx - 104, cy - 46);
+    ctx.quadraticCurveTo(cx - 96, cy - 106, cx - 34, cy - 126);
+    ctx.quadraticCurveTo(cx + 8, cy - 140, cx + 60, cy - 116);
+    ctx.closePath();
   }
 
   /* ================= الرأس الجانبي + الكتف ================= */
@@ -352,122 +381,169 @@ const ColorScene = forwardRef(function ColorScene(
     const cx = HEAD_CENTER.x;
     const cy = HEAD_CENTER.y;
 
-    // ---- القميص/الكتفان (خلف الرقبة، ليبدو كشخص) ----
+    // ---- القميص (تي-شيرت بياقة دائرية وكتفَين ناعمَين) ----
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(cx - 156, SCENE_H);
-    ctx.lineTo(cx - 156, cy + 182);
-    ctx.quadraticCurveTo(cx - 122, cy + 150, cx - 70, cy + 150);
-    ctx.quadraticCurveTo(cx - 34, cy + 150, cx - 16, cy + 178);
-    ctx.quadraticCurveTo(cx - 6, cy + 196, cx + 4, cy + 178);
-    ctx.quadraticCurveTo(cx + 22, cy + 150, cx + 66, cy + 150);
-    ctx.quadraticCurveTo(cx + 120, cy + 152, cx + 152, cy + 186);
-    ctx.lineTo(cx + 152, SCENE_H);
+    ctx.moveTo(cx - 172, SCENE_H);
+    ctx.lineTo(cx - 172, cy + 194);
+    ctx.quadraticCurveTo(cx - 132, cy + 150, cx - 74, cy + 150);
+    ctx.quadraticCurveTo(cx - 40, cy + 150, cx - 20, cy + 178);
+    ctx.quadraticCurveTo(cx - 6, cy + 202, cx + 8, cy + 176);
+    ctx.quadraticCurveTo(cx + 28, cy + 150, cx + 72, cy + 150);
+    ctx.quadraticCurveTo(cx + 132, cy + 152, cx + 168, cy + 196);
+    ctx.lineTo(cx + 168, SCENE_H);
     ctx.closePath();
-    const shirt = ctx.createLinearGradient(0, cy + 150, 0, SCENE_H);
-    shirt.addColorStop(0, "#3E9E97");
-    shirt.addColorStop(1, "#2C746F");
+    const shirt = ctx.createLinearGradient(cx, cy + 150, cx, SCENE_H);
+    shirt.addColorStop(0, "#46ABA3");
+    shirt.addColorStop(1, "#2A716C");
     ctx.fillStyle = shirt;
     ctx.fill();
-    // طيّة ياقة
-    ctx.strokeStyle = "rgba(0,0,0,0.14)";
-    ctx.lineWidth = 2.5;
+    const shTop = ctx.createLinearGradient(cx, cy + 150, cx, cy + 212);
+    shTop.addColorStop(0, "rgba(0,0,0,0.14)");
+    shTop.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = shTop;
+    ctx.fill();
+    // ياقة دائرية
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy + 178);
-    ctx.quadraticCurveTo(cx - 6, cy + 196, cx + 4, cy + 178);
+    ctx.moveTo(cx - 20, cy + 176);
+    ctx.quadraticCurveTo(cx - 6, cy + 198, cx + 8, cy + 174);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.14)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 23, cy + 171);
+    ctx.quadraticCurveTo(cx - 6, cy + 192, cx + 11, cy + 169);
     ctx.stroke();
     ctx.restore();
 
     // ---- الرأس (بشرة) ----
     ctx.save();
-    ctx.shadowColor = "rgba(30,40,60,0.16)";
+    ctx.shadowColor = "rgba(30,40,60,0.18)";
     ctx.shadowBlur = 22;
     ctx.shadowOffsetY = 8;
-
-    ctx.beginPath();
-    ctx.moveTo(cx + 62, cy - 114); // أعلى الجبهة
-    ctx.quadraticCurveTo(cx + 96, cy - 66, cx + 98, cy - 20); // الجبهة نازلة
-    ctx.quadraticCurveTo(cx + 99, cy - 6, cx + 88, cy + 2); // جسر الأنف
-    ctx.quadraticCurveTo(cx + 120, cy + 20, cx + 124, cy + 34); // ظهر الأنف والأرنبة
-    ctx.quadraticCurveTo(cx + 125, cy + 45, cx + 98, cy + 48); // قاعدة الأنف
-    ctx.quadraticCurveTo(cx + 89, cy + 50, cx + 94, cy + 60); // الشفة العليا
-    ctx.quadraticCurveTo(cx + 103, cy + 65, cx + 91, cy + 75); // الفم
-    ctx.quadraticCurveTo(cx + 85, cy + 83, cx + 99, cy + 101); // الشفة السفلى والذقن
-    ctx.quadraticCurveTo(cx + 95, cy + 121, cx + 56, cy + 127); // الذقن
-    ctx.quadraticCurveTo(cx + 14, cy + 129, cx - 22, cy + 118); // خطّ الفكّ للخلف
-    ctx.quadraticCurveTo(cx - 16, cy + 150, cx - 14, cy + 184); // مقدّمة الرقبة
-    ctx.lineTo(cx - 92, cy + 184); // أسفل الرقبة
-    ctx.quadraticCurveTo(cx - 98, cy + 118, cx - 100, cy + 58); // مؤخّرة الرقبة والنقرة
-    ctx.quadraticCurveTo(cx - 110, cy + 8, cx - 104, cy - 44); // مؤخّرة الرأس
-    ctx.quadraticCurveTo(cx - 96, cy - 104, cx - 36, cy - 126); // أعلى الجمجمة الخلفي
-    ctx.quadraticCurveTo(cx + 8, cy - 140, cx + 62, cy - 114); // إلى أعلى الجبهة
-    ctx.closePath();
-
-    const skin = ctx.createLinearGradient(cx - 96, cy - 120, cx + 120, cy + 180);
-    skin.addColorStop(0, "#FDE3C6");
-    skin.addColorStop(0.55, "#F7CDA3");
-    skin.addColorStop(1, "#ECBB8C");
+    traceProfile(ctx, cx, cy);
+    const skin = ctx.createLinearGradient(cx - 96, cy - 120, cx + 130, cy + 180);
+    skin.addColorStop(0, "#FDE4C7");
+    skin.addColorStop(0.5, "#F6CCA1");
+    skin.addColorStop(1, "#E7B184");
     ctx.fillStyle = skin;
     ctx.fill();
-    ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "rgba(120,80,50,0.3)";
+    ctx.restore();
+
+    // ---- تظليل الوجه (مقصوص ضمن الملامح) ----
+    ctx.save();
+    traceProfile(ctx, cx, cy);
+    ctx.clip();
+    const jg = ctx.createLinearGradient(cx - 100, cy, cx + 46, cy);
+    jg.addColorStop(0, "rgba(150,92,56,0.3)");
+    jg.addColorStop(1, "rgba(150,92,56,0)");
+    ctx.fillStyle = jg;
+    ctx.fillRect(cx - 104, cy - 130, 156, 340);
+    ctx.fillStyle = "rgba(120,70,45,0.24)"; // ظلّ تحت الذقن
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, cy + 122, 82, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const cg = ctx.createRadialGradient(cx + 66, cy + 42, 4, cx + 66, cy + 42, 74);
+    cg.addColorStop(0, "rgba(255,242,224,0.55)");
+    cg.addColorStop(1, "rgba(255,242,224,0)");
+    ctx.fillStyle = cg; // إضاءة الخدّ
+    ctx.beginPath();
+    ctx.arc(cx + 66, cy + 42, 74, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(120,80,55,0.16)"; // محجر العين
+    ctx.beginPath();
+    ctx.ellipse(cx + 98, cy + 1, 24, 13, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(232,140,120,0.2)"; // احمرار الخدّ
+    ctx.beginPath();
+    ctx.ellipse(cx + 52, cy + 66, 16, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // ---- حدّ الوجه ----
+    ctx.save();
+    traceProfile(ctx, cx, cy);
+    ctx.strokeStyle = "rgba(120,80,50,0.34)";
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.restore();
 
-    // ---- الشعر (غطاء ممتلئ على القمّة والمؤخّرة، والدماغ يظهر كمقطع تحته) ----
+    // ---- تفاصيل الأنف والفم ----
+    ctx.save();
+    ctx.strokeStyle = "rgba(120,75,50,0.5)";
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(cx + 70, cy - 96); // خطّ الشعر عند الجبهة
-    ctx.quadraticCurveTo(cx + 84, cy - 156, cx + 16, cy - 168); // القمّة الأمامية
-    ctx.quadraticCurveTo(cx - 66, cy - 180, cx - 110, cy - 120); // القمّة الخلفية
-    ctx.quadraticCurveTo(cx - 128, cy - 84, cx - 106, cy - 36); // المؤخّرة نازلة
-    ctx.quadraticCurveTo(cx - 78, cy - 48, cx - 60, cy - 30); // أسفل المؤخّرة
-    ctx.quadraticCurveTo(cx - 20, cy - 66, cx + 20, cy - 74); // القاعدة الداخلية
-    ctx.quadraticCurveTo(cx + 56, cy - 80, cx + 66, cy - 96); // إلى خطّ الشعر
+    ctx.moveTo(cx + 119, cy + 43);
+    ctx.quadraticCurveTo(cx + 111, cy + 48, cx + 104, cy + 44);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 97, cy + 66);
+    ctx.quadraticCurveTo(cx + 102, cy + 68, cx + 95, cy + 70);
+    ctx.stroke();
+    ctx.restore();
+
+    // ---- الشعر (غطاء ممتلئ + خصلة أمامية + وميض) ----
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx + 66, cy - 98);
+    ctx.quadraticCurveTo(cx + 48, cy - 150, cx - 6, cy - 162);
+    ctx.quadraticCurveTo(cx - 74, cy - 178, cx - 114, cy - 118);
+    ctx.quadraticCurveTo(cx - 132, cy - 80, cx - 106, cy - 32);
+    ctx.quadraticCurveTo(cx - 96, cy - 46, cx - 84, cy - 40);
+    ctx.quadraticCurveTo(cx - 98, cy - 86, cx - 80, cy - 122);
+    ctx.quadraticCurveTo(cx - 38, cy - 150, cx + 8, cy - 146);
+    ctx.quadraticCurveTo(cx + 40, cy - 143, cx + 40, cy - 118); // خصلة أمامية
+    ctx.quadraticCurveTo(cx + 58, cy - 132, cx + 66, cy - 98);
     ctx.closePath();
-    const hair = ctx.createLinearGradient(cx - 110, cy - 176, cx + 70, cy - 70);
-    hair.addColorStop(0, "#4A3728");
-    hair.addColorStop(1, "#2C2015");
+    const hair = ctx.createLinearGradient(cx - 110, cy - 178, cx + 66, cy - 60);
+    hair.addColorStop(0, "#4C3A2A");
+    hair.addColorStop(1, "#281C12");
     ctx.fillStyle = hair;
     ctx.fill();
-    // خصلات خفيفة
-    ctx.strokeStyle = "rgba(20,14,8,0.35)";
-    ctx.lineWidth = 1.6;
-    for (let i = 0; i < 4; i++) {
-      const sx = cx + 30 - i * 34;
-      ctx.beginPath();
-      ctx.moveTo(sx, cy - 150 + i * 4);
-      ctx.quadraticCurveTo(sx - 14, cy - 120, sx - 6, cy - 92);
-      ctx.stroke();
-    }
-
-    // خدّ خفيف
-    ctx.fillStyle = "rgba(232,140,120,0.22)";
-    ctx.beginPath();
-    ctx.ellipse(cx + 48, cy + 62, 15, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // الأذن
-    ctx.beginPath();
-    ctx.ellipse(cx - 4, cy + 24, 13, 19, -0.2, 0, Math.PI * 2);
-    ctx.fillStyle = "#F1C199";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(120,80,50,0.4)";
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(cx - 4, cy + 24, 6, 10, -0.2, -0.4, Math.PI);
-    ctx.stroke();
-
-    // حاجب
-    ctx.strokeStyle = "#3E2E20";
+    // وميض
+    ctx.strokeStyle = "rgba(180,140,95,0.35)";
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(cx + 62, cy + 6);
-    ctx.quadraticCurveTo(cx + 80, cy - 1, cx + 95, cy + 7);
+    ctx.moveTo(cx - 30, cy - 150);
+    ctx.quadraticCurveTo(cx - 78, cy - 138, cx - 100, cy - 96);
+    ctx.stroke();
+    // خصلات
+    ctx.strokeStyle = "rgba(20,14,8,0.3)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      const sx = cx + 20 - i * 34;
+      ctx.beginPath();
+      ctx.moveTo(sx, cy - 150 + i * 3);
+      ctx.quadraticCurveTo(sx - 16, cy - 120, sx - 6, cy - 96);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ---- الأذن ----
+    ctx.beginPath();
+    ctx.ellipse(cx - 2, cy + 26, 13, 19, -0.2, 0, Math.PI * 2);
+    ctx.fillStyle = "#F1C199";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(120,80,50,0.42)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy + 16);
+    ctx.quadraticCurveTo(cx + 4, cy + 26, cx - 4, cy + 36);
     ctx.stroke();
 
-    ctx.restore();
+    // ---- الحاجب ----
+    ctx.strokeStyle = "#3A2B1E";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx + 62, cy + 4);
+    ctx.quadraticCurveTo(cx + 82, cy - 4, cx + 97, cy + 6);
+    ctx.stroke();
   }
 
   /* ================= العين ================= */
