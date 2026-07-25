@@ -1,5 +1,5 @@
 /**
- * color.css — تنسيقات واجهة تجربة رؤية الألوان والتفاعل
+ * color.css — تنسيقات متقدمة لواجهة رؤية الألوان وعمى الألوان والتحليلات الرقمية
  */
 
 .color-app {
@@ -100,7 +100,7 @@
 .color-scene-wrapper {
   position: relative;
   width: 100%;
-  background: #0a0d14;
+  background: #070a10;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
@@ -111,7 +111,7 @@
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 1000 / 520;
+  aspect-ratio: 1000 / 540;
 }
 
 /* Playback & Controls Bar */
@@ -123,12 +123,20 @@
   background: #121824;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .color-toolbar-group {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.color-mode-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a0aec0;
 }
 
 .color-control-btn {
@@ -160,6 +168,48 @@
   box-shadow: 0 0 12px rgba(74, 130, 246, 0.4);
 }
 
+.color-select {
+  padding: 8px 12px;
+  background: #1c2436;
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Analytics Dashboard */
+.color-analytics-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.color-analytics-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #101624;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.color-analytics-title {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.color-analytics-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+  font-family: monospace;
+}
+
 /* Sidebar Sliders & Controls */
 .color-sidebar {
   display: flex;
@@ -185,12 +235,40 @@
   justify-content: space-between;
 }
 
+/* Vision Mode Buttons */
+.color-vision-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: #161d2d;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: right;
+  transition: all 0.2s ease;
+}
+
+.color-vision-btn:hover {
+  background: #202a3f;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.color-vision-btn.active {
+  background: #1e3a8a;
+  color: #93c5fd;
+  border-color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
 /* Color Slider Component */
 .color-slider-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 12px;
   background: #171e2e;
   border: 1px solid rgba(255, 255, 255, 0.06);
