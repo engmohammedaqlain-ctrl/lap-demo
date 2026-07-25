@@ -13,6 +13,7 @@ class StaticSoundEngine {
     this.muted = false;
     this.master = null;
     this.rubNodes = null;
+    this.floatNodes = null;
     this._lastZap = 0;
   }
 
@@ -37,7 +38,54 @@ class StaticSoundEngine {
   setMuted(m) {
     this.muted = m;
     if (this.master) this.master.gain.value = m ? 0 : 1;
-    if (m) this.stopRub();
+    if (m) {
+      this.stopRub();
+      this.stopFloat();
+    }
+  }
+
+  /* نغمة طيران البالون المشحون في الهواء أثناء انجذابه — همسة هوائية حيّة */
+  startFloat() {
+    this._ensure();
+    if (!this.ctx || this.floatNodes) return;
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    const t = this.ctx.currentTime;
+    // نغمة سينية ناعمة صاعدة قليلاً توحي بالحركة والجذب
+    const osc = this.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = 240;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 900;
+    const g = this.ctx.createGain();
+    g.gain.value = 0;
+    g.gain.linearRampToValueAtTime(0.05, t + 0.12);
+    // تمايل بطيء في النغمة (اهتزاز حيّ)
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+    lfo.frequency.value = 5.5;
+    lfoGain.gain.value = 26;
+    lfo.connect(lfoGain).connect(osc.frequency);
+    osc.connect(lp).connect(g).connect(this.master);
+    osc.start();
+    lfo.start();
+    this.floatNodes = { osc, g, lfo };
+  }
+
+  stopFloat() {
+    if (!this.floatNodes || !this.ctx) return;
+    const { osc, g, lfo } = this.floatNodes;
+    const t = this.ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(0, t + 0.1);
+    try {
+      osc.stop(t + 0.12);
+      lfo.stop(t + 0.12);
+    } catch {
+      /* ignore */
+    }
+    this.floatNodes = null;
   }
 
   startRub() {

@@ -83,6 +83,7 @@ const StaticScene = forwardRef(function StaticScene(
     const count = propsRef.current.balloonCount;
     simRef.current = makeSim(count);
     StaticSound.stopRub();
+    StaticSound.stopFloat();
     emitStatus(true);
   };
   useImperativeHandle(ref, () => ({ reset }));
@@ -218,6 +219,14 @@ const StaticScene = forwardRef(function StaticScene(
     if (sound && rubbingNow) StaticSound.startRub();
     else StaticSound.stopRub();
 
+    // صوت الطيران: بالون مشحون حرّ في الهواء أثناء انجذابه
+    let floatingNow = false;
+    for (const b of sim.balloons) {
+      if (!b.held && !b.stuck && b.grabbed.length > 0) floatingNow = true;
+    }
+    if (sound && floatingNow) StaticSound.startFloat();
+    else StaticSound.stopFloat();
+
     emitStatus(false);
   }
 
@@ -263,23 +272,25 @@ const StaticScene = forwardRef(function StaticScene(
     } else {
       let ax = 0;
       let ay = 0;
-      // جذب نحو السترة (سطحها الأيمن). سقوط ١/د² حادّ حتى يفوز الأقرب —
-      // وإلا تساوت القوّتان عند السقف فتلاشى الصافي وتجمّد البالون.
+      // جذب نحو السترة: شحنة حقيقية صافية (تجاذب كولوم مباشر) — قويّة وتسقط
+      // كـ ١/د². هذه القوّة هي المهيمنة فيزيائياً.
       const sy = CLAMP(b.y, SWEATER.y + 40, SWEATER.y + SWEATER.h - 40);
       const dsx = SWEATER_RIGHT - b.x;
       const dsy = sy - b.y;
       const ds = Math.hypot(dsx, dsy) + 1;
-      const fS = Math.min(0.85, (q * 1400) / (ds * ds));
+      const fS = Math.min(0.85, (q * 3000) / (ds * ds));
       ax += (dsx / ds) * fS;
       ay += (dsy / ds) * fS;
-      // جذب نحو الجدار
+      // جذب نحو الجدار: شحنة مُستحَثّة (استقطاب) فقط — أضعف بكثير وتسقط أسرع
+      // (١/د³)، فلا يفوز الجدار إلا حين يكون البالون ملاصقاً له تقريباً. هكذا
+      // قد يكون البالون أقرب للجدار ومع ذلك ينجذب إلى السترة — وهو الصحيح فيزيائياً.
       if (wall) {
         const dwx = WALL.x - b.x;
         if (dwx > 0) {
           const dw = dwx + 1;
-          const fW = Math.min(0.85, (q * 1300) / (dw * dw));
+          const fW = Math.min(0.7, (q * 60000) / (dw * dw * dw));
           ax += fW;
-          ay += (b.y < WALL.y + 40 ? 1 : b.y > WALL.y + WALL.h - 40 ? -1 : 0) * 0.05;
+          ay += (b.y < WALL.y + 40 ? 1 : b.y > WALL.y + WALL.h - 40 ? -1 : 0) * 0.04;
         }
       }
       b.vx += ax * dt;
@@ -698,17 +709,32 @@ const StaticScene = forwardRef(function StaticScene(
   }
 
   function drawBalloonString(ctx, b) {
+    const bob = b.held || b.stuck ? 0 : Math.sin(sim_t() * 0.04 + b.bobPhase) * 4;
     const knotX = b.x;
-    const knotY = b.y + b.r * 1.02;
-    const sway = Math.sin(sim_t() * 0.03 + b.swayPhase) * (b.stuck ? 4 : 14);
-    const endX = knotX + sway;
-    const endY = Math.min(SCENE_H - 8, knotY + 92);
-    ctx.strokeStyle = "rgba(70,70,80,0.55)";
-    ctx.lineWidth = 1.6;
+    const knotY = b.y + bob + b.r * 1.12;
+    // خيط أطول وأكثر واقعية: منحنى مزدوج (S) مع ترهّل بالجاذبية وتمايل حيّ
+    const LEN = 158;
+    const sway = Math.sin(sim_t() * 0.028 + b.swayPhase) * (b.stuck ? 5 : 20);
+    const sway2 = Math.sin(sim_t() * 0.045 + b.swayPhase + 1) * (b.stuck ? 3 : 11);
+    const endY = Math.min(SCENE_H - 6, knotY + LEN);
+    const midY = knotY + LEN * 0.5;
+    const c1x = knotX + sway * 0.5;
+    const c2x = knotX + sway;
+    const endX = knotX + sway2;
+    ctx.save();
+    ctx.strokeStyle = "rgba(60,62,72,0.6)";
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(knotX, knotY);
-    ctx.quadraticCurveTo(knotX + sway * 0.6, (knotY + endY) / 2, endX, endY);
+    ctx.bezierCurveTo(c1x, midY - LEN * 0.18, c2x, midY + LEN * 0.14, endX, endY);
     ctx.stroke();
+    // عقيصة صغيرة في نهاية الخيط
+    ctx.fillStyle = "rgba(60,62,72,0.6)";
+    ctx.beginPath();
+    ctx.arc(endX, endY, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawBalloon(ctx, b, mode) {
@@ -724,17 +750,27 @@ const StaticScene = forwardRef(function StaticScene(
     }
 
     ctx.save();
-    ctx.shadowColor = "rgba(20,30,40,0.22)";
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 8;
-    const g = ctx.createRadialGradient(cx - rx * 0.35, cy - ry * 0.4, ry * 0.15, cx, cy, ry * 1.1);
+    ctx.shadowColor = "rgba(20,30,40,0.26)";
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 10;
+    // تدرّج جسم البالون: فاتح أعلى-يسار إلى غامق أسفل-يمين لإحساس ثلاثي الأبعاد فاخر
+    const g = ctx.createRadialGradient(cx - rx * 0.32, cy - ry * 0.42, ry * 0.12, cx, cy, ry * 1.15);
     g.addColorStop(0, b.light);
-    g.addColorStop(0.5, b.color);
+    g.addColorStop(0.45, b.color);
     g.addColorStop(1, b.dark);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    // حافة داخلية غامقة رقيقة تعطي حجماً وعمقاً
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,0,0,0.10)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx - 1, ry - 1, 0, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
 
     // عقدة
@@ -746,39 +782,46 @@ const StaticScene = forwardRef(function StaticScene(
     ctx.closePath();
     ctx.fill();
 
-    // لمعان زجاجي
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    // لمعان راقٍ: هلال ضوئي رفيع منحنٍ (لا بقعة بيضاء) — يُقصّ داخل البالون
+    ctx.save();
     ctx.beginPath();
-    ctx.ellipse(cx - rx * 0.34, cy - ry * 0.4, rx * 0.22, ry * 0.32, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.clip();
+    const sheen = ctx.createLinearGradient(cx - rx, cy - ry, cx - rx * 0.1, cy - ry * 0.1);
+    sheen.addColorStop(0, "rgba(255,255,255,0.42)");
+    sheen.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sheen;
     ctx.beginPath();
-    ctx.ellipse(cx - rx * 0.05, cy - ry * 0.15, rx * 0.1, ry * 0.16, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(cx - rx * 0.36, cy - ry * 0.4, rx * 0.5, ry * 0.62, -0.55, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
-    // شحنات البالون (الإلكترونات المكتسبة) + موجباته الذاتية في وضع all
+    // شحنات البالون: في وضع "الكل" يُظهر شحناته الذاتية المتوازنة (٣ موجبة
+    // + ٣ سالبة) ثم أيّ إلكترونات مكتسبة إضافية (تجعله سالباً صافياً).
+    if (mode === "all") {
+      drawInherentCharges(ctx, cx, cy, rx, ry);
+    }
     if (mode !== "none") {
-      const q = b.grabbed.length;
-      if (mode === "all") {
-        // موجبات ذاتية ثابتة (متوازنة مع سالبه الأصلي) — تُرسم كنقاط خفيفة
-        drawInherentPlus(ctx, cx, cy, rx, ry);
-      }
       for (const m of b.grabbed) {
-        drawCharge(ctx, m.x, m.y - (b.held || b.stuck ? 0 : 0), "-", 1);
+        drawCharge(ctx, m.x, m.y, "-", 1);
       }
-      // في وضع "الفرق": الإلكترونات المكتسبة تُظهر الشحنة السالبة الصافية (مرسومة أصلاً)
-      void q;
     }
   }
 
-  function drawInherentPlus(ctx, cx, cy, rx, ry) {
-    // ثلاث موجبات ذاتية موزّعة أعلى البالون (زينة توضيحية ثابتة)
-    const pts = [
-      [cx + rx * 0.32, cy - ry * 0.28],
-      [cx + rx * 0.1, cy + ry * 0.34],
-      [cx - rx * 0.34, cy + ry * 0.12],
+  function drawInherentCharges(ctx, cx, cy, rx, ry) {
+    // ٣ موجبة + ٣ سالبة ثابتة موزّعة بأناقة في أعلى البالون (متعادل تماماً)
+    const plusPts = [
+      [cx + rx * 0.34, cy - ry * 0.44],
+      [cx - rx * 0.02, cy - ry * 0.52],
+      [cx + rx * 0.44, cy - ry * 0.08],
     ];
-    for (const [px, py] of pts) drawCharge(ctx, px, py, "+", 0.85);
+    const minusPts = [
+      [cx - rx * 0.4, cy - ry * 0.34],
+      [cx - rx * 0.42, cy + ry * 0.06],
+      [cx + rx * 0.16, cy - ry * 0.24],
+    ];
+    for (const [px, py] of plusPts) drawCharge(ctx, px, py, "+", 0.92);
+    for (const [px, py] of minusPts) drawCharge(ctx, px, py, "-", 0.92);
   }
 
   function drawCharge(ctx, x, y, sign, alpha) {
@@ -886,6 +929,7 @@ const StaticScene = forwardRef(function StaticScene(
     return () => {
       cancelAnimationFrame(rafRef.current);
       StaticSound.stopRub();
+      StaticSound.stopFloat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
