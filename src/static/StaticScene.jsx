@@ -358,46 +358,287 @@ const StaticScene = forwardRef(function StaticScene(
   function drawSweater(ctx, sim, mode) {
     const { x, y, w, h } = SWEATER;
     ctx.save();
-    // ظل ناعم
-    ctx.shadowColor = "rgba(30,50,40,0.16)";
-    ctx.shadowBlur = 22;
-    ctx.shadowOffsetY = 10;
-    // الجسم
-    const bodyC = "#C9B79A";
-    const knitC = "#BBA888";
-    ctx.fillStyle = bodyC;
-    roundRect(ctx, x, y + 26, w, h - 26, 30);
-    ctx.fill();
-    ctx.shadowColor = "transparent";
-    // ياقة
-    ctx.fillStyle = "#B3A07F";
+
+    // 1. ظل ناعم ممتد تحت السترة
+    ctx.shadowColor = "rgba(45, 30, 15, 0.18)";
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 12;
+
+    // أسلوب الخط المرسوم بالحبر (Hand-drawn Ink Outline)
+    const inkColor = "#3E3023";
+    const inkWidth = 3;
+
+    // --- الكم الأيسر (Left Sleeve) ---
     ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + 30, w * 0.28, 26, 0, 0, Math.PI * 2);
+    ctx.moveTo(x + 20, y + 60);
+    ctx.quadraticCurveTo(x - 22, y + 70, x - 32, y + 120);
+    ctx.lineTo(x - 32, y + 240);
+    ctx.quadraticCurveTo(x - 10, y + 246, x + 15, y + 242);
+    ctx.lineTo(x + 20, y + 170);
+    ctx.closePath();
+
+    const sleeveGradL = ctx.createLinearGradient(x - 35, y + 60, x + 20, y + 240);
+    sleeveGradL.addColorStop(0, "#D9C9AD");
+    sleeveGradL.addColorStop(1, "#C7B496");
+    ctx.fillStyle = sleeveGradL;
     ctx.fill();
-    ctx.fillStyle = "#f4efe4";
+
+    // إسورة الكم الأيسر (Left Sleeve Ribbed Cuff)
     ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + 30, w * 0.2, 17, 0, 0, Math.PI * 2);
+    ctx.moveTo(x - 33, y + 240);
+    ctx.lineTo(x - 34, y + 258);
+    ctx.quadraticCurveTo(x - 9, y + 264, x + 16, y + 260);
+    ctx.lineTo(x + 15, y + 242);
+    ctx.closePath();
+    ctx.fillStyle = "#BAA78A";
     ctx.fill();
-    // أكمام
-    ctx.fillStyle = bodyC;
-    roundRect(ctx, x - 30, y + 54, 46, h * 0.5, 20);
-    ctx.fill();
-    roundRect(ctx, x + w - 16, y + 54, 46, h * 0.5, 20);
-    ctx.fill();
-    // نسيج حياكة (خطوط رأسية خفيفة)
-    ctx.strokeStyle = knitC;
-    ctx.lineWidth = 2;
-    for (let i = 1; i < 9; i++) {
-      const lx = x + (i / 9) * w;
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.stroke();
+
+    // خطوط الحياكة على إسورة الكم
+    ctx.strokeStyle = "rgba(62, 48, 35, 0.4)";
+    ctx.lineWidth = 1.8;
+    for (let c = 0; c <= 4; c++) {
+      const cx = x - 28 + c * 10;
       ctx.beginPath();
-      ctx.moveTo(lx, y + 40);
-      ctx.lineTo(lx, y + h - 14);
+      ctx.moveTo(cx, y + 241);
+      ctx.lineTo(cx + 1, y + 258);
       ctx.stroke();
     }
-    // حاشية سفلية
-    ctx.fillStyle = "#A8946F";
-    roundRect(ctx, x, y + h - 20, w, 18, 9);
+
+    // الحدود الخارجية للكم الأيسر (Hand-drawn Ink Stroke)
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(x + 18, y + 62);
+    ctx.quadraticCurveTo(x - 22, y + 70, x - 32, y + 120);
+    ctx.lineTo(x - 32, y + 240);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 16, y + 242);
+    ctx.quadraticCurveTo(x + 18, y + 200, x + 19, y + 172);
+    ctx.stroke();
+
+    // --- الكم الأيمن (Right Sleeve) ---
+    ctx.beginPath();
+    ctx.moveTo(x + w - 20, y + 60);
+    ctx.quadraticCurveTo(x + w + 22, y + 70, x + w + 32, y + 120);
+    ctx.lineTo(x + w + 32, y + 240);
+    ctx.quadraticCurveTo(x + w + 10, y + 246, x + w - 15, y + 242);
+    ctx.lineTo(x + w - 20, y + 170);
+    ctx.closePath();
+
+    const sleeveGradR = ctx.createLinearGradient(x + w - 20, y + 60, x + w + 35, y + 240);
+    sleeveGradR.addColorStop(0, "#D9C9AD");
+    sleeveGradR.addColorStop(1, "#C7B496");
+    ctx.fillStyle = sleeveGradR;
     ctx.fill();
+
+    // إسورة الكم الأيمن (Right Sleeve Ribbed Cuff)
+    ctx.beginPath();
+    ctx.moveTo(x + w + 33, y + 240);
+    ctx.lineTo(x + w + 34, y + 258);
+    ctx.quadraticCurveTo(x + w + 9, y + 264, x + w - 16, y + 260);
+    ctx.lineTo(x + w - 15, y + 242);
+    ctx.closePath();
+    ctx.fillStyle = "#BAA78A";
+    ctx.fill();
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.stroke();
+
+    // خطوط الحياكة على إسورة الكم
+    ctx.strokeStyle = "rgba(62, 48, 35, 0.4)";
+    ctx.lineWidth = 1.8;
+    for (let c = 0; c <= 4; c++) {
+      const cx = x + w - 10 + c * 10;
+      ctx.beginPath();
+      ctx.moveTo(cx, y + 241);
+      ctx.lineTo(cx + 1, y + 258);
+      ctx.stroke();
+    }
+
+    // الحدود الخارجية للكم الأيمن
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.beginPath();
+    ctx.moveTo(x + w - 18, y + 62);
+    ctx.quadraticCurveTo(x + w + 22, y + 70, x + w + 32, y + 120);
+    ctx.lineTo(x + w + 32, y + 240);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + w - 16, y + 242);
+    ctx.quadraticCurveTo(x + w - 18, y + 200, x + w - 19, y + 172);
+    ctx.stroke();
+
+    // --- جسم السترة (Main Sweater Torso) ---
+    ctx.beginPath();
+    ctx.moveTo(x + 45, y + 36);
+    ctx.quadraticCurveTo(x + w / 2, y + 52, x + w - 45, y + 36);
+    ctx.quadraticCurveTo(x + w - 12, y + 42, x + w, y + 75);
+    ctx.quadraticCurveTo(x + w + 6, y + 220, x + w, y + h - 22);
+    ctx.quadraticCurveTo(x + w / 2, y + h - 18, x, y + h - 22);
+    ctx.quadraticCurveTo(x - 6, y + 220, x, y + 75);
+    ctx.quadraticCurveTo(x + 12, y + 42, x + 45, y + 36);
+    ctx.closePath();
+
+    const bodyGrad = ctx.createLinearGradient(x, y + 30, x, y + h);
+    bodyGrad.addColorStop(0, "#DFCFB3");
+    bodyGrad.addColorStop(0.5, "#D5C3A5");
+    bodyGrad.addColorStop(1, "#C4B294");
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // إيقاف الظل لرسم التفاصيل
+    ctx.shadowColor = "transparent";
+
+    // --- نسيج الصوف المرسوم (Hand-Drawn Knitted Ribs & Stitches) ---
+    for (let col = 0; col < 11; col++) {
+      const rx = x + 24 + col * ((w - 48) / 10);
+      ctx.beginPath();
+      ctx.moveTo(rx, y + 60);
+      for (let sy = y + 60; sy <= y + h - 30; sy += 18) {
+        const offset = (col % 2 === 0 ? 1 : -1) * Math.sin((sy + col * 12) * 0.08) * 2.5;
+        ctx.lineTo(rx + offset, sy);
+      }
+      ctx.strokeStyle = col % 2 === 0 ? "rgba(168, 150, 122, 0.45)" : "rgba(235, 222, 200, 0.4)";
+      ctx.lineWidth = col % 2 === 0 ? 2.2 : 1.5;
+      ctx.stroke();
+
+      // غرز الصوف الصغيرة "v" على امتداد الأضلاع
+      ctx.strokeStyle = "rgba(145, 128, 102, 0.35)";
+      ctx.lineWidth = 1.4;
+      for (let sy = y + 80; sy <= y + h - 45; sy += 36) {
+        ctx.beginPath();
+        ctx.moveTo(rx - 4, sy - 3);
+        ctx.lineTo(rx, sy + 3);
+        ctx.lineTo(rx + 4, sy - 3);
+        ctx.stroke();
+      }
+    }
+
+    // --- ثنيات وتغضّنات القماش الفنية (Illustration Creases) ---
+    ctx.strokeStyle = "rgba(75, 58, 40, 0.22)";
+    ctx.lineWidth = 2;
+    // ثنية الإبط الأيسر
+    ctx.beginPath();
+    ctx.moveTo(x + 15, y + 165);
+    ctx.quadraticCurveTo(x + 45, y + 185, x + 65, y + 180);
+    ctx.stroke();
+    // ثنية الإبط الأيمن
+    ctx.beginPath();
+    ctx.moveTo(x + w - 15, y + 165);
+    ctx.quadraticCurveTo(x + w - 45, y + 185, x + w - 65, y + 180);
+    ctx.stroke();
+    // انحناءة الخصر
+    ctx.beginPath();
+    ctx.moveTo(x + 35, y + h - 85);
+    ctx.quadraticCurveTo(x + w / 2, y + h - 75, x + w - 35, y + h - 85);
+    ctx.strokeStyle = "rgba(75, 58, 40, 0.15)";
+    ctx.stroke();
+
+    // --- الياقة الداخلية وفتحة الرقبة (Inner Neck & Collar) ---
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + 36, w * 0.23, 24, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#4A3B2C";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + 40, w * 0.2, 18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#F5EFE3";
+    ctx.fill();
+
+    // بطاقة المقاس (Tag)
+    ctx.fillStyle = "#D35400";
+    ctx.fillRect(x + w / 2 - 8, y + 42, 16, 10);
+    ctx.fillStyle = "#FFF";
+    ctx.font = "bold 7px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("M", x + w / 2, y + 49);
+
+    // الياقة المحبوكة الخارجية
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + 36, w * 0.25, 26, 0, 0, Math.PI);
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + 36, w * 0.26, 28, 0, Math.PI * 0.1, Math.PI * 0.9);
+    ctx.fillStyle = "#C8B699";
+    ctx.fill();
+    ctx.stroke();
+
+    // خطوط الياقة
+    ctx.strokeStyle = "rgba(62, 48, 35, 0.4)";
+    ctx.lineWidth = 1.6;
+    for (let a = 0.2; a < 0.85; a += 0.08) {
+      const angle = Math.PI * a;
+      const cx1 = x + w / 2 + Math.cos(angle) * (w * 0.2);
+      const cy1 = y + 36 + Math.sin(angle) * 20;
+      const cx2 = x + w / 2 + Math.cos(angle) * (w * 0.26);
+      const cy2 = y + 36 + Math.sin(angle) * 28;
+      ctx.beginPath();
+      ctx.moveTo(cx1, cy1);
+      ctx.lineTo(cx2, cy2);
+      ctx.stroke();
+    }
+
+    // --- الحواشي السفلية الصوفية (Bottom Ribbed Hem) ---
+    ctx.beginPath();
+    roundRect(ctx, x - 2, y + h - 24, w + 4, 24, 8);
+    ctx.fillStyle = "#BDAB8E";
+    ctx.fill();
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.stroke();
+
+    // خطوط الحواشي السفلية العمودية
+    ctx.strokeStyle = "rgba(62, 48, 35, 0.4)";
+    ctx.lineWidth = 1.8;
+    for (let hx = x + 6; hx < x + w - 4; hx += 10) {
+      ctx.beginPath();
+      ctx.moveTo(hx, y + h - 23);
+      ctx.lineTo(hx + 0.5, y + h - 2);
+      ctx.stroke();
+    }
+
+    // --- خطوط الحبر الخارجية لجسم السترة ---
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = inkWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(x + 45, y + 36);
+    ctx.quadraticCurveTo(x + 12, y + 42, x, y + 75);
+    ctx.quadraticCurveTo(x - 6, y + 220, x, y + h - 24);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + w - 45, y + 36);
+    ctx.quadraticCurveTo(x + w - 12, y + 42, x + w, y + 75);
+    ctx.quadraticCurveTo(x + w + 6, y + 220, x + w, y + h - 24);
+    ctx.stroke();
+
+    // خطوط تعبيرية مرسومة في الزوايا
+    ctx.strokeStyle = "rgba(62, 48, 35, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 16, y + 78);
+    ctx.quadraticCurveTo(x + 2, y + 215, x + 6, y + h - 30);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + w - 16, y + 78);
+    ctx.quadraticCurveTo(x + w - 2, y + 215, x + w - 6, y + h - 30);
+    ctx.stroke();
+
     ctx.restore();
 
     // الشحنات
