@@ -1,11 +1,9 @@
 /**
- * ColorScene.jsx — محاكاة رؤية الألوان بأسلوب PhET: رأس جانبي بعين واقعية،
- * ثلاثة كشّافات ملوّنة مائلة على اليمين تتجمّع أشعّتها في العين، ثم إشارة
- * عصبية تسري عبر العصب البصري إلى القشرة البصرية في الدماغ التي تتوهّج
- * باللون المُدرَك — ويظهر الاسم في فقاعة تفكير بارزة فوق الرأس.
- *
- * الرسم كلّه على canvas في حلقة requestAnimationFrame. التحكّم بالشدّة صار
- * من منزلقات HTML أسفل المشهد (ColorApp) لا على العرض.
+ * ColorScene.jsx — محاكاة رؤية الألوان على صورة تشريحية احترافية للشخص.
+ * تُرسم صورة الرأس (دماغ + عين + عصب بصري) في اليسار، وثلاثة كشّافات ملوّنة
+ * مائلة على اليمين تتجمّع أشعّتها في العين؛ ثم تسري نبضات عصبية على طول
+ * العصب البصري إلى القشرة البصرية التي تتوهّج باللون المُدرَك، ويظهر اسمه
+ * في فقاعة تفكير بارزة. كل العناصر التفاعلية تُرسم فوق الصورة بمحاذاتها.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
@@ -13,16 +11,18 @@ import {
   SCENE_H,
   FLASHLIGHTS,
   EYE_CENTER,
-  HEAD_CENTER,
+  CORTEX_CENTER,
+  BUBBLE_CENTER,
+  PERSON,
   BULB_LENS_X,
   calculatePerceivedColor,
 } from "./colorData.js";
+import personUrl from "./assets/person.png";
 
 const EYE = EYE_CENTER;
+const CORTEX = CORTEX_CENTER;
 const MAX_PARTICLES = 260;
-
-/* مركز القشرة البصرية (مؤخّرة الدماغ) — تتوهّج باللون المُدرَك */
-const CORTEX = { x: HEAD_CENTER.x - 96, y: HEAD_CENTER.y - 40 };
+const DEBUG_ALIGN = false; // علامات محاذاة مؤقتة
 
 /* هندسة كلّ شعاع: اتجاهه وزاويته من عدسة الكشّاف إلى العين (ميل + تجمّع).
    محسوبة مرّة واحدة ويستخدمها الرسمُ وتفاعلُ السحب معاً. */
@@ -46,6 +46,7 @@ const ColorScene = forwardRef(function ColorScene(
   const particlesRef = useRef([]);
   const pulsesRef = useRef([]);
   const draggingRef = useRef(null); // 'red' | 'green' | 'blue'
+  const imgRef = useRef(null); // صورة الشخص التشريحية
 
   const propsRef = useRef({});
   propsRef.current = { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, onStatus };
@@ -115,6 +116,15 @@ const ColorScene = forwardRef(function ColorScene(
     let t = 0;
     const beams = BEAMS;
 
+    // تحميل صورة الشخص (مضمّنة في الحزمة، تعمل دون اتصال)
+    if (!imgRef.current) {
+      const image = new Image();
+      image.src = personUrl;
+      image.onload = () => {
+        imgRef.current = image;
+      };
+    }
+
     function frame() {
       const p = propsRef.current;
       if (p.isPlaying) t += 0.04;
@@ -137,33 +147,34 @@ const ColorScene = forwardRef(function ColorScene(
       const vals = [p.rVal, p.gVal, p.bVal];
       const effVals = [effR, effG, effB];
 
-      // 1) الأشعّة خلف الرأس/العين
+      // 1) صورة الشخص التشريحية (الخلفية الحيّة)
+      drawPerson(ctx);
+
+      // 2) الأشعّة فوق الصورة (تنتهي عند العين)
       drawBeams(ctx, beams, vals, t, p.beamMode);
 
-      // 2) الفوتونات
+      // 3) الفوتونات
       if (p.beamMode === "particles") {
         spawnPhotons(beams, vals, p.isPlaying);
         updateAndDrawPhotons(ctx, p, effVals);
       } else if (p.isPlaying) {
-        // في وضعَي الموجات/الشعاع نحدّث النبضات دون رسم فوتونات
         maybeEmitPulses(beams, effVals, info);
       }
 
-      // 3) المرشّح الضوئي (إن فُعّل)
+      // 4) المرشّح الضوئي
       if (p.filterEnabled) drawFilter(ctx, filterColorRGB(p.filterColor), p.filterColor);
 
-      // 4) الكشّافات المائلة
+      // 5) الكشّافات المائلة
       drawBulbs(ctx, beams, vals);
 
-      // 5) الرأس والعين والدماغ
-      drawHead(ctx);
-      drawBrain(ctx, info, t);
-      drawOpticNerve(ctx, info);
+      // 6) توهّج القشرة البصرية + النبضات العصبية على العصب البصري
+      drawCortexGlow(ctx, info, t);
       updateAndDrawPulses(ctx, p.isPlaying, info);
-      drawEye(ctx, info);
 
-      // 6) فقاعة الإدراك البارزة
+      // 7) فقاعة الإدراك البارزة
       drawThoughtBubble(ctx, info, t);
+
+      if (DEBUG_ALIGN) drawDebugMarkers(ctx);
 
       rafRef.current = requestAnimationFrame(frame);
     }
@@ -171,25 +182,59 @@ const ColorScene = forwardRef(function ColorScene(
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  /* ================= الخلفية ================= */
+  /* ================= الخلفية (بيضاء لتندمج مع خلفية الصورة) ================= */
   function drawBackground(ctx) {
-    const g = ctx.createLinearGradient(0, 0, 0, SCENE_H);
-    g.addColorStop(0, "#fbfdff");
-    g.addColorStop(1, "#eef4f8");
-    ctx.fillStyle = g;
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, SCENE_W, SCENE_H);
-    // شبكة نقطية خفيفة
-    ctx.fillStyle = "rgba(70,120,160,0.10)";
-    for (let x = 20; x < SCENE_W; x += 30) {
-      for (let y = 20; y < SCENE_H; y += 30) {
-        ctx.beginPath();
-        ctx.arc(x, y, 1, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  }
+
+  /* ================= صورة الشخص التشريحية ================= */
+  function drawPerson(ctx) {
+    const img = imgRef.current;
+    if (!img) return;
+    ctx.drawImage(img, PERSON.dx, PERSON.dy, img.width * PERSON.scale, img.height * PERSON.scale);
+  }
+
+  /* ================= توهّج القشرة البصرية ================= */
+  function drawCortexGlow(ctx, info, t) {
+    if (info.total <= 15) return;
+    const pulse = 0.75 + Math.sin(t * 3) * 0.12;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter"; // مزج جمعي فوق الدماغ
+    const r = 46 * pulse;
+    const g = ctx.createRadialGradient(CORTEX.x, CORTEX.y, 2, CORTEX.x, CORTEX.y, r);
+    const a = Math.min(0.9, 0.25 + (info.total / 765) * 0.7);
+    g.addColorStop(0, hexToRgba(info.hex, a));
+    g.addColorStop(0.5, hexToRgba(info.hex, a * 0.45));
+    g.addColorStop(1, hexToRgba(info.hex, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(CORTEX.x, CORTEX.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function hexToRgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function drawDebugMarkers(ctx) {
+    ctx.save();
+    ctx.strokeStyle = "#00e5ff";
+    ctx.lineWidth = 2;
+    for (const pt of [EYE, CORTEX, BUBBLE_CENTER]) {
+      ctx.beginPath();
+      ctx.moveTo(pt.x - 12, pt.y);
+      ctx.lineTo(pt.x + 12, pt.y);
+      ctx.moveTo(pt.x, pt.y - 12);
+      ctx.lineTo(pt.x, pt.y + 12);
+      ctx.stroke();
     }
-    // أرضية خفيفة
-    ctx.fillStyle = "rgba(120,150,120,0.08)";
-    ctx.fillRect(0, SCENE_H - 40, SCENE_W, 40);
+    ctx.restore();
   }
 
   /* ================= الأشعّة المائلة ================= */
@@ -327,7 +372,7 @@ const ColorScene = forwardRef(function ColorScene(
       return;
     }
     const p0 = { x: EYE.x - 6, y: EYE.y + 6 };
-    const p1 = { x: (EYE.x + CORTEX.x) / 2 - 6, y: EYE.y + 46 };
+    const p1 = { x: (EYE.x + CORTEX.x) / 2 - 6, y: EYE.y + 18 };
     const p2 = { x: CORTEX.x, y: CORTEX.y };
     for (const np of pulsesRef.current) {
       if (playing) np.progress += np.speed;
@@ -352,351 +397,6 @@ const ColorScene = forwardRef(function ColorScene(
       ctx.restore();
     }
     pulsesRef.current = pulsesRef.current.filter((np) => np.progress <= 1);
-  }
-
-  /* مسار حدود الوجه والرقبة (للتعبئة والقصّ والحدّ) */
-  function traceProfile(ctx, cx, cy) {
-    ctx.beginPath();
-    ctx.moveTo(cx + 60, cy - 116);
-    ctx.quadraticCurveTo(cx + 100, cy - 70, cx + 100, cy - 18);
-    ctx.quadraticCurveTo(cx + 101, cy - 6, cx + 90, cy + 1);
-    ctx.quadraticCurveTo(cx + 120, cy + 16, cx + 127, cy + 33);
-    ctx.quadraticCurveTo(cx + 128, cy + 44, cx + 100, cy + 47);
-    ctx.quadraticCurveTo(cx + 90, cy + 49, cx + 96, cy + 59);
-    ctx.quadraticCurveTo(cx + 106, cy + 63, cx + 93, cy + 73);
-    ctx.quadraticCurveTo(cx + 85, cy + 82, cx + 101, cy + 103);
-    ctx.quadraticCurveTo(cx + 96, cy + 123, cx + 54, cy + 129);
-    ctx.quadraticCurveTo(cx + 12, cy + 131, cx - 24, cy + 118);
-    ctx.quadraticCurveTo(cx - 17, cy + 150, cx - 15, cy + 186);
-    ctx.lineTo(cx - 94, cy + 186);
-    ctx.quadraticCurveTo(cx - 99, cy + 120, cx - 101, cy + 58);
-    ctx.quadraticCurveTo(cx - 112, cy + 8, cx - 104, cy - 46);
-    ctx.quadraticCurveTo(cx - 96, cy - 106, cx - 34, cy - 126);
-    ctx.quadraticCurveTo(cx + 8, cy - 140, cx + 60, cy - 116);
-    ctx.closePath();
-  }
-
-  /* ================= الرأس الجانبي + الكتف ================= */
-  function drawHead(ctx) {
-    const cx = HEAD_CENTER.x;
-    const cy = HEAD_CENTER.y;
-
-    // ---- القميص (تي-شيرت بياقة دائرية وكتفَين ناعمَين) ----
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(cx - 172, SCENE_H);
-    ctx.lineTo(cx - 172, cy + 194);
-    ctx.quadraticCurveTo(cx - 132, cy + 150, cx - 74, cy + 150);
-    ctx.quadraticCurveTo(cx - 40, cy + 150, cx - 20, cy + 178);
-    ctx.quadraticCurveTo(cx - 6, cy + 202, cx + 8, cy + 176);
-    ctx.quadraticCurveTo(cx + 28, cy + 150, cx + 72, cy + 150);
-    ctx.quadraticCurveTo(cx + 132, cy + 152, cx + 168, cy + 196);
-    ctx.lineTo(cx + 168, SCENE_H);
-    ctx.closePath();
-    const shirt = ctx.createLinearGradient(cx, cy + 150, cx, SCENE_H);
-    shirt.addColorStop(0, "#46ABA3");
-    shirt.addColorStop(1, "#2A716C");
-    ctx.fillStyle = shirt;
-    ctx.fill();
-    const shTop = ctx.createLinearGradient(cx, cy + 150, cx, cy + 212);
-    shTop.addColorStop(0, "rgba(0,0,0,0.14)");
-    shTop.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = shTop;
-    ctx.fill();
-    // ياقة دائرية
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(cx - 20, cy + 176);
-    ctx.quadraticCurveTo(cx - 6, cy + 198, cx + 8, cy + 174);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(0,0,0,0.14)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx - 23, cy + 171);
-    ctx.quadraticCurveTo(cx - 6, cy + 192, cx + 11, cy + 169);
-    ctx.stroke();
-    ctx.restore();
-
-    // ---- الرأس (بشرة) ----
-    ctx.save();
-    ctx.shadowColor = "rgba(30,40,60,0.18)";
-    ctx.shadowBlur = 22;
-    ctx.shadowOffsetY = 8;
-    traceProfile(ctx, cx, cy);
-    const skin = ctx.createLinearGradient(cx - 96, cy - 120, cx + 130, cy + 180);
-    skin.addColorStop(0, "#FDE4C7");
-    skin.addColorStop(0.5, "#F6CCA1");
-    skin.addColorStop(1, "#E7B184");
-    ctx.fillStyle = skin;
-    ctx.fill();
-    ctx.restore();
-
-    // ---- تظليل الوجه (مقصوص ضمن الملامح) ----
-    ctx.save();
-    traceProfile(ctx, cx, cy);
-    ctx.clip();
-    const jg = ctx.createLinearGradient(cx - 100, cy, cx + 46, cy);
-    jg.addColorStop(0, "rgba(150,92,56,0.3)");
-    jg.addColorStop(1, "rgba(150,92,56,0)");
-    ctx.fillStyle = jg;
-    ctx.fillRect(cx - 104, cy - 130, 156, 340);
-    ctx.fillStyle = "rgba(120,70,45,0.24)"; // ظلّ تحت الذقن
-    ctx.beginPath();
-    ctx.ellipse(cx - 8, cy + 122, 82, 26, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const cg = ctx.createRadialGradient(cx + 66, cy + 42, 4, cx + 66, cy + 42, 74);
-    cg.addColorStop(0, "rgba(255,242,224,0.55)");
-    cg.addColorStop(1, "rgba(255,242,224,0)");
-    ctx.fillStyle = cg; // إضاءة الخدّ
-    ctx.beginPath();
-    ctx.arc(cx + 66, cy + 42, 74, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(120,80,55,0.16)"; // محجر العين
-    ctx.beginPath();
-    ctx.ellipse(cx + 98, cy + 1, 24, 13, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(232,140,120,0.2)"; // احمرار الخدّ
-    ctx.beginPath();
-    ctx.ellipse(cx + 52, cy + 66, 16, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // ---- حدّ الوجه ----
-    ctx.save();
-    traceProfile(ctx, cx, cy);
-    ctx.strokeStyle = "rgba(120,80,50,0.34)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-
-    // ---- تفاصيل الأنف والفم ----
-    ctx.save();
-    ctx.strokeStyle = "rgba(120,75,50,0.5)";
-    ctx.lineWidth = 1.8;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(cx + 119, cy + 43);
-    ctx.quadraticCurveTo(cx + 111, cy + 48, cx + 104, cy + 44);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + 97, cy + 66);
-    ctx.quadraticCurveTo(cx + 102, cy + 68, cx + 95, cy + 70);
-    ctx.stroke();
-    ctx.restore();
-
-    // ---- الشعر (غطاء ممتلئ + خصلة أمامية + وميض) ----
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(cx + 66, cy - 98);
-    ctx.quadraticCurveTo(cx + 48, cy - 150, cx - 6, cy - 162);
-    ctx.quadraticCurveTo(cx - 74, cy - 178, cx - 114, cy - 118);
-    ctx.quadraticCurveTo(cx - 132, cy - 80, cx - 106, cy - 32);
-    ctx.quadraticCurveTo(cx - 96, cy - 46, cx - 84, cy - 40);
-    ctx.quadraticCurveTo(cx - 98, cy - 86, cx - 80, cy - 122);
-    ctx.quadraticCurveTo(cx - 38, cy - 150, cx + 8, cy - 146);
-    ctx.quadraticCurveTo(cx + 40, cy - 143, cx + 40, cy - 118); // خصلة أمامية
-    ctx.quadraticCurveTo(cx + 58, cy - 132, cx + 66, cy - 98);
-    ctx.closePath();
-    const hair = ctx.createLinearGradient(cx - 110, cy - 178, cx + 66, cy - 60);
-    hair.addColorStop(0, "#4C3A2A");
-    hair.addColorStop(1, "#281C12");
-    ctx.fillStyle = hair;
-    ctx.fill();
-    // وميض
-    ctx.strokeStyle = "rgba(180,140,95,0.35)";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(cx - 30, cy - 150);
-    ctx.quadraticCurveTo(cx - 78, cy - 138, cx - 100, cy - 96);
-    ctx.stroke();
-    // خصلات
-    ctx.strokeStyle = "rgba(20,14,8,0.3)";
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 4; i++) {
-      const sx = cx + 20 - i * 34;
-      ctx.beginPath();
-      ctx.moveTo(sx, cy - 150 + i * 3);
-      ctx.quadraticCurveTo(sx - 16, cy - 120, sx - 6, cy - 96);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // ---- الأذن ----
-    ctx.beginPath();
-    ctx.ellipse(cx - 2, cy + 26, 13, 19, -0.2, 0, Math.PI * 2);
-    ctx.fillStyle = "#F1C199";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(120,80,50,0.42)";
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx - 6, cy + 16);
-    ctx.quadraticCurveTo(cx + 4, cy + 26, cx - 4, cy + 36);
-    ctx.stroke();
-
-    // ---- الحاجب ----
-    ctx.strokeStyle = "#3A2B1E";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(cx + 62, cy + 4);
-    ctx.quadraticCurveTo(cx + 82, cy - 4, cx + 97, cy + 6);
-    ctx.stroke();
-  }
-
-  /* ================= العين ================= */
-  function drawEye(ctx, info) {
-    const ex = EYE.x;
-    const ey = EYE.y;
-    ctx.save();
-
-    // بياض العين (لوز)
-    ctx.beginPath();
-    ctx.moveTo(ex - 22, ey);
-    ctx.quadraticCurveTo(ex, ey - 15, ex + 22, ey);
-    ctx.quadraticCurveTo(ex, ey + 15, ex - 22, ey);
-    ctx.closePath();
-    ctx.fillStyle = "#FDFEFF";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(60,50,45,0.55)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // القزحية (تلتقط انعكاس اللون المُدرَك)
-    const irisX = ex + 8;
-    ctx.beginPath();
-    ctx.arc(irisX, ey, 10.5, 0, Math.PI * 2);
-    const iris = ctx.createRadialGradient(irisX, ey, 1, irisX, ey, 10.5);
-    const glow = info.total > 15 ? info.hex : "#5B7A99";
-    iris.addColorStop(0, glow);
-    iris.addColorStop(0.7, "#3C5A78");
-    iris.addColorStop(1, "#22364a");
-    ctx.fillStyle = iris;
-    ctx.fill();
-
-    // بؤبؤ
-    ctx.beginPath();
-    ctx.arc(irisX, ey, 4.6, 0, Math.PI * 2);
-    ctx.fillStyle = "#12181f";
-    ctx.fill();
-
-    // بريق
-    ctx.beginPath();
-    ctx.arc(irisX + 3, ey - 3, 2.1, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fill();
-
-    // جفن علوي رفيع
-    ctx.beginPath();
-    ctx.moveTo(ex - 22, ey);
-    ctx.quadraticCurveTo(ex, ey - 16, ex + 22, ey);
-    ctx.strokeStyle = "rgba(80,55,40,0.6)";
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  /* ================= الدماغ + القشرة البصرية ================= */
-  function drawBrain(ctx, info, t) {
-    const bx = HEAD_CENTER.x - 40;
-    const by = HEAD_CENTER.y - 58;
-    ctx.save();
-
-    // كتلة الدماغ
-    ctx.beginPath();
-    ctx.ellipse(bx, by, 66, 50, -0.12, 0, Math.PI * 2);
-    ctx.fillStyle = "#F7B7C6";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(150,60,80,0.5)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // تلافيف (gyri) — منحنيات متعرّجة
-    ctx.strokeStyle = "rgba(197,74,103,0.75)";
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    const folds = [
-      [-46, -8, -20, -26, 6, -12],
-      [-40, 14, -14, 2, 12, 16],
-      [4, -24, 26, -8, 44, -20],
-      [8, 8, 30, 22, 50, 8],
-      [-24, 30, 0, 20, 24, 32],
-    ];
-    for (const f of folds) {
-      ctx.beginPath();
-      ctx.moveTo(bx + f[0], by + f[1]);
-      ctx.quadraticCurveTo(bx + f[2], by + f[3], bx + f[4], by + f[5]);
-      ctx.stroke();
-    }
-    // شقّ منتصف الدماغ
-    ctx.strokeStyle = "rgba(150,60,80,0.4)";
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(bx - 2, by - 46);
-    ctx.quadraticCurveTo(bx + 6, by, bx - 4, by + 46);
-    ctx.stroke();
-
-    // المُخيخ الصغير (مؤخّرة سفلية)
-    ctx.beginPath();
-    ctx.ellipse(bx - 52, by + 34, 18, 14, 0.2, 0, Math.PI * 2);
-    ctx.fillStyle = "#EFA6B7";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(150,60,80,0.45)";
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    // القشرة البصرية (مؤخّرة الدماغ) تتوهّج باللون المُدرَك
-    if (info.total > 15) {
-      const pulse = 0.6 + Math.sin(t * 4) * 0.12;
-      ctx.save();
-      ctx.shadowColor = info.hex;
-      ctx.shadowBlur = 26 * pulse;
-      ctx.globalAlpha = 0.95;
-      ctx.beginPath();
-      ctx.arc(CORTEX.x, CORTEX.y, 17, 0, Math.PI * 2);
-      ctx.fillStyle = info.hex;
-      ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = "rgba(40,30,40,0.5)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(CORTEX.x, CORTEX.y, 17, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.arc(CORTEX.x, CORTEX.y, 15, 0, Math.PI * 2);
-      ctx.fillStyle = "#E79FB0";
-      ctx.fill();
-    }
-
-    // تسمية القشرة البصرية
-    ctx.fillStyle = "#5A3B46";
-    ctx.font = "700 12px 'IBM Plex Sans Arabic', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("القشرة البصرية", CORTEX.x - 2, CORTEX.y + 34);
-
-    ctx.restore();
-  }
-
-  /* ================= العصب البصري ================= */
-  function drawOpticNerve(ctx, info) {
-    const active = info.total > 15;
-    ctx.save();
-    ctx.strokeStyle = active ? "#EAB308" : "#C9B48A";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(EYE.x - 6, EYE.y + 6);
-    ctx.quadraticCurveTo((EYE.x + CORTEX.x) / 2 - 6, EYE.y + 46, CORTEX.x, CORTEX.y);
-    ctx.stroke();
-    // غلاف أفتح
-    ctx.strokeStyle = active ? "rgba(250,220,120,0.55)" : "rgba(220,205,170,0.5)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
   }
 
   /* ================= الكشّافات المائلة =================
@@ -838,17 +538,17 @@ const ColorScene = forwardRef(function ColorScene(
 
   /* ================= فقاعة الإدراك (سحابة تفكير) ================= */
   function drawThoughtBubble(ctx, info, t) {
-    const cx = HEAD_CENTER.x + 12;
-    const cy = 82;
+    const cx = BUBBLE_CENTER.x;
+    const cy = BUBBLE_CENTER.y;
     const active = info.total > 15;
     ctx.save();
     ctx.textBaseline = "alphabetic";
 
-    // نقاط التفكير الصاعدة من الرأس إلى السحابة (تكبر تدريجياً)
+    // نقاط التفكير الصاعدة من أعلى الرأس/القشرة البصرية إلى السحابة
     const dots = [
-      { x: HEAD_CENTER.x - 26, y: HEAD_CENTER.y - 118, r: 5 },
-      { x: HEAD_CENTER.x - 14, y: HEAD_CENTER.y - 140, r: 8 },
-      { x: HEAD_CENTER.x - 4, y: HEAD_CENTER.y - 164, r: 12 },
+      { x: CORTEX.x - 6, y: CORTEX.y - 70, r: 5 },
+      { x: CORTEX.x - 40, y: CORTEX.y - 100, r: 8 },
+      { x: cx + 60, y: cy + 48, r: 12 },
     ];
     dots.forEach((d) => {
       ctx.beginPath();

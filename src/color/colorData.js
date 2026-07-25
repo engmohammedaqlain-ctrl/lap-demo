@@ -14,7 +14,7 @@ export const FLASHLIGHTS = [
     rgb: [226, 59, 59],
     glow: "rgba(226, 59, 59, 0.3)",
     particleColor: "#F05252",
-    y: 108,
+    y: 96,
     wavelength: 700,
   },
   {
@@ -25,7 +25,7 @@ export const FLASHLIGHTS = [
     rgb: [34, 176, 75],
     glow: "rgba(34, 176, 75, 0.3)",
     particleColor: "#2ECC5B",
-    y: 262,
+    y: 235,
     wavelength: 530,
   },
   {
@@ -36,16 +36,20 @@ export const FLASHLIGHTS = [
     rgb: [47, 111, 224],
     glow: "rgba(47, 111, 224, 0.3)",
     particleColor: "#4A86F0",
-    y: 416,
+    y: 360,
     wavelength: 470,
   },
 ];
 
-/* هندسة المشهد الجديدة: رأس جانبي يواجه اليمين، عين أمامية، وكشافات مائلة
-   على اليمين تتجمّع أشعّتها في العين. */
-export const HEAD_CENTER = { x: 268, y: 258 };
-export const EYE_CENTER = { x: 372, y: 256 };
-export const BULB_LENS_X = 800; // مقدّمة عدسة الكشاف (منها تنطلق الفوتونات)
+/* هندسة المشهد: صورة الشخص التشريحية تُرسم في اليسار، وكشّافات مائلة على
+   اليمين تتجمّع أشعّتها في العين. الإحداثيات بمقياس اللوحة (1000×540).
+   PERSON: تحويل رسم الصورة (مقياس وإزاحة). EYE/CORTEX: مواضع بؤبؤ العين
+   والقشرة البصرية داخل المشهد بعد التحويل. */
+export const PERSON = { scale: 0.6, dx: -66, dy: 29 };
+export const EYE_CENTER = { x: 535, y: 231 };
+export const CORTEX_CENTER = { x: 332, y: 214 };
+export const BULB_LENS_X = 848; // مقدّمة عدسة الكشّاف (منها تنطلق الفوتونات)
+export const BUBBLE_CENTER = { x: 150, y: 110 };
 
 export const CLAMP = (v, min, max) => Math.max(min, Math.min(max, v));
 
