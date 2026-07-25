@@ -53,7 +53,7 @@ export default function ColorApp({ onHome }) {
       {/* Header — ستايل فاتح أنيق بدون إيموجي */}
       <header className="color-header">
         <button type="button" className="color-btn-home" onClick={onHome}>
-          الرئيسية
+          🏠 الرئيسية
         </button>
         <div className="color-header-title">
           <h1>رؤية الألوان وكيف يراها الدماغ</h1>
