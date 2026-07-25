@@ -1,5 +1,5 @@
 /**
- * ColorApp.jsx — واجهة مينيمال حديثة وممركّزة لتجربة رؤية الألوان (Minimal Focused UI)
+ * ColorApp.jsx — واجهة فاتحة أنيقة، التحكم المباشر من العرض بدون محددات أسفله وبدون إيموجي.
  */
 import { useState, useRef } from "react";
 import ColorScene from "./ColorScene.jsx";
@@ -14,7 +14,7 @@ export default function ColorApp({ onHome }) {
   const [gVal, setGVal] = useState(100);
   const [bVal, setBVal] = useState(100);
 
-  // حالات العرض المينيمال
+  // حالات العرض
   const [isPlaying, setIsPlaying] = useState(true);
   const [beamMode, setBeamMode] = useState("particles"); // "particles" | "waves" | "solid"
   const [visionMode, setVisionMode] = useState("normal"); // "normal" | "protanopia" | "deuteranopia" | "tritanopia"
@@ -23,18 +23,17 @@ export default function ColorApp({ onHome }) {
 
   const [statusInfo, setStatusInfo] = useState({
     hex: "#FFFFFF",
-    arabicName: "أبيض ناصع",
+    arabicName: "أبيض",
     wavelengthNm: 550,
     r: 255,
     g: 255,
     b: 255,
   });
 
-  const handleSlider = (type, val) => {
-    const num = Number(val);
-    if (type === "r") setRVal(num);
-    if (type === "g") setGVal(num);
-    if (type === "b") setBVal(num);
+  const handleValChangeFromCanvas = (id, val) => {
+    if (id === "red") setRVal(val);
+    if (id === "green") setGVal(val);
+    if (id === "blue") setBVal(val);
   };
 
   const handleReset = () => {
@@ -51,92 +50,42 @@ export default function ColorApp({ onHome }) {
 
   return (
     <div className="color-app">
-      {/* Header — مينيمال أنيق */}
+      {/* Header — ستايل فاتح أنيق بدون إيموجي */}
       <header className="color-header">
         <button type="button" className="color-btn-home" onClick={onHome}>
-          ← الرئيسية
+          الرئيسية
         </button>
         <div className="color-header-title">
           <h1>رؤية الألوان وكيف يراها الدماغ</h1>
         </div>
         <button type="button" className="color-btn-home" onClick={handleReset}>
-          🔄 إعادة ضبط
+          إعادة ضبط
         </button>
       </header>
 
-      {/* Main Container — مُمَركَز بدون تشتيت */}
-      <main className="color-body-minimal">
-        {/* اللوحة الرئيسية (Canvas Centerpiece) */}
-        <ColorScene
-          ref={sceneRef}
-          rVal={rVal}
-          gVal={gVal}
-          bVal={bVal}
-          isPlaying={isPlaying}
-          beamMode={beamMode}
-          visionMode={visionMode}
-          showConesZoom={false}
-          filterEnabled={filterEnabled}
-          filterColor={filterColor}
-          onStatus={setStatusInfo}
-        />
-
-        {/* Sliders Compact Panel — تحكم مبسط بكشافات الضوء الثلاثية */}
-        <div className="color-minimal-controls">
-          {/* أحمر */}
-          <div className="color-slider-minimal">
-            <div className="color-slider-top">
-              <span>🔴 كشاف أحمر</span>
-              <span style={{ color: "#ef4444" }}>{rVal}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={rVal}
-              onChange={(e) => handleSlider("r", e.target.value)}
-              className="color-range"
-              style={{ accentColor: "#ef4444" }}
-            />
-          </div>
-
-          {/* أخضر */}
-          <div className="color-slider-minimal">
-            <div className="color-slider-top">
-              <span>🟢 كشاف أخضر</span>
-              <span style={{ color: "#22c55e" }}>{gVal}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={gVal}
-              onChange={(e) => handleSlider("g", e.target.value)}
-              className="color-range"
-              style={{ accentColor: "#22c55e" }}
-            />
-          </div>
-
-          {/* أزرق */}
-          <div className="color-slider-minimal">
-            <div className="color-slider-top">
-              <span>🔵 كشاف أزرق</span>
-              <span style={{ color: "#3b82f6" }}>{bVal}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={bVal}
-              onChange={(e) => handleSlider("b", e.target.value)}
-              className="color-range"
-              style={{ accentColor: "#3b82f6" }}
-            />
+      {/* Main Container — التحكم المباشر من العرض نفسه */}
+      <main className="color-body-light">
+        <div className="color-scene-container">
+          <ColorScene
+            ref={sceneRef}
+            rVal={rVal}
+            gVal={gVal}
+            bVal={bVal}
+            onValChange={handleValChangeFromCanvas}
+            isPlaying={isPlaying}
+            beamMode={beamMode}
+            visionMode={visionMode}
+            filterEnabled={filterEnabled}
+            filterColor={filterColor}
+            onStatus={setStatusInfo}
+          />
+          <div className="color-canvas-hint">
+            اسحب المقابض مباشرة على الكشافات فوق العرض للتحكم بالشدة
           </div>
         </div>
 
-        {/* Minimal Toolbar — خيارات العرض بحبوب أنيقة (Pill Group) */}
-        <div className="color-minimal-toolbar">
+        {/* أدوات التحكم العلوية والخيارات (Pills & Controls) بدون إيموجي */}
+        <div className="color-toolbar-light">
           {/* نمط الضوء */}
           <div className="color-pill-group">
             <button
@@ -166,34 +115,34 @@ export default function ColorApp({ onHome }) {
           <select
             value={visionMode}
             onChange={(e) => setVisionMode(e.target.value)}
-            className="color-select-minimal"
+            className="color-select-light"
           >
-            <option value="normal">👁️ رؤية طبيعية</option>
-            <option value="protanopia">👁️ عمى الأحمر (Protanopia)</option>
-            <option value="deuteranopia">👁️ عمى الأخضر (Deuteranopia)</option>
-            <option value="tritanopia">👁️ عمى الأزرق (Tritanopia)</option>
+            <option value="normal">رؤية طبيعية</option>
+            <option value="protanopia">عمى الأحمر (Protanopia)</option>
+            <option value="deuteranopia">عمى الأخضر (Deuteranopia)</option>
+            <option value="tritanopia">عمى الأزرق (Tritanopia)</option>
           </select>
 
-          {/* الفلتر الضوئي */}
+          {/* المرشح الضوئي */}
           <div className="color-pill-group">
             <button
               type="button"
               className={`color-pill-btn ${filterEnabled ? "active" : ""}`}
               onClick={() => setFilterEnabled(!filterEnabled)}
             >
-              {filterEnabled ? "🛡️ الفلتر مفعل" : "🛡️ تفعيل مرشح ضوئي"}
+              {filterEnabled ? "المرشح مفعل" : "تفعيل مرشح ضوئي"}
             </button>
             {filterEnabled && (
               <select
                 value={filterColor}
                 onChange={(e) => setFilterColor(e.target.value)}
-                className="color-select-minimal"
+                className="color-select-light"
                 style={{ border: "none", background: "transparent" }}
               >
-                <option value="red">مرشح أحمر</option>
-                <option value="green">مرشح أخضر</option>
-                <option value="blue">مرشح أزرق</option>
-                <option value="yellow">مرشح أصفر</option>
+                <option value="red">أحمر</option>
+                <option value="green">أخضر</option>
+                <option value="blue">أزرق</option>
+                <option value="yellow">أصفر</option>
               </select>
             )}
           </div>
@@ -204,16 +153,16 @@ export default function ColorApp({ onHome }) {
             className={`color-pill-btn ${isPlaying ? "active" : ""}`}
             onClick={() => setIsPlaying(!isPlaying)}
           >
-            {isPlaying ? "⏸️ إيقاف" : "▶️ تشغيل"}
+            {isPlaying ? "إيقاف" : "تشغيل"}
           </button>
         </div>
 
-        {/* Minimal Status Strip — نتائج مركزة وموجزة */}
-        <div className="color-status-strip">
+        {/* شريط نتائج رفيع وناصع */}
+        <div className="color-status-strip-light">
           <span>اللون المدرك: <strong style={{ color: statusInfo.hex }}>{statusInfo.arabicName}</strong></span>
-          <span>رمز HEX: <strong>{statusInfo.hex.toUpperCase()}</strong></span>
+          <span>HEX: <strong>{statusInfo.hex.toUpperCase()}</strong></span>
           <span>الطول الموجي: <strong>{statusInfo.wavelengthNm}nm</strong></span>
-          <span>شفرة RGB: <strong>({statusInfo.r}, {statusInfo.g}, {statusInfo.b})</strong></span>
+          <span>RGB: <strong>({statusInfo.r}, {statusInfo.g}, {statusInfo.b})</strong></span>
         </div>
       </main>
     </div>

@@ -1,79 +1,82 @@
 /**
- * color.css — تصميم بسيط، مينيمال، حديث وممركز (Minimalist Modern UI)
+ * color.css — ستايل فاتح (Light Theme)، مينيمال وأنيق بدون إيموجي
  */
 
 .color-app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #090c15;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   user-select: none;
 }
 
-/* Header — مينيمال أنيق */
+/* Header — ستايل فاتح أنيق */
 .color-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: rgba(13, 17, 26, 0.85);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .color-btn-home {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .color-btn-home:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #E2E8F0;
+  color: #0F172A;
 }
 
 .color-header-title h1 {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: #f8fafc;
+  font-weight: 700;
+  color: #0F172A;
 }
 
-/* Main Layout — مُمَركَز بدون شريط جانبي ضخم */
-.color-body-minimal {
+/* Container */
+.color-body-light {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   padding: 24px;
-  max-width: 1080px;
+  max-width: 1040px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Canvas Box — بؤرة التركيز الرئيسية */
+.color-scene-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .color-scene-wrapper {
   position: relative;
   width: 100%;
-  background: #05070d;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
 .color-canvas {
@@ -81,141 +84,91 @@
   width: 100%;
   height: auto;
   aspect-ratio: 1000 / 540;
+  cursor: pointer;
 }
 
-/* Floating Control Panel — لوحة تحكم مدمجة أنيقة */
-.color-minimal-controls {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  width: 100%;
-  background: rgba(15, 20, 32, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px 20px;
-  box-sizing: border-box;
-}
-
-@media (max-width: 850px) {
-  .color-minimal-controls {
-    grid-template-columns: 1fr;
-  }
-}
-
-.color-slider-minimal {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.color-slider-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
+.color-canvas-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748B;
   font-weight: 500;
-  color: #cbd5e1;
 }
 
-.color-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  outline: none;
-  cursor: pointer;
-}
-
-.color-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.color-range::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
-/* Toolbar & Toggles — شريط خيارات مينيمال بدون تكرار */
-.color-minimal-toolbar {
+/* Toolbar Light */
+.color-toolbar-light {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .color-pill-group {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
   padding: 3px;
   gap: 2px;
 }
 
 .color-pill-btn {
-  padding: 6px 12px;
+  padding: 6px 14px;
   background: transparent;
-  color: #94a3b8;
+  color: #64748B;
   border: none;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .color-pill-btn:hover {
-  color: #f8fafc;
+  color: #0F172A;
 }
 
 .color-pill-btn.active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: #FFFFFF;
+  color: #2563EB;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* Dropdown Minimal */
-.color-select-minimal {
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.color-select-light {
+  padding: 8px 14px;
+  background: #F1F5F9;
+  color: #0F172A;
+  border: 1px solid #CBD5E1;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   outline: none;
   cursor: pointer;
 }
 
-/* Info Strip — شريط نتائج رفيع ومركز */
-.color-status-strip {
+/* Status Strip */
+.color-status-strip-light {
   display: flex;
   align-items: center;
   justify-content: space-around;
   width: 100%;
-  padding: 12px 20px;
-  background: rgba(15, 20, 32, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 14px 20px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
   border-radius: 12px;
-  font-size: 13px;
-  color: #94a3b8;
+  font-size: 14px;
+  color: #475569;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
-.color-status-strip strong {
-  color: #f1f5f9;
+.color-status-strip-light strong {
+  color: #0F172A;
   font-family: monospace;
-  font-size: 14px;
 }
