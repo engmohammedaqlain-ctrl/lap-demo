@@ -1,0 +1,374 @@
+/* ===== تجربة «رحلة داخل الخلية» (v2) — ثيم الموقع الفاتح، بلا سكرول ===== */
+.cl-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;              /* بلا سكرول للصفحة على أي جهاز */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background:
+    var(--keffiyeh),
+    radial-gradient(circle at 50% -10%, #ffffff 0%, var(--ps-cream) 45%, #f0e8d8 100%);
+  color: var(--ps-black);
+}
+.cl-stage:fullscreen { padding: 14px 16px; }
+
+/* ---- شريط علوي ---- */
+.cl-topbar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cl-home-btn,
+.cl-help-btn,
+.cl-sound-btn,
+.cl-fs-btn {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-weight: 700;
+  border: 1.5px solid rgba(194, 24, 91, 0.35);
+  background: #fff;
+  color: #c2185b;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+.cl-home-btn { font-size: 0.9rem; border-radius: 22px; padding: 7px 14px; }
+.cl-help-btn,
+.cl-sound-btn,
+.cl-fs-btn { width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 1rem; }
+.cl-help-btn { font-weight: 800; }
+.cl-home-btn:hover,
+.cl-help-btn:hover,
+.cl-sound-btn:hover,
+.cl-fs-btn:hover { background: rgba(194, 24, 91, 0.09); transform: translateY(-1px); }
+.cl-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.cl-title { text-align: center; }
+.cl-title-main { font-size: clamp(1.05rem, 3.4vw, 1.45rem); font-weight: 700; color: #ad1457; }
+
+/* ---- شريط الأدوات ---- */
+.cl-controls { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; }
+.cl-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(194, 24, 91, 0.2);
+}
+.cl-seg-btn {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #7a5566;
+  border: none;
+  background: transparent;
+  border-radius: 20px;
+  padding: 7px 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.cl-seg-btn.active { background: #c2185b; color: #fff; box-shadow: 0 2px 8px rgba(194, 24, 91, 0.35); }
+.cl-reset {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 8px 13px;
+  cursor: pointer;
+  border: 1.5px dashed rgba(181, 82, 42, 0.5);
+  background: #fff;
+  color: var(--ps-terracotta);
+  transition: background 0.14s, transform 0.12s;
+}
+.cl-reset:hover { transform: translateY(-1px); background: rgba(181, 82, 42, 0.08); }
+
+/* ---- تخطيط التجربة: يملأ المتبقّي بلا سكرول ---- */
+.cl-experiment {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+.cl-scene-col { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.cl-scene-card {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background: #0a0710;
+  border-radius: 16px;
+  border: 1px solid rgba(194, 24, 91, 0.28);
+  box-shadow: 0 10px 40px rgba(60, 10, 40, 0.35), inset 0 0 80px rgba(0, 0, 0, 0.5);
+  padding: 0;
+  overflow: hidden;
+}
+.cl-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+/* لمعان زجاجي فخم فوق الإطار */
+.cl-scene-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.06), transparent 60%);
+}
+/* ملء شاشة المشهد نفسه: يملأ الشاشة بالكامل */
+.cl-scene-card:fullscreen {
+  border-radius: 0;
+  padding: 0;
+  border: none;
+}
+.cl-scene-card:fullscreen::after { border-radius: 0; }
+.cl-canvas:active { cursor: grabbing; }
+.cl-scene-hint { flex-shrink: 0; font-size: 0.74rem; color: #9a6a80; font-weight: 600; text-align: center; }
+
+/* ---- أزرار عائمة فوق المشهد ---- */
+.cl-dive-btn,
+.cl-back-btn {
+  position: absolute;
+  top: 12px;
+  z-index: 6;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border-radius: 22px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s, filter 0.12s;
+}
+.cl-dive-btn {
+  right: 12px;
+  background: linear-gradient(135deg, #7e57c2, #c2185b);
+  animation: cl-glow 1.8s ease-in-out infinite;
+}
+.cl-back-btn { left: 12px; background: linear-gradient(135deg, #455a64, #263238); }
+.cl-dive-btn:hover,
+.cl-back-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+@keyframes cl-glow {
+  0%, 100% { box-shadow: 0 6px 18px rgba(126, 87, 194, 0.5); }
+  50% { box-shadow: 0 6px 30px rgba(194, 24, 91, 0.85); }
+}
+
+/* ---- اللوحة التفسيرية (عمود جانبي يفيت بلا سكرول للصفحة) ---- */
+.cl-info {
+  flex: 0 0 320px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 2px;
+}
+
+.cl-zoom-card {
+  background: #fff;
+  border: 1px solid rgba(194, 24, 91, 0.18);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-zoom-stage { font-size: 0.95rem; font-weight: 700; color: #ad1457; }
+.cl-zoom-mag { font-size: 0.72rem; color: #9a6a80; font-variant-numeric: tabular-nums; }
+.cl-zoom-bar { height: 6px; border-radius: 4px; background: rgba(194, 24, 91, 0.12); overflow: hidden; }
+.cl-zoom-fill { height: 100%; background: linear-gradient(90deg, #7e57c2, #f06292); transition: width 0.2s ease; }
+
+.cl-tooltip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: rgba(126, 87, 194, 0.1);
+  border: 1px solid rgba(126, 87, 194, 0.3);
+  border-radius: 14px;
+  padding: 11px 13px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #4a3a52;
+}
+.cl-tooltip b { color: #5e35b1; }
+.cl-tooltip-emoji { font-size: 1.15rem; flex-shrink: 0; }
+
+.cl-diff-card {
+  background: #fff;
+  border: 1px solid rgba(194, 24, 91, 0.18);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cl-diff-head { font-size: 0.8rem; font-weight: 700; color: #ad1457; }
+.cl-diff-item { font-size: 0.78rem; color: #5a4650; display: flex; align-items: center; gap: 8px; }
+.cl-diff-emoji { flex-shrink: 0; }
+
+.cl-explore-hint {
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: #7a5566;
+  background: rgba(194, 24, 91, 0.06);
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+
+.cl-organelle-card {
+  background: linear-gradient(160deg, rgba(240, 98, 146, 0.12), rgba(126, 87, 194, 0.1));
+  border: 1px solid rgba(194, 24, 91, 0.4);
+  border-radius: 16px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  animation: cl-pop 0.28s ease;
+}
+@keyframes cl-pop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.cl-org-name { font-size: 1.2rem; font-weight: 700; color: #ad1457; }
+.cl-org-latin { font-size: 0.7rem; color: #9a6a80; letter-spacing: 0.02em; }
+.cl-org-func { font-size: 0.87rem; line-height: 1.65; color: #3a2e34; margin-top: 4px; }
+.cl-org-anim { font-size: 0.8rem; line-height: 1.55; color: #b5522a; }
+.cl-org-hint { font-size: 0.7rem; color: #9a6a80; margin-top: 2px; }
+
+.cl-perf { font-size: 0.68rem; color: #9a8290; display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
+.cl-perf-note { color: #b5522a; }
+
+/* ---- شريط التحدّي (فوق المشهد) ---- */
+.cl-challenge {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  line-height: 1.5;
+  background: rgba(255, 252, 250, 0.96);
+  border: 1.5px solid rgba(194, 24, 91, 0.4);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.25);
+}
+.cl-challenge.tone-correct { border-color: #43a047; }
+.cl-challenge.tone-wrong { border-color: #fb8c00; }
+.cl-ch-top { display: flex; justify-content: space-between; align-items: center; }
+.cl-ch-badge { font-size: 0.7rem; font-weight: 700; color: #ad1457; background: rgba(194, 24, 91, 0.12); padding: 3px 10px; border-radius: 12px; }
+.cl-ch-score { font-size: 0.7rem; color: #2e7d32; font-weight: 700; }
+.cl-ch-question { font-size: 0.87rem; color: #3a2e34; }
+.cl-ch-question b { color: #ad1457; }
+.cl-ch-feedback { font-size: 0.8rem; color: #b5522a; font-weight: 600; }
+.cl-ch-feedback.muted { color: #9a6a80; font-weight: 500; }
+.cl-ch-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cl-ch-attempts { font-size: 0.7rem; color: #9a6a80; }
+.cl-ch-skip {
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c2185b;
+  background: transparent;
+  border: 1px solid rgba(194, 24, 91, 0.45);
+  border-radius: 14px;
+  padding: 5px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cl-ch-skip:hover { background: rgba(194, 24, 91, 0.09); }
+
+/* ---- نافذة الشرح ---- */
+.cl-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(30, 12, 22, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.cl-help-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(84dvh, 720px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--ps-cream);
+  background-image: var(--keffiyeh);
+  border-radius: 16px;
+  border-top: 5px solid #c2185b;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+  padding: 22px 22px 26px;
+  direction: rtl;
+  color: var(--ps-black);
+}
+.cl-help-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--ps-black);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.cl-help-close:hover { background: rgba(0, 0, 0, 0.16); }
+.cl-help-title { font-size: 1.3rem; font-weight: 700; color: #ad1457; margin-bottom: 2px; padding-left: 36px; }
+.cl-help-sub { font-size: 0.82rem; font-weight: 600; color: var(--ps-terracotta); }
+.cl-help-intro {
+  font-size: 0.85rem;
+  line-height: 1.75;
+  color: #3a3a3a;
+  margin: 14px 0;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed rgba(194, 24, 91, 0.3);
+}
+.cl-help-section { margin-bottom: 16px; }
+.cl-help-section h3 { font-size: 0.9rem; font-weight: 700; color: #ad1457; margin-bottom: 8px; }
+.cl-help-note { font-size: 0.82rem; line-height: 1.7; color: #3a3a3a; }
+.cl-help-note b { color: #b5522a; }
+.cl-help-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.cl-help-list li { font-size: 0.82rem; line-height: 1.6; color: #3a3a3a; padding-right: 16px; position: relative; }
+.cl-help-list li::before { content: "•"; position: absolute; right: 0; color: #f06292; font-weight: 700; }
+
+/* ---- استجابة: جوال/شاشات ضيقة → عمود، مع سكرول داخلي لكل جزء ---- */
+@media (max-width: 820px) {
+  .cl-experiment { flex-direction: column; }
+  .cl-scene-col { flex: 1 1 60%; }
+  .cl-info {
+    flex: 0 0 auto;
+    max-height: 34%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+  .cl-info > * { flex: 0 0 78%; min-width: 220px; }
+  .cl-seg-btn { font-size: 0.72rem; padding: 6px 10px; }
+}
+
+@media (max-width: 480px) {
+  .cl-title-main { font-size: 1.05rem; }
+  .cl-dive-btn, .cl-back-btn { font-size: 0.74rem; padding: 8px 12px; top: 8px; }
+}
+
+/* ---- احترام تقليل الحركة ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cl-organelle-card { animation: none; }
+  .cl-dive-btn { animation: none; }
+  .cl-zoom-fill { transition: none; }
+}
