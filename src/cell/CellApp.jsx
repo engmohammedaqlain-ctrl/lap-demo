@@ -44,18 +44,19 @@ export default function CellApp({ onHome }) {
 
   const sceneRef = useRef(null);
   const stageRef = useRef(null);
+  const sceneCardRef = useRef(null);
   const advanceTimer = useRef(0);
 
   const onFocus = useCallback((f) => setFocus(f), []);
 
-  /* ملء الشاشة */
+  /* ملء شاشة المشهد نفسه (لا الموقع) */
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
   function toggleFullscreen() {
-    const el = stageRef.current;
+    const el = sceneCardRef.current;
     if (!document.fullscreenElement) el?.requestFullscreen?.().catch(() => {});
     else document.exitFullscreen?.();
     click();
@@ -170,8 +171,8 @@ export default function CellApp({ onHome }) {
             type="button"
             className="cl-fs-btn"
             onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
-            title={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+            aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء شاشة المشهد"}
+            title={isFullscreen ? "إنهاء ملء الشاشة" : "ملء شاشة المشهد"}
           >
             {isFullscreen ? "🗗" : "⛶"}
           </button>
@@ -210,7 +211,7 @@ export default function CellApp({ onHome }) {
 
       <div className="cl-experiment">
         <div className="cl-scene-col">
-          <div className="cl-scene-card">
+          <div className="cl-scene-card" ref={sceneCardRef}>
             <CellScene
               ref={sceneRef}
               cellType={cellType}

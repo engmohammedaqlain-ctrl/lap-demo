@@ -33,10 +33,7 @@ import {
 } from "./cellData.js";
 import { CellSound } from "./cellAudio.js";
 import onionUrl from "./assets/onion.jpg";
-// صورة وجه حقيقية اختيارية: ضع ملفاً باسم face.jpg في مجلد assets ثم فعّل
-// السطر التالي (وحده) وستُستخدم تلقائياً بدل الوجه الإجرائي:
-// import faceUrl from "./assets/face.jpg";
-const faceUrl = null;
+import faceUrl from "./assets/face.jpg";
 
 const CELL_FIT = Math.min(SCENE_W, SCENE_H) / (2 * CELL_R);
 const CONFINE_R = CELL_R * 0.94;
@@ -46,6 +43,23 @@ const insideProgress = (p) => {
   return t * t * (3 - 2 * t);
 };
 const worldScaleFor = (p) => CELL_FIT * 0.92 * LERP(0.82, 2.45, insideProgress(p));
+
+/* جدولة المقدّمة السينمائية (بالثواني) — مهل تُظهر الوجه/البصلة والحدّ بوضوح */
+const seg = (t, t0, t1, p0, p1) => {
+  const u = CLAMP((t - t0) / (t1 - t0), 0, 1);
+  return LERP(p0, p1, u * u * (3 - 2 * u));
+};
+function introSchedule(t) {
+  if (t < 1.6) return seg(t, 0, 1.6, 0.02, 0.05); // لبث على الوجه/البصلة الكاملة
+  if (t < 3.5) return seg(t, 1.6, 3.5, 0.05, 0.24); // الغوص في النقطة (الخدّ/القشرة)
+  if (t < 4.9) return seg(t, 3.5, 4.9, 0.24, 0.5); // نسيج الخلايا
+  if (t < 6.1) return seg(t, 4.9, 6.1, 0.5, 0.6); // اقتراب بطيء من حدّ المجهر
+  if (t < 7.1) return seg(t, 6.1, 7.1, 0.6, 0.62); // لبث درامي عند الحدّ
+  return seg(t, 7.1, 8.9, 0.62, 0.82); // انفجار الدخول
+}
+
+/* العضيّات المصمتة (تملأ محيطها) — تتلقّى طبقة اللمعان/العمق دون الخطّية */
+const SOLID_ORG = new Set(["nucleus", "mito", "lysosome", "vacuole", "chloroplast"]);
 
 function stageLabel(p) {
   if (p < 0.2) return "المقدّمة";
@@ -134,6 +148,7 @@ function makeSim(cellType, reduced) {
     prevP: reduced ? 0.82 : 0.0,
     zoomVel: 0,
     autoplay: !reduced,
+    autoT: 0,
     panX: 0,
     panY: 0,
     organelles: buildOrganelles(cellType),
@@ -185,11 +200,12 @@ const CellScene = forwardRef(function CellScene(
     resetView() {
       const s = simRef.current;
       const reduced = propsRef.current.reducedMotion;
-      s.p = reduced ? 0.82 : 0.02;
+      s.p = reduced ? 0.82 : 0.0;
       s.pTarget = 0.82;
       s.panX = 0;
       s.panY = 0;
       s.autoplay = !reduced;
+      s.autoT = 0;
       s.limitCrossed = reduced;
       s.focusId = null;
       s.diveP = 0;
@@ -279,12 +295,13 @@ const CellScene = forwardRef(function CellScene(
     const animDt = reduced ? 0 : dt;
     sim.t += animDt;
 
-    // الزووم
+    // الزووم — مقدّمة سينمائية مجدولة بمهل كافية لرؤية الوجه/البصلة ولافتة المجهر
     sim.prevP = sim.p;
     if (sim.autoplay) {
-      const nearLimit = Math.abs(sim.p - MICRO_LIMIT_P) < 0.06;
-      sim.p += (sim.pTarget - sim.p) * (nearLimit ? 0.055 : 0.14);
-      if (Math.abs(sim.p - sim.pTarget) < 0.002) sim.autoplay = false;
+      sim.autoT += dt / 60; // ثوانٍ
+      sim.p = introSchedule(sim.autoT);
+      sim.pTarget = sim.p;
+      if (sim.autoT > 8.9) sim.autoplay = false;
     } else {
       const nearLimit = Math.abs(sim.p - MICRO_LIMIT_P) < 0.05;
       sim.p += (sim.pTarget - sim.p) * (nearLimit ? 0.06 : 0.18);
@@ -528,7 +545,7 @@ const CellScene = forwardRef(function CellScene(
       else drawOnion(ctx, sim, gp);
     } else {
       const img = imagesRef.current.face;
-      if (img) drawPhotoIntro(ctx, sim, gp, img, 0.62, 0.55, "الخدّ");
+      if (img) drawPhotoIntro(ctx, sim, gp, img, 0.52, 0.46, "الخدّ");
       else drawFace(ctx, sim, gp);
     }
     ctx.restore();
@@ -541,39 +558,40 @@ const CellScene = forwardRef(function CellScene(
     const fit = Math.max((SCENE_W * 1.02) / iw, (SCENE_H * 1.02) / ih); // cover التصميم
     const w = iw * fit;
     const h = ih * fit;
-    const px = CX + (fx - 0.5) * w * 0.6; // نقطة الغوص
-    const py = CY + (fy - 0.5) * h * 0.6;
+    // ضع نقطة التركيز (fx,fy) داخل الصورة في مركز الشاشة، ثم كبّر حولها
+    const ox = CX - fx * w;
+    const oy = CY - fy * h;
     const scale = LERP(1, 6.5, gp * gp);
     ctx.save();
-    ctx.translate(px, py);
+    ctx.translate(CX, CY);
     ctx.scale(scale, scale);
-    ctx.translate(-px, -py);
-    ctx.drawImage(img, CX - w / 2, CY - h / 2, w, h);
-    // تدرّج حيوي خفيف يوحّدها مع ثيم المشهد
-    const vg = ctx.createRadialGradient(px, py, 10, px, py, Math.max(w, h) * 0.6);
+    ctx.translate(-CX, -CY);
+    ctx.drawImage(img, ox, oy, w, h);
+    const vg = ctx.createRadialGradient(CX, CY, 10, CX, CY, Math.max(w, h) * 0.6);
     vg.addColorStop(0, "rgba(255,220,150,0.05)");
-    vg.addColorStop(1, "rgba(20,10,20,0.35)");
+    vg.addColorStop(1, "rgba(20,10,20,0.32)");
     ctx.fillStyle = vg;
-    ctx.fillRect(CX - w / 2, CY - h / 2, w, h);
+    ctx.fillRect(ox, oy, w, h);
     ctx.restore();
-    // حلقة تحديد نابضة على نقطة الغوص + لافتة
+    // حلقة تحديد نابضة + لافتة على نقطة الغوص (مركز الشاشة)
     const pulse = 0.5 + 0.5 * Math.sin(sim.t * 3);
     ctx.save();
     ctx.globalAlpha = 1 - gp;
-    ctx.strokeStyle = `rgba(255,255,255,${0.5 + pulse * 0.4})`;
+    ctx.strokeStyle = `rgba(255,255,255,${0.6 + pulse * 0.4})`;
     ctx.lineWidth = 3;
-    ctx.setLineDash([6, 8]);
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 6;
+    ctx.setLineDash([7, 9]);
     ctx.beginPath();
-    ctx.arc(px, py, 40 + pulse * 6, 0, Math.PI * 2);
+    ctx.arc(CX, CY, 46 + pulse * 7, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#fff";
-    ctx.shadowColor = "rgba(0,0,0,0.7)";
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 10;
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "bold 18px 'IBM Plex Sans Arabic', sans-serif";
-    ctx.fillText(label, px, py - 54);
+    ctx.font = "bold 20px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.fillText(label, CX, CY - 62);
     ctx.restore();
   }
 
@@ -868,19 +886,97 @@ const CellScene = forwardRef(function CellScene(
       ctx.restore();
       if (isSel || isHover) {
         const k = isSel ? 1 : sim.hoverAmt;
-        const gr = ctx.createRadialGradient(0, 0, o.rx * 0.4, 0, 0, o.rx * 1.8);
-        gr.addColorStop(0, `rgba(255,255,210,${0.5 * k})`);
-        gr.addColorStop(1, "rgba(255,255,210,0)");
+        const gr = ctx.createRadialGradient(0, 0, o.rx * 0.4, 0, 0, o.rx * 1.9);
+        gr.addColorStop(0, `rgba(255,255,225,${0.55 * k})`);
+        gr.addColorStop(1, "rgba(255,255,225,0)");
         ctx.fillStyle = gr;
         ctx.beginPath();
-        ctx.arc(0, 0, o.rx * 1.8, 0, Math.PI * 2);
+        ctx.arc(0, 0, o.rx * 1.9, 0, Math.PI * 2);
         ctx.fill();
       }
       const fn = ORG_DRAW[o.draw];
       if (fn) fn(ctx, o, sim);
+      if (SOLID_ORG.has(o.draw)) glossPass(ctx, o); // عمق/لمعان للمصمتة فقط (لا هالات زجاجية للخطّية)
+      if (isSel) drawSelectionRing(ctx, o, sim);
       ctx.restore();
     }
     if (sel === "ribosome") drawProteinChain(ctx, sim);
+  }
+
+  /* طبقة واقعية موحّدة: انسدال داخلي (AO) عند الحواف + لمعان علوي */
+  function glossPass(ctx, o) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, o.rx, o.ry, o.rot || 0, 0, Math.PI * 2);
+    ctx.clip();
+    // انسدال داخلي: مركز شفّاف → حواف داكنة (عمق)
+    const ao = ctx.createRadialGradient(0, 0, Math.min(o.rx, o.ry) * 0.35, 0, 0, Math.max(o.rx, o.ry));
+    ao.addColorStop(0, "rgba(0,0,0,0)");
+    ao.addColorStop(0.75, "rgba(0,0,0,0)");
+    ao.addColorStop(1, "rgba(20,5,20,0.4)");
+    ctx.fillStyle = ao;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, o.rx, o.ry, o.rot || 0, 0, Math.PI * 2);
+    ctx.fill();
+    // لمعان علوي يسار (بريق رطب)
+    const sx = -o.rx * 0.32;
+    const sy = -o.ry * 0.42;
+    const sp = ctx.createRadialGradient(sx, sy, 1, sx, sy, o.rx * 0.6);
+    sp.addColorStop(0, "rgba(255,255,255,0.4)");
+    sp.addColorStop(0.5, "rgba(255,255,255,0.1)");
+    sp.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sp;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, o.rx * 0.55, o.ry * 0.4, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // حافّة ضوئية رفيعة (rim) تفصلها عن الخلفية
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, o.rx, o.ry, o.rot || 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  /* مؤشّر تحديد واضح جداً: حلقة بيضاء ناصعة + توهّج + شرطات دوّارة */
+  function drawSelectionRing(ctx, o, sim) {
+    const R = Math.max(o.rx, o.ry) * 1.22;
+    ctx.save();
+    // توهّج خارجي
+    ctx.shadowColor = "rgba(120,230,255,0.95)";
+    ctx.shadowBlur = 22;
+    ctx.strokeStyle = "rgba(255,255,255,0.98)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // شرطات دوّارة سماوية
+    ctx.strokeStyle = "rgba(80,220,255,1)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 12]);
+    ctx.lineDashOffset = -sim.t * 30;
+    ctx.beginPath();
+    ctx.arc(0, 0, R + 8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // أربع علامات ركنية (قفل استهداف)
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 4; i++) {
+      const ang = i * (Math.PI / 2) + Math.PI / 4 + sim.t * 0.3;
+      const x = Math.cos(ang) * (R + 8);
+      const y = Math.sin(ang) * (R + 8);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(-7, 0);
+      ctx.lineTo(7, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   /* كشف hover الفخم: حلقة مسح دوّارة + وصلات لأسماء المكوّنات */
@@ -1427,36 +1523,54 @@ const CellScene = forwardRef(function CellScene(
   };
 
   function drawMicroLimit(ctx, sim) {
-    const a = fade(sim.p, [0.5, 0.56], [0.66, 0.72]) * (1 - sim.diveP);
+    // نافذة أوسع قليلاً كي تظهر بوضوح عند التكبير والتصغير كليهما
+    const a = fade(sim.p, [0.47, 0.55], [0.67, 0.74]) * (1 - sim.diveP);
     if (a < 0.01) return;
     ctx.save();
-    const vg = ctx.createRadialGradient(CX, CY, SCENE_H * 0.2, CX, CY, SCENE_W * 0.7);
+    // تعتيم درامي
+    const vg = ctx.createRadialGradient(CX, CY, SCENE_H * 0.15, CX, CY, SCENE_W * 0.7);
     vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, `rgba(3,6,15,${0.6 * a})`);
+    vg.addColorStop(1, `rgba(3,6,15,${0.62 * a})`);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+
     const y = CY;
+    // خطّان متوهّجان بلون كهرماني تحذيري (تباين عالٍ على الخلفية)
     ctx.globalAlpha = a;
-    ctx.strokeStyle = `rgba(120,210,255,${a})`;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 8]);
-    ctx.shadowColor = "rgba(120,210,255,0.9)";
-    ctx.shadowBlur = 16;
-    ctx.beginPath();
-    ctx.moveTo(SCENE_W * 0.12, y);
-    ctx.lineTo(SCENE_W * 0.88, y);
-    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,193,7,${a})`;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([14, 10]);
+    ctx.shadowColor = "rgba(255,193,7,0.95)";
+    ctx.shadowBlur = 14;
+    for (const off of [-46, 46]) {
+      ctx.beginPath();
+      ctx.moveTo(SCENE_W * 0.08, y + off);
+      ctx.lineTo(SCENE_W * 0.92, y + off);
+      ctx.stroke();
+    }
     ctx.setLineDash([]);
-    ctx.shadowBlur = 20;
-    ctx.fillStyle = "rgba(230,245,255,0.98)";
+    ctx.shadowBlur = 0;
+
+    // لوحة داكنة صلبة خلف النص (تباين قصوى)
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "bold 22px 'IBM Plex Sans Arabic', sans-serif";
-    ctx.fillText("هنا يتوقف المجهر المدرسي", CX, y - 18);
-    ctx.shadowBlur = 0;
-    ctx.font = "600 13px 'IBM Plex Sans Arabic', sans-serif";
-    ctx.fillStyle = `rgba(150,210,255,${a})`;
-    ctx.fillText("… لكنّنا سنواصل الغوص", CX, y + 26);
+    ctx.font = "800 26px 'IBM Plex Sans Arabic', sans-serif";
+    const txt = "هنا يتوقف المجهر المدرسي";
+    const tw = ctx.measureText(txt).width;
+    const bw = tw + 56;
+    const bh = 58;
+    ctx.fillStyle = `rgba(8,10,20,${0.92 * a})`;
+    ctx.strokeStyle = `rgba(255,193,7,${a})`;
+    ctx.lineWidth = 2;
+    roundRect(ctx, CX - bw / 2, y - bh / 2, bw, bh, 14);
+    ctx.fill();
+    ctx.stroke();
+    // النص أبيض ناصع
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fillText(txt, CX, y - 4);
+    ctx.font = "700 14px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.fillStyle = `rgba(255,213,79,${a})`;
+    ctx.fillText("▼ لكنّنا سنواصل الغوص إلى ما لا يراه ▼", CX, y + 20);
     ctx.restore();
   }
 

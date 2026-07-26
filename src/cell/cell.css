@@ -120,6 +120,13 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   background: radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.06), transparent 60%);
 }
+/* ملء شاشة المشهد نفسه: يملأ الشاشة بالكامل */
+.cl-scene-card:fullscreen {
+  border-radius: 0;
+  padding: 0;
+  border: none;
+}
+.cl-scene-card:fullscreen::after { border-radius: 0; }
 .cl-canvas:active { cursor: grabbing; }
 .cl-scene-hint { flex-shrink: 0; font-size: 0.74rem; color: #9a6a80; font-weight: 600; text-align: center; }
 
