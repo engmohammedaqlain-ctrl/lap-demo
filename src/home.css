@@ -104,6 +104,10 @@
   color: #c77d0a;
   border-top-color: #c77d0a;
 }
+.home-card.accent-crimson {
+  color: #c2185b;
+  border-top-color: #c2185b;
+}
 
 .home-card:hover {
   transform: translateY(-4px);

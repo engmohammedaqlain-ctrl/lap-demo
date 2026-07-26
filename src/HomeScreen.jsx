@@ -37,6 +37,14 @@ const EXPERIMENTS = [
     emoji: "👁️",
     accent: "blue",
   },
+  {
+    key: "cell",
+    title: "رحلة داخل الخلية",
+    subtitle: "من نقطة ماء إلى العضيّات",
+    desc: "كبّر من قطرة ماء حتى داخل خلية حيّة مزدحمة، تجاوز حدّ المجهر المدرسي، واضغط العضيّات لتراها تعمل.",
+    emoji: "🔬",
+    accent: "crimson",
+  },
 ];
 
 export default function HomeScreen({ onOpen }) {
