@@ -1,43 +1,66 @@
-/* ===== تجربة البالونات والكهرباء الساكنة ===== */
+/* ===== تجربة البالونات والكهرباء الساكنة — ملء الشاشة كنموذج المرجع ===== */
 .st-stage {
   position: absolute;
   inset: 0;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px 24px;
-  /* خلفية تعليمية هادئة موحّدة مع تجربة الـ pH */
-  background:
-    radial-gradient(circle at 1px 1px, rgba(46, 110, 160, 0.10) 1.4px, transparent 0) 0 0 / 27px 27px,
-    linear-gradient(180deg, #eaf3fb 0%, #f5fafd 45%, #eef4ef 100%);
+  gap: 10px;
+  padding: 10px 14px 12px;
+  background: #e8e9ed;
   color: var(--ps-black);
+  box-sizing: border-box;
 }
 
 /* ---- شريط علوي ---- */
-.st-topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.st-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+}
 .st-home-btn,
 .st-help-btn,
 .st-sound-btn {
   flex-shrink: 0;
   font-family: inherit;
   font-weight: 700;
-  border: 1.5px solid rgba(94, 53, 177, 0.3);
+  border: 1.5px solid rgba(75, 57, 162, 0.22);
   background: #fff;
-  color: #5e35b1;
+  color: #4b39a2;
+  box-shadow: 0 2px 8px rgba(40, 30, 80, 0.06);
   cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
 }
-.st-home-btn { font-size: 0.9rem; border-radius: 22px; padding: 7px 14px; }
+.st-home-btn { font-size: 0.9rem; border-radius: 22px; padding: 8px 16px; }
 .st-help-btn,
-.st-sound-btn { width: 40px; height: 40px; border-radius: 50%; padding: 0; font-size: 1.05rem; }
+.st-sound-btn { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 1.05rem; }
 .st-help-btn { font-weight: 800; }
 .st-home-btn:hover,
 .st-help-btn:hover,
-.st-sound-btn:hover { background: rgba(94, 53, 177, 0.08); transform: translateY(-1px); }
+.st-sound-btn:hover {
+  background: rgba(75, 57, 162, 0.07);
+  transform: translateY(-1px);
+}
 .st-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.st-title { text-align: center; }
-.st-title-main { font-size: clamp(1.1rem, 3.5vw, 1.5rem); font-weight: 700; color: #4527a0; }
+.st-title {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.st-title-bolt {
+  font-size: clamp(1.2rem, 3.2vw, 1.55rem);
+  line-height: 1;
+  filter: drop-shadow(0 1px 0 rgba(255, 200, 40, 0.55));
+}
+.st-title-main {
+  font-size: clamp(1.2rem, 3.2vw, 1.55rem);
+  font-weight: 800;
+  color: #4b39a2;
+}
 
 /* ---- شريط الأدوات ---- */
 .st-controls {
@@ -45,21 +68,23 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 10px 14px;
+  gap: 8px 12px;
+  flex-shrink: 0;
 }
 .st-seg {
   display: flex;
   gap: 4px;
   padding: 4px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(94, 53, 177, 0.2);
+  background: #fff;
+  border: 1px solid rgba(75, 57, 162, 0.16);
+  box-shadow: 0 2px 8px rgba(40, 30, 80, 0.05);
 }
 .st-seg-btn {
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #666;
+  color: #5a5470;
   border: none;
   background: transparent;
   border-radius: 20px;
@@ -70,7 +95,11 @@
   gap: 6px;
   transition: background 0.15s, color 0.15s;
 }
-.st-seg-btn.active { background: #5e35b1; color: #fff; box-shadow: 0 2px 8px rgba(94, 53, 177, 0.3); }
+.st-seg-btn.active {
+  background: #4b39a2;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(75, 57, 162, 0.32);
+}
 .st-seg-emoji { font-size: 0.85rem; letter-spacing: -1px; }
 
 .st-ctrl-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -82,108 +111,158 @@
   border-radius: 20px;
   padding: 8px 14px;
   cursor: pointer;
-  border: 1.5px solid rgba(94, 53, 177, 0.25);
+  border: 1.5px solid rgba(75, 57, 162, 0.22);
   background: #fff;
-  color: #5e35b1;
-  transition: background 0.14s, transform 0.12s, border-color 0.14s;
+  color: #4b39a2;
+  box-shadow: 0 2px 8px rgba(40, 30, 80, 0.05);
+  transition: background 0.14s, transform 0.12s;
 }
 .st-toggle:hover,
-.st-reset:hover { transform: translateY(-1px); background: rgba(94, 53, 177, 0.06); }
-.st-toggle.on { background: #5e35b1; color: #fff; border-color: #4527a0; }
-.st-reset { color: var(--ps-terracotta); border-color: rgba(181, 82, 42, 0.4); border-style: dashed; }
-.st-reset:hover { background: rgba(181, 82, 42, 0.07); }
-
-/* ---- تخطيط التجربة ---- */
-.st-experiment {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: center;
-  gap: 16px;
-  width: 100%;
+.st-reset:hover { transform: translateY(-1px); background: rgba(75, 57, 162, 0.06); }
+.st-toggle.on { background: #4b39a2; color: #fff; border-color: #3a2b82; }
+.st-reset {
+  color: #e07a2f;
+  border-color: rgba(224, 122, 47, 0.45);
 }
-.st-scene-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1 1 560px; min-width: 0; max-width: 980px; }
-.st-scene-card {
+.st-reset:hover { background: rgba(224, 122, 47, 0.08); }
+
+/* ---- جسم التجربة: شريط جانبي ~28% + مسرح ~72% ---- */
+.st-experiment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 28%);
+  align-items: stretch;
+  gap: 14px;
   width: 100%;
-  background: #ffffff;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  box-shadow: 0 8px 26px rgba(15, 40, 55, 0.12);
-  padding: 10px;
-  line-height: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.st-scene-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+.st-scene-card {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  background: #fff;
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 28px rgba(30, 35, 55, 0.10);
+  padding: 0;
+  overflow: hidden;
+  position: relative;
 }
 .st-canvas {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  border-radius: 12px;
+  border-radius: 22px;
   touch-action: none;
   cursor: grab;
+  background: #f4f5f7;
 }
 .st-canvas:active { cursor: grabbing; }
-.st-scene-hint { font-size: 0.78rem; color: #7a7290; font-weight: 600; line-height: 1.4; }
+
+/* شريط التلميح بعرض المسرح كاملاً */
+.st-scene-hint {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 14px rgba(30, 35, 55, 0.06);
+  font-size: 0.84rem;
+  color: #5a5470;
+  font-weight: 650;
+  line-height: 1.4;
+}
 
 /* ---- اللوحة التفسيرية ---- */
 .st-info {
-  flex: 1 1 280px;
-  min-width: 240px;
-  max-width: 360px;
+  min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
 }
 .st-info-status {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 18px rgba(30, 35, 55, 0.07);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
-.st-info-status.tone-neutral { background: #eef1f6; border-color: #d3dae6; }
-.st-info-status.tone-spark { background: #fff6e0; border-color: #ffe1a6; }
-.st-info-status.tone-charge { background: #ece4f8; border-color: #cdb8ee; }
-.st-info-status.tone-stick { background: #e3f4ea; border-color: #a9dfba; }
-.st-info-emoji { font-size: 2.3rem; line-height: 1; animation: st-pop 0.4s ease; }
-@keyframes st-pop { 0% { transform: scale(0.4) rotate(-8deg); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
-.st-info-text { display: flex; flex-direction: column; gap: 4px; }
-.st-info-title { font-size: 1rem; font-weight: 800; color: var(--ps-black); }
-.st-info-desc { font-size: 0.8rem; line-height: 1.65; color: #4a4a4a; }
+.st-info-status.tone-neutral { background: #fff; }
+.st-info-status.tone-spark { background: #fff8e8; border-color: #ffe1a6; }
+.st-info-status.tone-charge { background: #f3eefc; border-color: #d4c0f0; }
+.st-info-status.tone-stick { background: #eaf7ef; border-color: #a9dfba; }
+.st-info-emoji { font-size: 2.1rem; line-height: 1; animation: st-pop 0.4s ease; }
+@keyframes st-pop {
+  0% { transform: scale(0.4) rotate(-8deg); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.st-info-text { display: flex; flex-direction: column; gap: 5px; }
+.st-info-title { font-size: 1.02rem; font-weight: 800; color: #2a2540; }
+.st-info-desc { font-size: 0.8rem; line-height: 1.7; color: #555061; }
 
 .st-charge-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 12px;
-  border-radius: 16px;
-  background: linear-gradient(160deg, #4527a0, #5e35b1);
+  gap: 4px;
+  padding: 18px 14px;
+  border-radius: 18px;
+  background: linear-gradient(165deg, #4b39a2 0%, #5c48b8 55%, #3d2d8a 100%);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(69, 39, 160, 0.32);
+  box-shadow: 0 8px 22px rgba(75, 57, 162, 0.34);
 }
-.st-charge-head { font-size: 0.74rem; font-weight: 700; opacity: 0.85; }
-.st-charge-value { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.st-charge-value.zero { opacity: 0.85; }
-.st-charge-value.neg { color: #ffd7d2; }
-.st-charge-sub { font-size: 0.74rem; font-weight: 600; opacity: 0.9; }
+.st-charge-head { font-size: 0.78rem; font-weight: 700; opacity: 0.9; }
+.st-charge-value {
+  font-size: 2.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.st-charge-value.zero { opacity: 0.95; }
+.st-charge-value.neg { color: #ffd4ce; }
+.st-charge-sub { font-size: 0.76rem; font-weight: 600; opacity: 0.92; }
 
 .st-legend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(94, 53, 177, 0.18);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #444;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 18px rgba(30, 35, 55, 0.06);
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: #44404f;
 }
-.st-legend-item { display: flex; align-items: center; gap: 8px; }
+.st-legend-item { display: flex; align-items: center; gap: 10px; }
 .st-legend-dot {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   flex-shrink: 0;
   display: flex;
@@ -191,27 +270,30 @@
   justify-content: center;
   color: #fff;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 .st-legend-dot.plus { background: radial-gradient(circle at 35% 35%, #ff6b6b, #9e2020); }
 .st-legend-dot.minus { background: radial-gradient(circle at 35% 35%, #5a9bd8, #1c4a7d); }
 
-/* ---- سطح المكتب: تكبير التجربة دون تمرير ---- */
-@media (min-width: 901px) {
-  .st-stage { overflow: hidden; gap: 8px; padding: 8px 16px; }
-  .st-experiment { flex-wrap: nowrap; align-items: stretch; }
-  .st-scene-col { flex: 1 1 auto; max-width: none; }
-  /* اللوحة (نسبة 940:560) محدودة بارتفاع النافذة ناقص بقيّة الصفوف */
-  .st-canvas { width: auto; height: min(64vh, 540px, calc(100vh - 260px)); max-width: 100%; margin: 0 auto; }
-  .st-info { flex: 0 0 300px; max-width: 300px; }
-}
-@media (min-width: 1400px) {
-  .st-canvas { height: min(66vh, 600px, calc(100vh - 260px)); }
-}
-
 /* ---- جوال ---- */
+@media (max-width: 900px) {
+  .st-stage { overflow-y: auto; }
+  .st-experiment {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+  }
+  .st-scene-card {
+    min-height: 300px;
+    aspect-ratio: 940 / 560;
+    max-height: 52vh;
+    flex: 0 0 auto;
+  }
+  .st-info { max-width: none; }
+}
 @media (max-width: 640px) {
-  .st-info { max-width: 560px; }
   .st-seg-btn { padding: 7px 10px; font-size: 0.74rem; }
   .st-toggle, .st-reset { padding: 7px 11px; font-size: 0.74rem; }
+  .st-title-main { font-size: 1.05rem; }
 }

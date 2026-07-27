@@ -217,7 +217,8 @@ export default function PhApp({ onHome }) {
     <div className="ph-stage">
       <header className="ph-topbar">
         <button type="button" className="ph-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="ph-home-text">الرئيسية</span>
+          <span className="ph-home-icon" aria-hidden="true">🏠</span>
+          <span className="ph-home-text">الرئيسية</span>
         </button>
         <div className="ph-title">
           <span className="ph-title-main">الأس الهيدروجيني</span>
@@ -252,52 +253,45 @@ export default function PhApp({ onHome }) {
 
       {mode === "explore" ? (
         <div className="ph-experiment">
-          {/* الصف العلوي: اختيار السائل (يمين) + المشهد والمقياس (الوسط) */}
           <div className="ph-workspace">
+            {/* ترتيب DOM لـ RTL: الأول يمين → اختيار السائل | الوسط → الكأس | الأخير يسار → المقياس */}
             <SolutionPicker activeKey={solutionKey} onSelect={selectSolution} />
 
-            <div className="ph-lab">
-              <div className="ph-scene-col">
-                <div className="ph-scene-card">
-                  <PhScene
-                    empty={empty}
-                    fillFraction={fillFraction(totalVolume)}
-                    liquidColor={liquidColor}
-                    dropperColor={dropperColor}
-                    volumeLabel={formatAr(totalVolume, 2)}
-                    pouringWater={pouringWater}
-                    dripping={dripping}
-                    draining={draining}
-                    onWaterStart={startWater}
-                    onWaterStop={stopWater}
-                    onDripStart={startDrip}
-                    onDripStop={stopDrip}
-                    onDrainStart={startDrain}
-                    onDrainStop={stopDrain}
-                    full={full}
-                  />
-                </div>
-                <div className="ph-bench-footer">
-                  <button type="button" className="ph-empty-btn" onClick={handleEmpty} disabled={empty}>
-                    🫗 تفريغ الكأس
-                  </button>
-                  <span className="ph-scene-hint">💡 اضغط باستمرار على القطّارة أو الحنفية أو صنبور التصريف</span>
-                </div>
-              </div>
-              <PhScaleBar pH={pH} empty={empty} />
+            <div className="ph-scene-card">
+              <PhScene
+                empty={empty}
+                fillFraction={fillFraction(totalVolume)}
+                liquidColor={liquidColor}
+                dropperColor={dropperColor}
+                volumeLabel={formatAr(totalVolume, 2)}
+                pouringWater={pouringWater}
+                dripping={dripping}
+                draining={draining}
+                onWaterStart={startWater}
+                onWaterStop={stopWater}
+                onDripStart={startDrip}
+                onDripStop={stopDrip}
+                onDrainStart={startDrain}
+                onDrainStop={stopDrain}
+                full={full}
+              />
             </div>
+
+            <PhScaleBar pH={pH} empty={empty} />
           </div>
 
-          {/* شريط سفلي يمتدّ بعرض الشاشة: الجانب النظري */}
+          <div className="ph-bench-footer">
+            <button type="button" className="ph-empty-btn" onClick={handleEmpty} disabled={empty}>
+              🔄 تفريغ الكأس
+            </button>
+            <span className="ph-scene-hint">💡 اضغط باستمرار على الحنفية أو القطّارة أو صنبور التصريف</span>
+          </div>
+
           <InfoPanel pH={pH} empty={empty} solutionKey={solutionKey} mode="explore" />
         </div>
       ) : (
         <div className="ph-experiment">
           <div className="ph-workspace">
-            <PhScaleBar pH={pH} empty={empty} />
-            <div className="ph-center">
-              <Beaker pH={pH} fillFraction={fillFraction(totalVolume)} volumeLabel={formatAr(totalVolume, 2)} pouring={false} />
-            </div>
             <div className="ph-controls">
               <CustomControls
                 customPH={customPH}
@@ -307,6 +301,10 @@ export default function PhApp({ onHome }) {
               />
               <InfoPanel pH={pH} empty={empty} solutionKey={solutionKey} mode="custom" />
             </div>
+            <div className="ph-center">
+              <Beaker pH={pH} fillFraction={fillFraction(totalVolume)} volumeLabel={formatAr(totalVolume, 2)} pouring={false} />
+            </div>
+            <PhScaleBar pH={pH} empty={empty} />
           </div>
         </div>
       )}

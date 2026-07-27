@@ -62,7 +62,7 @@ export default function StaticInfoPanel({ status }) {
       <div className="st-charge-card">
         <span className="st-charge-head">شحنة البالون</span>
         <span className={`st-charge-value ${charge > 0 ? "neg" : "zero"}`}>
-          {charge > 0 ? `−${AR(charge)}` : "٠"}
+          {charge > 0 ? `−${AR(charge)}` : "0"}
         </span>
         <span className="st-charge-sub">{charge > 0 ? `اكتسب ${AR(charge)} إلكترون` : "متعادل تماماً"}</span>
       </div>

@@ -13,18 +13,50 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   SCENE_W,
   SCENE_H,
-  SWEATER,
   WALL,
   BALLOON_SPECS,
   BALLOON_R,
   CHARGE,
   buildSweaterCharges,
   buildWallCharges,
+  getSweaterDrawRect,
   CLAMP,
 } from "./staticData.js";
 import { StaticSound } from "./staticAudio.js";
+import blueSweaterUrl from "./assets/blue-sweater.png";
 
-const SWEATER_RIGHT = SWEATER.x + SWEATER.w;
+function sweaterDraw(sprite) {
+  return getSweaterDrawRect(sprite);
+}
+function sweaterRight(sprite) {
+  const r = sweaterDraw(sprite);
+  return r.x + r.w * 0.88;
+}
+
+/** يزيل الخلفية البيضاء من رسمة البلوزة */
+function prepareSweaterSprite(img) {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0, 0, c.width, c.height);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i];
+    const g = d[i + 1];
+    const b = d[i + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (min > 248 && max - min < 12) {
+      d[i + 3] = 0;
+    } else if (min > 230 && max - min < 18) {
+      d[i + 3] = Math.round(((255 - min) / 25) * 255);
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+  return c;
+}
 
 function makeBalloon(i) {
   const spec = BALLOON_SPECS[i];
@@ -41,16 +73,16 @@ function makeBalloon(i) {
     dark: spec.dark,
     light: spec.light,
     held: false,
-    stuck: null, // null | 'sweater' | 'wall'
-    grabbed: [], // مراجع إلكترونات (من minus)
+    stuck: null,
+    grabbed: [],
     stickFlash: 0,
     bobPhase: i * 1.7,
     swayPhase: i * 0.9,
   };
 }
 
-function makeSim(balloonCount) {
-  const { plus, minus } = buildSweaterCharges();
+function makeSim(balloonCount, sprite) {
+  const { plus, minus } = buildSweaterCharges(sprite);
   const balloons = [];
   for (let i = 0; i < balloonCount; i++) balloons.push(makeBalloon(i));
   return {
@@ -72,6 +104,7 @@ const StaticScene = forwardRef(function StaticScene(
   const rafRef = useRef(0);
   const lastTsRef = useRef(0);
   const dragRef = useRef(null); // {balloon, dx, dy}
+  const sweaterSpriteRef = useRef(null);
 
   // مرايا للـ props تُقرأ داخل الحلقة دون إعادة تشغيلها
   const propsRef = useRef({ displayMode, wallOn, balloonCount, soundEnabled, onStatus });
@@ -81,7 +114,7 @@ const StaticScene = forwardRef(function StaticScene(
   /* ===== إعادة الضبط ===== */
   const reset = () => {
     const count = propsRef.current.balloonCount;
-    simRef.current = makeSim(count);
+    simRef.current = makeSim(count, sweaterSpriteRef.current);
     StaticSound.stopRub();
     StaticSound.stopFloat();
     emitStatus(true);
@@ -148,11 +181,13 @@ const StaticScene = forwardRef(function StaticScene(
       if (b.held) {
         // السرعة من فرق الموضع (للكشف عن الفرك)
         const speed = Math.hypot(b.x - b.px, b.y - b.py);
+        const sd = sweaterDraw(sweaterSpriteRef.current);
+        const sr = sweaterRight(sweaterSpriteRef.current);
         const overSweater =
-          b.x - b.r * 0.5 < SWEATER_RIGHT &&
-          b.x > SWEATER.x - 20 &&
-          b.y > SWEATER.y - 30 &&
-          b.y < SWEATER.y + SWEATER.h + 30;
+          b.x - b.r * 0.5 < sr &&
+          b.x > sd.x + sd.w * 0.08 &&
+          b.y > sd.y + sd.h * 0.1 &&
+          b.y < sd.y + sd.h * 0.92;
         if (overSweater && speed > 1.4) {
           b._rubbing = true;
           rubbingNow = true;
@@ -274,8 +309,10 @@ const StaticScene = forwardRef(function StaticScene(
       let ay = 0;
       // جذب نحو السترة: شحنة حقيقية صافية (تجاذب كولوم مباشر) — قويّة وتسقط
       // كـ ١/د². هذه القوّة هي المهيمنة فيزيائياً.
-      const sy = CLAMP(b.y, SWEATER.y + 40, SWEATER.y + SWEATER.h - 40);
-      const dsx = SWEATER_RIGHT - b.x;
+      const sd = sweaterDraw(sweaterSpriteRef.current);
+      const sr = sweaterRight(sweaterSpriteRef.current);
+      const sy = CLAMP(b.y, sd.y + 50, sd.y + sd.h - 50);
+      const dsx = sr - b.x;
       const dsy = sy - b.y;
       const ds = Math.hypot(dsx, dsy) + 1;
       const fS = Math.min(0.85, (q * 3000) / (ds * ds));
@@ -306,9 +343,11 @@ const StaticScene = forwardRef(function StaticScene(
     b.x = CLAMP(b.x, b.r * 0.5, SCENE_W - b.r * 0.5);
     b.y = CLAMP(b.y, b.r + 8, SCENE_H - b.r * 0.6);
 
+    const sd = sweaterDraw(sweaterSpriteRef.current);
+    const sr = sweaterRight(sweaterSpriteRef.current);
     // التصاق بالسترة
-    if (q > 0 && b.x - b.r * 0.55 <= SWEATER_RIGHT && b.y < SWEATER.y + SWEATER.h && b.y > SWEATER.y) {
-      b.x = SWEATER_RIGHT + b.r * 0.5;
+    if (q > 0 && b.x - b.r * 0.55 <= sr && b.y < sd.y + sd.h * 0.9 && b.y > sd.y + sd.h * 0.12) {
+      b.x = sr + b.r * 0.5;
       b.vx = 0;
       b.vy = 0;
       setStuck(b, "sweater");
@@ -348,333 +387,61 @@ const StaticScene = forwardRef(function StaticScene(
   }
 
   function drawBackdrop(ctx) {
-    // جوّ ناعم: أعلى فاتح إلى أرضية دافئة، مع خط أفق لطيف
-    const g = ctx.createLinearGradient(0, 0, 0, SCENE_H);
-    g.addColorStop(0, "#eef6fc");
-    g.addColorStop(0.7, "#f6fbfe");
-    g.addColorStop(1, "#eaf3ee");
-    ctx.fillStyle = g;
+    // خلفية نظيفة بيضاء مثل واجهة المرجع
+    ctx.fillStyle = "#f7f8fa";
     ctx.fillRect(0, 0, SCENE_W, SCENE_H);
-    // أرضية
-    ctx.fillStyle = "rgba(120,150,120,0.10)";
-    ctx.fillRect(0, SCENE_H - 46, SCENE_W, 46);
-    ctx.strokeStyle = "rgba(90,120,95,0.18)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, SCENE_H - 46);
-    ctx.lineTo(SCENE_W, SCENE_H - 46);
-    ctx.stroke();
+    // أرضية خفيفة جداً
+    const floor = ctx.createLinearGradient(0, SCENE_H - 52, 0, SCENE_H);
+    floor.addColorStop(0, "rgba(160, 170, 185, 0.04)");
+    floor.addColorStop(1, "rgba(140, 150, 165, 0.10)");
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, SCENE_H - 52, SCENE_W, 52);
   }
 
   function drawSweater(ctx, sim, mode) {
-    const { x, y, w, h } = SWEATER;
-    const cx = x + w / 2;
-    const inkColor = "#26190C";
-    const inkWidth = 3;
+    const sprite = sweaterSpriteRef.current;
+    const rect = sweaterDraw(sprite);
 
     ctx.save();
+    ctx.shadowColor = "rgba(25, 35, 55, 0.22)";
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 12;
 
-    // 1. إسقاط ظل ناعم مجسّم خلف السترة الكاملة
-    ctx.shadowColor = "rgba(30, 12, 0, 0.28)";
-    ctx.shadowBlur = 35;
-    ctx.shadowOffsetY = 18;
+    if (sprite) {
+      ctx.drawImage(sprite, rect.x, rect.y, rect.w, rect.h);
+    } else {
+      const { x, y, w, h } = rect;
+      const cx = x + w / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 50, y + 28);
+      ctx.quadraticCurveTo(x + 24, y + 36, x - 10, y + 90);
+      ctx.lineTo(x - 14, y + 250);
+      ctx.quadraticCurveTo(x + 8, y + 262, x + 30, y + 252);
+      ctx.quadraticCurveTo(x + 22, y + 170, x + 18, y + h - 20);
+      ctx.quadraticCurveTo(cx, y + h - 10, x + w - 18, y + h - 20);
+      ctx.quadraticCurveTo(x + w - 22, y + 170, x + w - 30, y + 252);
+      ctx.quadraticCurveTo(x + w - 8, y + 262, x + w + 14, y + 250);
+      ctx.lineTo(x + w + 10, y + 90);
+      ctx.quadraticCurveTo(x + w - 24, y + 36, cx + 50, y + 28);
+      ctx.quadraticCurveTo(cx, y + 12, cx - 50, y + 28);
+      ctx.closePath();
+      ctx.fillStyle = "#1e3a5f";
+      ctx.fill();
+    }
 
-    const neckY = y + 24;
-    const collarRx = 58;
-    const collarRy = 22;
-
-    // --- 2. رسم الهيكل والمتنسق الرئيسي للسترة (Organic Knit Sweater Silhouette) ---
-    ctx.beginPath();
-    ctx.moveTo(cx - collarRx, neckY + 4);
-    // كتف أيسر منسدل لطيف
-    ctx.quadraticCurveTo(x + 20, y + 32, x - 26, y + 75);
-    // كم أيسر انسيابي
-    ctx.lineTo(x - 28, y + 238);
-    // إسورة أكمام أيسر
-    ctx.quadraticCurveTo(x - 6, y + 246, x + 16, y + 240);
-    // خصر وجانب أيسر مائل لطيف
-    ctx.quadraticCurveTo(x + 18, y + 160, x + 4, y + h - 22);
-    // انحناءة حاشية السترة السفلية
-    ctx.quadraticCurveTo(cx, y + h - 14, x + w - 4, y + h - 22);
-    // خصر وجانب أيمن
-    ctx.quadraticCurveTo(x + w - 18, y + 160, x + w - 16, y + 240);
-    // إسورة أكمام أيمن
-    ctx.quadraticCurveTo(x + w + 6, y + 246, x + w + 28, y + 238);
-    // كم أيمن انسيابي
-    ctx.lineTo(x + w + 26, y + 75);
-    // كتف أيمن منسدل لطيف
-    ctx.quadraticCurveTo(x + w - 20, y + 32, cx + collarRx, neckY + 4);
-    // الانحناءة الخلفية للياقة
-    ctx.quadraticCurveTo(cx, neckY - 14, cx - collarRx, neckY + 4);
-    ctx.closePath();
-
-    // لون السترة الصوفي الذهبي الدافئ الفاخر
-    const bodyGrad = ctx.createLinearGradient(x - 20, y + 20, x + w + 20, y + h);
-    bodyGrad.addColorStop(0, "#F7DC6F");
-    bodyGrad.addColorStop(0.2, "#F5B041");
-    bodyGrad.addColorStop(0.65, "#F39C12");
-    bodyGrad.addColorStop(0.9, "#E67E22");
-    bodyGrad.addColorStop(1, "#CA6F1E");
-    ctx.fillStyle = bodyGrad;
-    ctx.fill();
-
-    // إيقاف الظل لرسم التفاصيل واللمعات
     ctx.shadowColor = "transparent";
-
-    // إضاءة كروية ناعمة بمنتصف السترة تمنحها تجسيماً ثلاثي الأبعاد (3D Volume Highlight)
-    const highlightGrad = ctx.createRadialGradient(cx, y + h * 0.45, 10, cx, y + h * 0.45, w * 0.65);
-    highlightGrad.addColorStop(0, "rgba(255, 250, 220, 0.28)");
-    highlightGrad.addColorStop(0.6, "rgba(255, 240, 190, 0.08)");
-    highlightGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = highlightGrad;
-    ctx.fill();
-
-    // --- 3. فتحة الرقبة العميقة والبطانة الداكنة (Neck Hole Depth & Lining) ---
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 4, collarRx - 4, collarRy - 4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#1E0D03";
-    ctx.fill();
-
-    // قماش القميص الداخلي بفتحة الرقبة
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 8, collarRx - 14, collarRy - 9, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#FAF5EB";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(38, 25, 12, 0.2)";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // بطاقة المقاس
-    ctx.fillStyle = "#C0392B";
-    roundRect(ctx, cx - 8, neckY + 7, 16, 9, 2);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 6.5px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("M", cx, neckY + 14);
-
-    // --- 4. الياقة الصوفية المطوية المضلّعة (Ribbed Crew Neck Collar) ---
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 5, collarRx + 4, collarRy + 4, 0, Math.PI * 0.04, Math.PI * 0.96);
-    ctx.lineTo(cx - collarRx + 4, neckY + 3);
-    ctx.quadraticCurveTo(cx, neckY + 23, cx + collarRx - 4, neckY + 3);
-    ctx.closePath();
-
-    const collarGrad = ctx.createLinearGradient(cx - collarRx, neckY, cx + collarRx, neckY + 25);
-    collarGrad.addColorStop(0, "#D35400");
-    collarGrad.addColorStop(0.5, "#E65100");
-    collarGrad.addColorStop(1, "#A04000");
-    ctx.fillStyle = collarGrad;
-    ctx.fill();
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.stroke();
-
-    // خطوط تضليع الياقة
-    ctx.strokeStyle = "rgba(255, 245, 220, 0.7)";
-    ctx.lineWidth = 1.6;
-    for (let a = 0.11; a <= 0.89; a += 0.075) {
-      const angle = Math.PI * a;
-      const inX = cx + Math.cos(angle) * (collarRx - 6);
-      const inY = neckY + 4 + Math.sin(angle) * (collarRy - 6);
-      const outX = cx + Math.cos(angle) * (collarRx + 4);
-      const outY = neckY + 5 + Math.sin(angle) * (collarRy + 4);
-      ctx.beginPath();
-      ctx.moveTo(inX, inY);
-      ctx.lineTo(outX, outY);
-      ctx.stroke();
-    }
-
-    // --- 5. درزات الإبط والأكمام الصوفية المضلعة (Sleeve Seams & Ribbed Cuffs) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-
-    // درزات اتصال الأكمام (Armhole Seams)
-    ctx.beginPath();
-    ctx.moveTo(x + 20, y + 42);
-    ctx.quadraticCurveTo(x + 16, y + 110, x + 15, y + 165);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 20, y + 42);
-    ctx.quadraticCurveTo(x + w - 16, y + 110, x + w - 15, y + 165);
-    ctx.stroke();
-
-    // أساور الأكمام المضلعة
-    // كم أيسر
-    ctx.beginPath();
-    roundRect(ctx, x - 29, y + 236, 46, 18, 5);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.5;
-    for (let hx = x - 24; hx < x + 13; hx += 8) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + 237);
-      ctx.lineTo(hx + 0.5, y + 253);
-      ctx.stroke();
-    }
-
-    // كم أيمن
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.beginPath();
-    roundRect(ctx, x + w - 17, y + 236, 46, 18, 5);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.5;
-    for (let hx = x + w - 12; hx < x + w + 25; hx += 8) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + 237);
-      ctx.lineTo(hx + 0.5, y + 253);
-      ctx.stroke();
-    }
-
-    // --- 6. حاشية السترة السفلية (Bottom Ribbed Hem) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.beginPath();
-    roundRect(ctx, x + 2, y + h - 24, w - 4, 24, 8);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.6;
-    for (let hx = x + 12; hx < x + w - 10; hx += 9.5) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + h - 23);
-      ctx.lineTo(hx + 0.5, y + h - 2);
-      ctx.stroke();
-    }
-
-    // --- 7. أشرطة الصوف الملونة المزدوجة (Dual Knitted Fair-Isle Accent Bands) ---
-    ctx.save();
-    ctx.clip(); // القص ضمن حدود شكل السترة
-
-    // الشريط الصوفي العلوي (Emerald Band)
-    ctx.fillStyle = "rgba(22, 160, 133, 0.88)";
-    ctx.fillRect(x - 30, y + 115, w + 60, 34);
-
-    ctx.strokeStyle = "rgba(244, 208, 63, 0.95)";
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    for (let px = x - 20; px <= x + w + 20; px += 16) {
-      ctx.moveTo(px, y + 121);
-      ctx.lineTo(px + 8, y + 132);
-      ctx.lineTo(px + 16, y + 121);
-      ctx.moveTo(px, y + 143);
-      ctx.lineTo(px + 8, y + 132);
-      ctx.lineTo(px + 16, y + 143);
-    }
-    ctx.stroke();
-
-    // الشريط الصوفي السفلي (Burgundy Accent Band)
-    ctx.fillStyle = "rgba(144, 12, 63, 0.82)";
-    ctx.fillRect(x - 30, y + h - 95, w + 60, 28);
-
-    ctx.strokeStyle = "rgba(255, 240, 210, 0.9)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let px = x - 20; px <= x + w + 20; px += 14) {
-      ctx.moveTo(px, y + h - 90);
-      ctx.lineTo(px + 7, y + h - 81);
-      ctx.lineTo(px + 14, y + h - 90);
-    }
-    ctx.stroke();
     ctx.restore();
 
-    // --- 8. غرز الصوف العمودية (Vertical Knitted Ribs & V-Stitches) ---
-    for (let col = 0; col < 11; col++) {
-      const rx = x + 24 + col * ((w - 48) / 10);
-      ctx.beginPath();
-      ctx.moveTo(rx, y + 55);
-      for (let sy = y + 55; sy <= y + h - 30; sy += 18) {
-        const offset = (col % 2 === 0 ? 1 : -1) * Math.sin((sy + col * 12) * 0.08) * 2.2;
-        ctx.lineTo(rx + offset, sy);
-      }
-      ctx.strokeStyle = col % 2 === 0 ? "rgba(150, 50, 0, 0.28)" : "rgba(255, 240, 200, 0.35)";
-      ctx.lineWidth = col % 2 === 0 ? 2 : 1.4;
-      ctx.stroke();
-
-      // غرز الصوف الصغير "v"
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.32)";
-      ctx.lineWidth = 1.3;
-      for (let sy = y + 70; sy <= y + h - 45; sy += 36) {
-        ctx.beginPath();
-        ctx.moveTo(rx - 3.5, sy - 3);
-        ctx.lineTo(rx, sy + 3);
-        ctx.lineTo(rx + 3.5, sy - 3);
-        ctx.stroke();
-      }
-    }
-
-    // --- 9. ثنيات وظلال الصوف الطبيعية (Soft Fabric Creases) ---
-    ctx.strokeStyle = "rgba(80, 30, 0, 0.22)";
-    ctx.lineWidth = 2;
-    // ثنيات الإبطين
-    ctx.beginPath();
-    ctx.moveTo(x + 20, y + 165);
-    ctx.quadraticCurveTo(x + 48, y + 182, x + 68, y + 177);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 20, y + 165);
-    ctx.quadraticCurveTo(x + w - 48, y + 182, x + w - 68, y + 177);
-    ctx.stroke();
-
-    // ثنية الانحناءة السفلية
-    ctx.beginPath();
-    ctx.moveTo(x + 35, y + h - 70);
-    ctx.quadraticCurveTo(cx, y + h - 60, x + w - 35, y + h - 70);
-    ctx.strokeStyle = "rgba(80, 30, 0, 0.16)";
-    ctx.stroke();
-
-    // --- 10. خطوط الحبر الخارجية لجسم السترة الكامل (Outer Ink Outlines) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.beginPath();
-    ctx.moveTo(cx - collarRx, neckY + 4);
-    ctx.quadraticCurveTo(x + 20, y + 32, x - 26, y + 75);
-    ctx.lineTo(x - 28, y + 238);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx + collarRx, neckY + 4);
-    ctx.quadraticCurveTo(x + w - 20, y + 32, x + w + 26, y + 75);
-    ctx.lineTo(x + w + 28, y + 238);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + h - 22);
-    ctx.quadraticCurveTo(x + 18, y + 160, x + 16, y + 240);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 4, y + h - 22);
-    ctx.quadraticCurveTo(x + w - 18, y + 160, x + w - 16, y + 240);
-    ctx.stroke();
-
-    ctx.restore();
-
-    // الشحنات
+    // الشحنات فوق البلوزة فقط (مواضعها مبنية داخل ظلّ القماش)
     for (let i = 0; i < sim.plus.length; i++) {
       const p = sim.plus[i];
       const m = sim.minus[i];
       const removed = m.owner != null;
       if (mode === "none") continue;
       if (mode === "diff") {
-        // أظهر فقط الشحنة الموجبة الصافية (حيث غادر الإلكترون)
         if (removed) drawCharge(ctx, p.x + 9, p.y, "+", 1);
         continue;
       }
-      // all
       drawCharge(ctx, p.x, p.y, "+", 1);
       if (m.owner == null) drawCharge(ctx, m.x, m.y, "-", 1);
     }
@@ -850,7 +617,7 @@ const StaticScene = forwardRef(function StaticScene(
     ctx.fill();
     // القرص
     const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.4, 1, x, y, r);
-    g.addColorStop(0, isPlus ? "#ff6b6b" : "#5a9bd8");
+    g.addColorStop(0, isPlus ? "#ff6b6b" : "#6eb6f0");
     g.addColorStop(1, isPlus ? CHARGE.plusDark : CHARGE.minusDark);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -874,7 +641,7 @@ const StaticScene = forwardRef(function StaticScene(
   function drawLightning(ctx, b) {
     const x0 = b.x + (b.stuck === "wall" ? b.r * 0.5 : -b.r * 0.5);
     const y0 = b.y;
-    const x1 = b.stuck === "wall" ? WALL.x : SWEATER_RIGHT;
+    const x1 = b.stuck === "wall" ? WALL.x : sweaterRight(sweaterSpriteRef.current);
     const seg = 5;
     ctx.save();
     ctx.strokeStyle = `rgba(255,238,140,${CLAMP(b.stickFlash / 16, 0, 1)})`;
@@ -917,6 +684,30 @@ const StaticScene = forwardRef(function StaticScene(
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
   }
+
+  /* ===== تحميل صورة البلوزة الزرقاء ===== */
+  useEffect(() => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      let sprite = img;
+      try {
+        sprite = prepareSweaterSprite(img);
+      } catch {
+        /* استخدم الصورة الأصلية */
+      }
+      sweaterSpriteRef.current = sprite;
+      // أعد بناء الشحنات على القماش الفعلي بعد جاهزية الصورة
+      const count = propsRef.current.balloonCount;
+      simRef.current = makeSim(count, sprite);
+      emitStatus(true);
+    };
+    img.onerror = () => {
+      sweaterSpriteRef.current = null;
+    };
+    img.src = blueSweaterUrl;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ===== حلقة الرسم ===== */
   useEffect(() => {
@@ -1040,7 +831,6 @@ const StaticScene = forwardRef(function StaticScene(
     <canvas
       ref={canvasRef}
       className="st-canvas"
-      style={{ aspectRatio: `${SCENE_W} / ${SCENE_H}` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

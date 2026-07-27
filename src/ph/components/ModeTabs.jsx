@@ -3,8 +3,8 @@
  * وتخفيفها) و"حضّر محلولك" (ضبط pH يدوياً بشريط تمرير).
  */
 const MODES = [
-  { key: "explore", label: "استكشف", emoji: "🔬" },
-  { key: "custom", label: "حضّر محلولك", emoji: "🎛️" },
+  { key: "explore", label: "استكشف", emoji: "🧪" },
+  { key: "custom", label: "حضّر محاليلك", emoji: "🧴" },
 ];
 
 export default function ModeTabs({ mode, onChange }) {

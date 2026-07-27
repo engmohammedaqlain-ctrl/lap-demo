@@ -50,7 +50,7 @@ export default function PhScene({
   const tickOne = LIQUID_BOTTOM - (1.0 / 1.2) * LIQUID_SPAN;
 
   return (
-    <svg className="ph-scene" viewBox="0 0 620 500" role="img" aria-label="منضدة تجربة الأس الهيدروجيني">
+    <svg className="ph-scene" viewBox="0 0 620 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="منضدة تجربة الأس الهيدروجيني">
       <defs>
         <linearGradient id="ph-pipe" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#f2f5f7" />

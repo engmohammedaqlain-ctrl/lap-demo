@@ -59,7 +59,7 @@ export default function PhHelpModal({ open, onClose }) {
           <h3>🧪 طريقة استخدام التجربة</h3>
           <ul className="help-list">
             <li>
-              <strong>اختر سائلاً</strong> من الشرائح في الأسفل.
+              <strong>اختر سائلاً</strong> من الشرائح على الجانب.
             </li>
             <li>
               <strong>اضغط باستمرار على القطّارة</strong> لإضافة المزيد من السائل المركّز.

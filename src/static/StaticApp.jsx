@@ -57,6 +57,7 @@ export default function StaticApp({ onHome }) {
           🏠 <span className="st-home-text">الرئيسية</span>
         </button>
         <div className="st-title">
+          <span className="st-title-bolt" aria-hidden="true">⚡</span>
           <span className="st-title-main">الكهرباء الساكنة</span>
         </div>
         <div className="st-topbar-actions">
@@ -107,7 +108,7 @@ export default function StaticApp({ onHome }) {
               onStatus={onStatus}
             />
           </div>
-          <span className="st-scene-hint">💡 اسحب البالون وافركه بالسترة… ثم أفلته!</span>
+          <span className="st-scene-hint">💡 اسحب البالون وقرّبه من السترة… ثم أفلته!</span>
         </div>
 
         <StaticInfoPanel status={status} />
