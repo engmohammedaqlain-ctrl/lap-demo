@@ -33,7 +33,8 @@ export default function CellApp({ onHome }) {
   const [selectedId, setSelectedId] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [reducedMotion] = useState(prefersReduced);
+  /* تثبيت حركة الأجسام: يبدأ من تفضيل النظام، ويُبدَّل يدوياً من الشريط العلوي */
+  const [motionPaused, setMotionPaused] = useState(prefersReduced);
 
   const [zoom, setZoom] = useState({ stage: "نقطة ماء", mag: "×1", pct: 0, atLimit: false });
   const [particleCount, setParticleCount] = useState(CROWD.target);
@@ -157,6 +158,11 @@ export default function CellApp({ onHome }) {
     });
   }
 
+  function toggleMotion() {
+    setMotionPaused((prev) => !prev);
+    click();
+  }
+
   return (
     <div className="cl-stage" ref={stageRef}>
       <header className="cl-topbar">
@@ -167,6 +173,16 @@ export default function CellApp({ onHome }) {
           <span className="cl-title-main">رحلة داخل الخلية</span>
         </div>
         <div className="cl-topbar-actions">
+          <button
+            type="button"
+            className={`cl-motion-btn${motionPaused ? " active" : ""}`}
+            onClick={toggleMotion}
+            aria-label={motionPaused ? "تشغيل الحركة" : "تثبيت الحركة"}
+            aria-pressed={motionPaused}
+            title={motionPaused ? "العرض الساكن — اضغط لتشغيل الحركة" : "العرض المتحرّك — اضغط لتثبيت الأجسام"}
+          >
+            {motionPaused ? "▶️" : "⏸️"}
+          </button>
           <button
             type="button"
             className="cl-fs-btn"
@@ -217,7 +233,7 @@ export default function CellApp({ onHome }) {
               cellType={cellType}
               mode={mode}
               selectedId={selectedId}
-              reducedMotion={reducedMotion}
+              reducedMotion={motionPaused}
               soundEnabled={soundEnabled}
               onPick={onPick}
               onZoom={onZoom}

@@ -19,7 +19,8 @@
 .cl-home-btn,
 .cl-help-btn,
 .cl-sound-btn,
-.cl-fs-btn {
+.cl-fs-btn,
+.cl-motion-btn {
   flex-shrink: 0;
   font-family: inherit;
   font-weight: 700;
@@ -27,17 +28,26 @@
   background: #fff;
   color: #c2185b;
   cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
 }
 .cl-home-btn { font-size: 0.9rem; border-radius: 22px; padding: 7px 14px; }
 .cl-help-btn,
 .cl-sound-btn,
-.cl-fs-btn { width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 1rem; }
+.cl-fs-btn,
+.cl-motion-btn { width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 1rem; }
 .cl-help-btn { font-weight: 800; }
+.cl-motion-btn.active {
+  background: #c2185b;
+  color: #fff;
+  border-color: #c2185b;
+  box-shadow: 0 2px 8px rgba(194, 24, 91, 0.35);
+}
 .cl-home-btn:hover,
 .cl-help-btn:hover,
 .cl-sound-btn:hover,
-.cl-fs-btn:hover { background: rgba(194, 24, 91, 0.09); transform: translateY(-1px); }
+.cl-fs-btn:hover,
+.cl-motion-btn:hover { background: rgba(194, 24, 91, 0.09); transform: translateY(-1px); }
+.cl-motion-btn.active:hover { background: #ad1457; color: #fff; }
 .cl-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .cl-title { text-align: center; }
 .cl-title-main { font-size: clamp(1.05rem, 3.4vw, 1.45rem); font-weight: 700; color: #ad1457; }
