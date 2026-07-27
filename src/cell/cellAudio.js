@@ -183,6 +183,38 @@ class CellSoundEngine {
     src.stop(t + 0.55);
   }
 
+  /** طقّة استقرار الغطاء الزجاجي على الشريحة + رنين خفيف (نهاية تحضير العيّنة) */
+  playSlideClink() {
+    this._ensure();
+    if (!this.ctx || this.muted) return;
+    this._resume();
+    const t = this.ctx.currentTime;
+    // طقّة زجاج (نقرتان قصيرتان حادّتان)
+    [0, 0.06].forEach((d, i) => {
+      const o = this.ctx.createOscillator();
+      o.type = "triangle";
+      o.frequency.value = 1600 - i * 300;
+      const g = this.ctx.createGain();
+      const s = t + d;
+      g.gain.setValueAtTime(0.11, s);
+      g.gain.exponentialRampToValueAtTime(0.001, s + 0.07);
+      o.connect(g).connect(this.master);
+      o.start(s);
+      o.stop(s + 0.08);
+    });
+    // رنين بلّوري خفيف يتلاشى
+    const o2 = this.ctx.createOscillator();
+    o2.type = "sine";
+    o2.frequency.setValueAtTime(2200, t + 0.05);
+    o2.frequency.exponentialRampToValueAtTime(1400, t + 0.4);
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.05, t + 0.05);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    o2.connect(g2).connect(this.master);
+    o2.start(t + 0.05);
+    o2.stop(t + 0.46);
+  }
+
   /** رنين الغوص داخل عضيّ */
   playDiveIn() {
     this._ensure();
