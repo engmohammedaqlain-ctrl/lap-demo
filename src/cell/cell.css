@@ -66,7 +66,7 @@
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #7a5566;
+  color: #5a3a48;
   border: none;
   background: transparent;
   border-radius: 20px;
@@ -138,7 +138,7 @@
 }
 .cl-scene-card:fullscreen::after { border-radius: 0; }
 .cl-canvas:active { cursor: grabbing; }
-.cl-scene-hint { flex-shrink: 0; font-size: 0.74rem; color: #9a6a80; font-weight: 600; text-align: center; }
+.cl-scene-hint { flex-shrink: 0; font-size: 0.74rem; color: #6d4658; font-weight: 600; text-align: center; }
 
 /* ---- أزرار عائمة فوق المشهد ---- */
 .cl-dive-btn,
@@ -192,7 +192,7 @@
   gap: 6px;
 }
 .cl-zoom-stage { font-size: 0.95rem; font-weight: 700; color: #ad1457; }
-.cl-zoom-mag { font-size: 0.72rem; color: #9a6a80; font-variant-numeric: tabular-nums; }
+.cl-zoom-mag { font-size: 0.72rem; color: #6d4658; font-variant-numeric: tabular-nums; }
 .cl-zoom-bar { height: 6px; border-radius: 4px; background: rgba(194, 24, 91, 0.12); overflow: hidden; }
 .cl-zoom-fill { height: 100%; background: linear-gradient(90deg, #7e57c2, #f06292); transition: width 0.2s ease; }
 
@@ -227,7 +227,7 @@
 .cl-explore-hint {
   font-size: 0.76rem;
   line-height: 1.55;
-  color: #7a5566;
+  color: #5a3a48;
   background: rgba(194, 24, 91, 0.06);
   border-radius: 12px;
   padding: 9px 11px;
@@ -245,12 +245,12 @@
 }
 @keyframes cl-pop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .cl-org-name { font-size: 1.2rem; font-weight: 700; color: #ad1457; }
-.cl-org-latin { font-size: 0.7rem; color: #9a6a80; letter-spacing: 0.02em; }
+.cl-org-latin { font-size: 0.7rem; color: #6d4658; letter-spacing: 0.02em; }
 .cl-org-func { font-size: 0.87rem; line-height: 1.65; color: #3a2e34; margin-top: 4px; }
 .cl-org-anim { font-size: 0.8rem; line-height: 1.55; color: #b5522a; }
-.cl-org-hint { font-size: 0.7rem; color: #9a6a80; margin-top: 2px; }
+.cl-org-hint { font-size: 0.7rem; color: #6d4658; margin-top: 2px; }
 
-.cl-perf { font-size: 0.68rem; color: #9a8290; display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
+.cl-perf { font-size: 0.68rem; color: #6e5866; display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
 .cl-perf-note { color: #b5522a; }
 
 /* ---- شريط التحدّي (فوق المشهد) ---- */
@@ -278,9 +278,9 @@
 .cl-ch-question { font-size: 0.87rem; color: #3a2e34; }
 .cl-ch-question b { color: #ad1457; }
 .cl-ch-feedback { font-size: 0.8rem; color: #b5522a; font-weight: 600; }
-.cl-ch-feedback.muted { color: #9a6a80; font-weight: 500; }
+.cl-ch-feedback.muted { color: #6d4658; font-weight: 500; }
 .cl-ch-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.cl-ch-attempts { font-size: 0.7rem; color: #9a6a80; }
+.cl-ch-attempts { font-size: 0.7rem; color: #6d4658; }
 .cl-ch-skip {
   font-family: inherit;
   font-size: 0.72rem;
