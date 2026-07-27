@@ -1,8 +1,9 @@
 /**
  * phAudio.js — مؤثرات صوتية مُولّدة برمجياً (Web Audio API) لتجربة الأس
  * الهيدروجيني: صبّ ماء مستمر، قطرة القطّارة، نغمة "تعادل" عند بلوغ pH ٧،
- * ونقرة واجهة. بلا أي ملفات صوت خارجية (يعمل دون اتصال بالكامل).
+ * ونقرة واجهة، مع تسجيل محلي مخصّص لسكب أنبوب الاختبار في الكأس.
  */
+import pouredIntoWaterUrl from "../../../Downloads/poured-into-water.mp3?url";
 
 export const PhSound = (() => {
   let ctx = null;
@@ -10,6 +11,7 @@ export const PhSound = (() => {
   let isMuted = false;
   let pourNodes = null;
   let drainNodes = null;
+  let pouredIntoWaterAudio = null;
 
   const lastPlayedAt = {};
   function canPlay(key, minIntervalMs) {
@@ -73,6 +75,20 @@ export const PhSound = (() => {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
     noise.stop(now + 0.15);
     pourNodes = null;
+  }
+
+  /** التسجيل الحقيقي المخصّص لسكب أنبوب الاختبار داخل الكأس الكبير */
+  function playPouredIntoWater() {
+    if (isMuted || !canPlay("poured-into-water", 250)) return;
+    if (!pouredIntoWaterAudio) {
+      pouredIntoWaterAudio = new Audio(pouredIntoWaterUrl);
+      pouredIntoWaterAudio.preload = "auto";
+      pouredIntoWaterAudio.volume = 0.72;
+    }
+    pouredIntoWaterAudio.currentTime = 0;
+    pouredIntoWaterAudio.play().catch(() => {
+      // قد يمنع المتصفح التشغيل قبل أول تفاعل؛ السحب نفسه عادةً يفعّل الصوت.
+    });
   }
 
   /** قطرة صغيرة (القطّارة) */
@@ -180,22 +196,86 @@ export const PhSound = (() => {
     osc.stop(now + 0.1);
   }
 
+  /** صوت تعبئة قصير: صعود ناعم يوحي بارتفاع السائل داخل الأنبوب */
+  function playFill() {
+    if (isMuted || !canPlay("fill", 180)) return;
+    ensureContext();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(260, now);
+    osc.frequency.exponentialRampToValueAtTime(620, now + 0.28);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.36);
+  }
+
+  /** طقّة زجاجية خفيفة عند إمساك الأنبوب */
+  function playPickUp() {
+    if (isMuted || !canPlay("pickup", 100)) return;
+    ensureContext();
+    const now = ctx.currentTime;
+    [1320, 1760].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.08 / (i + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1 + i * 0.03);
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    });
+  }
+
+  /** طقّة أخفض عند إعادة الأنبوب إلى الحامل */
+  function playPutDown() {
+    if (isMuted || !canPlay("putdown", 100)) return;
+    ensureContext();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(760, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.09);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.16);
+  }
+
   function setMuted(muted) {
     isMuted = muted;
     if (muted) {
       stopPour();
       stopDrainSound();
+      if (pouredIntoWaterAudio) {
+        pouredIntoWaterAudio.pause();
+        pouredIntoWaterAudio.currentTime = 0;
+      }
     }
   }
 
   return {
     startPour,
     stopPour,
+    playPouredIntoWater,
     startDrainSound,
     stopDrainSound,
     playDrip,
     playNeutralChime,
     playClick,
+    playFill,
+    playPickUp,
+    playPutDown,
     setMuted,
     get muted() {
       return isMuted;

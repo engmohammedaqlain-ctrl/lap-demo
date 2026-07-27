@@ -27,7 +27,11 @@ export default function InfoPanel({ pH, empty, solutionKey, mode }) {
         <div className="ph-info-status-text">
           <span className="ph-info-label">{status ? status.label : "الكأس فارغ"}</span>
           <span className="ph-info-meaning">
-            {status ? MEANING[status.tone] : "أضف سائلاً بالقطّارة لتبدأ القياس."}
+            {status
+              ? MEANING[status.tone]
+              : mode === "custom"
+              ? "اصب من أنبوبَي الاختبار لملء الكأس ومراقبة pH المزيج."
+              : "أضف سائلاً بالقطّارة لتبدأ القياس."}
           </span>
         </div>
       </div>

@@ -15,10 +15,10 @@ const BUBBLES = [
   { left: "30%", delay: "2s", dur: "2.7s", size: 8 },
 ];
 
-export default function Beaker({ pH, fillFraction, volumeLabel, pouring }) {
+export default function Beaker({ pH, fillFraction, volumeLabel, pouring, liquidColor: liquidColorProp }) {
   const fillPercent = Math.round(fillFraction * 100);
-  const liquidColor = phColorCSS(pH);
-  const deep = phColorDeepCSS(pH);
+  const liquidColor = liquidColorProp || phColorCSS(pH);
+  const deep = liquidColorProp || phColorDeepCSS(pH);
   const empty = fillFraction <= 0.001;
 
   return (
@@ -38,7 +38,9 @@ export default function Beaker({ pH, fillFraction, volumeLabel, pouring }) {
           className="ph-liquid"
           style={{
             height: `${fillPercent}%`,
-            background: `linear-gradient(to bottom, ${liquidColor}, ${deep})`,
+            background: liquidColorProp
+              ? liquidColor
+              : `linear-gradient(to bottom, ${liquidColor}, ${deep})`,
           }}
         >
           {!empty && (

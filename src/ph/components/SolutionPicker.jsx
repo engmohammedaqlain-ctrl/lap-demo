@@ -1,9 +1,9 @@
 /**
- * SolutionPicker.jsx — شريط اختيار السائل بالشرائح (لا قائمة منسدلة): كل
- * شريحة تُظهر إيموجي السائل واسمه ومربّع لونه الحقيقي، والمحدَّدة مميّزة
- * بإطار أخضر. اختيار سائل يبدأ تجربة نظيفة به داخل الكأس.
+ * SolutionPicker.jsx — شبكة اختيار السائل: أيقونات SVG موحّدة النسبة
+ * داخل بطاقات مربّعة، تبقى متناسقة عند تكبير/تصغير الصفحة.
  */
-import { SOLUTIONS, SOLUTION_ORDER, solutionColorSolid } from "../phData.js";
+import { SOLUTIONS, SOLUTION_ORDER } from "../phData.js";
+import SolutionIcon from "./SolutionIcon.jsx";
 
 export default function SolutionPicker({ activeKey, onSelect }) {
   return (
@@ -20,8 +20,8 @@ export default function SolutionPicker({ activeKey, onSelect }) {
               onClick={() => onSelect(key)}
               title={s.nameAr}
             >
-              <span className="ph-pick-swatch" style={{ background: solutionColorSolid(key) }}>
-                <span className="ph-pick-emoji">{s.emoji}</span>
+              <span className="ph-pick-icon-wrap">
+                <SolutionIcon id={key} />
               </span>
               <span className="ph-pick-name">{s.nameAr}</span>
             </button>

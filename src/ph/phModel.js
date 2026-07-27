@@ -53,6 +53,38 @@ export function computePH({ soluteVolume, waterVolume, solutePH }) {
   }
 }
 
+/**
+ * يخلط أي عدد من المحاليل (كل جزء: { volume, pH }) وفق ميزان الشحنة العلمية:
+ * excess H⁺ = Σ ([H⁺] − [OH⁻]) · V ، ثم يحلّ [H⁺]² − excess·[H⁺] − Kw = ٠.
+ * يغطي خلط حمض+قاعدة (تعادل)، وتخفيف الأحماض/القواعد بدقّة لوغاريتمية.
+ */
+export function mixPH(parts) {
+  const KW = 1e-14;
+  let totalVolume = 0;
+  let excessMoles = 0;
+  for (const part of parts) {
+    const v = part?.volume ?? 0;
+    if (v <= 1e-9) continue;
+    const pH = Math.max(0, Math.min(14, part.pH));
+    const h = concentrationH3O(pH);
+    const oh = concentrationOH(pH);
+    excessMoles += (h - oh) * v;
+    totalVolume += v;
+  }
+  if (totalVolume <= 1e-9) return NEUTRAL_PH;
+
+  const excess = excessMoles / totalVolume;
+  if (Math.abs(excess) < 1e-15) return NEUTRAL_PH;
+
+  // جذر المعادلة التربيعية: [H+] = (excess + √(excess² + 4Kw)) / 2
+  const hPlus = (excess + Math.sqrt(excess * excess + 4 * KW)) / 2;
+  const pH = -Math.log10(Math.max(hPlus, 1e-15));
+  return Math.max(0, Math.min(14, pH));
+}
+
+/** سعة أنبوب الاختبار الرفيع (لتر) */
+export const TUBE_MAX_VOLUME = 0.25;
+
 /** نسبة امتلاء الكأس (٠..١) من الحجم الكلي */
 export function fillFraction(totalVolume) {
   return Math.max(0, Math.min(1, totalVolume / MAX_VOLUME));
