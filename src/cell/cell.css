@@ -170,6 +170,97 @@
   50% { box-shadow: 0 6px 30px rgba(194, 24, 91, 0.85); }
 }
 
+/* ---- شريط تنقّل «باوربوينت» أسفل المشهد (رحلة الخدّ ← المجهر) ---- */
+.cl-nav {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 40px;
+  background: rgba(6, 18, 30, 0.72);
+  border: 1px solid rgba(111, 224, 255, 0.45);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(111, 224, 255, 0.12);
+  backdrop-filter: blur(6px);
+}
+.cl-nav-btn {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.86rem;
+  border-radius: 30px;
+  padding: 9px 18px;
+  cursor: pointer;
+  border: 1px solid rgba(111, 224, 255, 0.5);
+  color: #eafcff;
+  background: linear-gradient(135deg, rgba(20, 60, 90, 0.9), rgba(12, 34, 54, 0.9));
+  transition: transform 0.12s, filter 0.12s, box-shadow 0.12s;
+  white-space: nowrap;
+}
+.cl-nav-btn:hover { transform: translateY(-2px); filter: brightness(1.15); }
+.cl-nav-btn.primary {
+  border: none;
+  color: #05121e;
+  background: linear-gradient(135deg, #7fe9ff, #35c6f0);
+  box-shadow: 0 4px 18px rgba(80, 210, 245, 0.55);
+  animation: cl-nav-pulse 1.9s ease-in-out infinite;
+}
+.cl-nav-btn.enter {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #c2185b, #7e57c2);
+  box-shadow: 0 4px 20px rgba(194, 24, 91, 0.7);
+  animation: cl-nav-pulse 1.5s ease-in-out infinite;
+}
+.cl-nav-btn.ghost { background: rgba(255, 255, 255, 0.06); }
+@keyframes cl-nav-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.22); }
+}
+/* شريط عمق الرحلة (بديل نقاط اللقطات) — يتحرّك مع تكبير الطالب نفسه */
+.cl-depth { display: flex; align-items: center; gap: 10px; }
+.cl-depth--float {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 7;
+  padding: 7px 16px;
+  border-radius: 30px;
+  background: rgba(6, 18, 30, 0.6);
+  border: 1px solid rgba(111, 224, 255, 0.35);
+  backdrop-filter: blur(6px);
+}
+.cl-depth-bar {
+  display: block;
+  width: 140px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.cl-depth-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #6fe0ff;
+  box-shadow: 0 0 10px rgba(111, 224, 255, 0.9);
+  transition: width 0.12s linear;
+}
+.cl-depth-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #cdeeff;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .cl-nav-btn { font-size: 0.76rem; padding: 8px 13px; }
+  .cl-nav { bottom: 10px; gap: 7px; }
+}
+
 /* ---- اللوحة التفسيرية (عمود جانبي يفيت بلا سكرول للصفحة) ---- */
 .cl-info {
   flex: 0 0 320px;

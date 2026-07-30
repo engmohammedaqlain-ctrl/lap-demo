@@ -36,7 +36,7 @@ export default function CellApp({ onHome }) {
   /* تثبيت حركة الأجسام: يبدأ من تفضيل النظام، ويُبدَّل يدوياً من الشريط العلوي */
   const [motionPaused, setMotionPaused] = useState(prefersReduced);
 
-  const [zoom, setZoom] = useState({ stage: "نقطة ماء", mag: "×1", pct: 0, atLimit: false });
+  const [zoom, setZoom] = useState({ stage: "تحت المجهر", mag: "×10", pct: 0, atLimit: false, atScope: true });
   const [particleCount, setParticleCount] = useState(CROWD.target);
 
   const [challenge, setChallenge] = useState({ target: null, feedback: null, attempts: 0, score: 0 });
@@ -133,6 +133,7 @@ export default function CellApp({ onHome }) {
     setMode(next);
     setSelectedId(null);
     if (next === "challenge") {
+      sceneRef.current?.enterCell();
       setChallenge({ target: pickChallenge(cellType, null), feedback: null, attempts: 0, score: 0 });
     }
     click();
@@ -149,6 +150,7 @@ export default function CellApp({ onHome }) {
     setSelectedId(null);
     click();
   }
+
 
   function toggleSound() {
     setSoundEnabled((prev) => {
@@ -269,6 +271,17 @@ export default function CellApp({ onHome }) {
               </button>
             )}
 
+            {/* شريط عمق الرحلة: من الشريحة على المجهر حتى داخل الخلية — يتحرّك
+                مع تكبير الطالب نفسه (لا لقطات ولا خطوات ينتقل بينها) */}
+            {mode === "explore" && !focus.focusId && (
+              <div className="cl-depth cl-depth--float" aria-hidden="true">
+                <span className="cl-depth-bar">
+                  <span className="cl-depth-fill" style={{ width: `${Math.round((zoom.p || 0) * 100)}%` }} />
+                </span>
+                <span className="cl-depth-label">{zoom.stage}</span>
+              </div>
+            )}
+
             {mode === "challenge" && (
               <CellChallenge
                 target={challenge.target}
@@ -280,7 +293,9 @@ export default function CellApp({ onHome }) {
             )}
           </div>
           <span className="cl-scene-hint">
-            💡 كبّر بعجلة الماوس أو بإصبعين — وتجاوز حدّ المجهر المدرسي!
+            {zoom.atScope
+              ? "🔍 كبّر بعجلة الماوس أو بإصبعين (أو اضغط على المشهد) لتدخل الشريحة"
+              : "💡 واصل التكبير — نسيج ← خلية ← داخل الخلية، وتجاوز حدّ المجهر المدرسي!"}
           </span>
         </div>
 

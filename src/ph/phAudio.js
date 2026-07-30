@@ -1,9 +1,8 @@
 /**
  * phAudio.js — مؤثرات صوتية مُولّدة برمجياً (Web Audio API) لتجربة الأس
  * الهيدروجيني: صبّ ماء مستمر، قطرة القطّارة، نغمة "تعادل" عند بلوغ pH ٧،
- * ونقرة واجهة، مع تسجيل محلي مخصّص لسكب أنبوب الاختبار في الكأس.
+ * ونقرة واجهة، وسكب أنبوب الاختبار في الكأس مُولّد بالكامل عبر Web Audio.
  */
-import pouredIntoWaterUrl from "../../../Downloads/poured-into-water.mp3?url";
 
 export const PhSound = (() => {
   let ctx = null;
@@ -11,7 +10,7 @@ export const PhSound = (() => {
   let isMuted = false;
   let pourNodes = null;
   let drainNodes = null;
-  let pouredIntoWaterAudio = null;
+  let pouredNodes = null;
 
   const lastPlayedAt = {};
   function canPlay(key, minIntervalMs) {
@@ -77,18 +76,72 @@ export const PhSound = (() => {
     pourNodes = null;
   }
 
-  /** التسجيل الحقيقي المخصّص لسكب أنبوب الاختبار داخل الكأس الكبير */
+  /** سكب أنبوب الاختبار داخل الكأس الكبير — مُولّد: دفقة ماء + فقاعات خفيفة */
   function playPouredIntoWater() {
     if (isMuted || !canPlay("poured-into-water", 250)) return;
-    if (!pouredIntoWaterAudio) {
-      pouredIntoWaterAudio = new Audio(pouredIntoWaterUrl);
-      pouredIntoWaterAudio.preload = "auto";
-      pouredIntoWaterAudio.volume = 0.72;
+    ensureContext();
+    const now = ctx.currentTime;
+    const dur = 0.85;
+
+    // دفقة الماء: ضوضاء عريضة يمرّرها مرشّح ينزل تدريجياً كأنّ السائل يستقرّ
+    const splash = ctx.createBufferSource();
+    splash.buffer = createNoiseBuffer(dur + 0.2);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 0.8;
+    filter.frequency.setValueAtTime(1600, now);
+    filter.frequency.exponentialRampToValueAtTime(500, now + dur);
+
+    const splashGain = ctx.createGain();
+    splashGain.gain.setValueAtTime(0.0001, now);
+    splashGain.gain.exponentialRampToValueAtTime(0.16, now + 0.06);
+    splashGain.gain.setValueAtTime(0.16, now + dur * 0.55);
+    splashGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    splash.connect(filter);
+    filter.connect(splashGain);
+    splashGain.connect(masterGain);
+    splash.start(now);
+    splash.stop(now + dur + 0.05);
+
+    // فقاعات: عدّة نغمات جيبية قصيرة تصعد بترددها لإيحاء فقاعات الماء
+    const bubbles = [];
+    const bubbleCount = 5;
+    for (let i = 0; i < bubbleCount; i++) {
+      const t0 = now + 0.1 + Math.random() * (dur - 0.2);
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      const base = 360 + Math.random() * 320;
+      osc.frequency.setValueAtTime(base, t0);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.8, t0 + 0.09);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.07, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+      osc.connect(g);
+      g.connect(masterGain);
+      osc.start(t0);
+      osc.stop(t0 + 0.14);
+      bubbles.push(osc);
     }
-    pouredIntoWaterAudio.currentTime = 0;
-    pouredIntoWaterAudio.play().catch(() => {
-      // قد يمنع المتصفح التشغيل قبل أول تفاعل؛ السحب نفسه عادةً يفعّل الصوت.
-    });
+
+    pouredNodes = { splash, splashGain, bubbles };
+  }
+
+  function stopPoured() {
+    if (!pouredNodes) return;
+    const { splash, splashGain, bubbles } = pouredNodes;
+    const now = ctx.currentTime;
+    splashGain.gain.cancelScheduledValues(now);
+    splashGain.gain.setValueAtTime(splashGain.gain.value, now);
+    splashGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    try {
+      splash.stop(now + 0.1);
+      bubbles.forEach((osc) => osc.stop(now + 0.1));
+    } catch {
+      // قد تكون بعض العُقد قد توقّفت تلقائياً؛ نتجاهل الخطأ.
+    }
+    pouredNodes = null;
   }
 
   /** قطرة صغيرة (القطّارة) */
@@ -257,10 +310,7 @@ export const PhSound = (() => {
     if (muted) {
       stopPour();
       stopDrainSound();
-      if (pouredIntoWaterAudio) {
-        pouredIntoWaterAudio.pause();
-        pouredIntoWaterAudio.currentTime = 0;
-      }
+      stopPoured();
     }
   }
 
