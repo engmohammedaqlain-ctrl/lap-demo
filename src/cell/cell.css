@@ -16,7 +16,6 @@
 
 /* ---- شريط علوي ---- */
 .cl-topbar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.cl-home-btn,
 .cl-help-btn,
 .cl-sound-btn,
 .cl-fs-btn,
@@ -30,7 +29,6 @@
   cursor: pointer;
   transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
 }
-.cl-home-btn { font-size: 0.9rem; border-radius: 22px; padding: 7px 14px; }
 .cl-help-btn,
 .cl-sound-btn,
 .cl-fs-btn,
@@ -42,7 +40,6 @@
   border-color: #c2185b;
   box-shadow: 0 2px 8px rgba(194, 24, 91, 0.35);
 }
-.cl-home-btn:hover,
 .cl-help-btn:hover,
 .cl-sound-btn:hover,
 .cl-fs-btn:hover,

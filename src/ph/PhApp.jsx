@@ -12,6 +12,7 @@
  * تعدّل الحجوم؛ مصدر الحقيقة volumesRef (يُقرأ/يُكتب فوراً) ونعكسه إلى state.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import PlatformBrand from "../components/PlatformBrand.jsx";
 import PhScene from "./components/PhScene.jsx";
 import PhScaleBar from "./components/PhScaleBar.jsx";
 import InfoPanel from "./components/InfoPanel.jsx";
@@ -354,10 +355,7 @@ export default function PhApp({ onHome }) {
   return (
     <div className="ph-stage">
       <header className="ph-topbar">
-        <button type="button" className="ph-home-btn" onClick={onHome} title="الرئيسية">
-          <span className="ph-home-icon" aria-hidden="true">🏠</span>
-          <span className="ph-home-text">الرئيسية</span>
-        </button>
+        <PlatformBrand onClick={onHome} />
         <div className="ph-title">
           <span className="ph-title-main">الأس الهيدروجيني</span>
         </div>

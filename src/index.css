@@ -121,6 +121,54 @@ body {
   background: rgba(27, 115, 64, 0.06);
 }
 
+/* ===== توقيع المنصة — موحّد في أعلى كل تجربة ===== */
+.platform-brand {
+  pointer-events: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--ps-green-dark);
+  background: #fff;
+  border: 1.5px solid rgba(27, 115, 64, 0.3);
+  border-radius: 22px;
+  padding: 6px 14px 6px 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(20, 60, 40, 0.06);
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+
+.platform-brand:hover {
+  background: rgba(27, 115, 64, 0.08);
+  transform: translateY(-1px);
+}
+
+.platform-brand-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(
+    var(--ps-black) 0 25%,
+    #ffffff 25% 50%,
+    var(--ps-green) 50% 75%,
+    var(--ps-red) 75% 100%
+  );
+  box-shadow: inset 0 0 0 2px #fff, 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.platform-brand-name {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .platform-brand-name { display: none; }
+  .platform-brand { padding: 6px 10px; }
+}
+
 /* ===== عنوان — يسار أعلى بعيداً عن اللوحات ===== */
 .sim-title {
   position: absolute;
@@ -140,16 +188,9 @@ body {
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
-.title-accent {
-  width: 6px;
-  height: 32px;
-  border-radius: 3px;
-  background: linear-gradient(to bottom,
-    var(--ps-black) 0%, var(--ps-black) 22%,
-    #fff 22%, #fff 44%,
-    var(--ps-green) 44%, var(--ps-green) 66%,
-    var(--ps-red) 66%, var(--ps-red) 100%
-  );
+.title-divider {
+  color: rgba(27, 115, 64, 0.35);
+  font-weight: 700;
 }
 
 .title-text {
@@ -185,22 +226,6 @@ body {
 }
 
 .help-toggle:hover { background: rgba(27,115,64,0.1); transform: scale(1.06); }
-
-/* زر الرئيسية داخل شريط العنوان (بجانب "؟") */
-.home-toggle {
-  pointer-events: auto;
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1.5px solid var(--ps-green);
-  background: #fff;
-  font-size: 0.9rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
-}
-.home-toggle:hover { background: rgba(27,115,64,0.1); transform: scale(1.06); }
 
 /* ===== نافذة "عن التجربة" ===== */
 .help-overlay {
@@ -692,7 +717,7 @@ body {
 
   .title-text { font-size: 1.1rem; }
   .title-sub { display: none; }
-  .title-accent { height: 24px; width: 5px; }
+  .platform-brand-mark { width: 20px; height: 20px; }
 
   .hud {
     padding: 8px 10px;

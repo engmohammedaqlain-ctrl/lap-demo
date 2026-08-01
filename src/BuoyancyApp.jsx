@@ -4,6 +4,7 @@
  * "الرئيسية" في شريط العنوان بجانب زر "؟".
  */
 import { useRef, useState } from "react";
+import PlatformBrand from "./components/PlatformBrand.jsx";
 import CanvasStage from "./components/CanvasStage.jsx";
 import MaterialTray from "./components/MaterialTray.jsx";
 import ShapeRow from "./components/ShapeRow.jsx";
@@ -46,10 +47,8 @@ export default function BuoyancyApp({ onHome }) {
       <CanvasStage ref={canvasApiRef} stateRef={stateRef} actions={actions} />
 
       <div className="sim-title">
-        <button className="home-toggle" aria-label="الرئيسية" title="الرئيسية" onClick={goHome}>
-          🏠
-        </button>
-        <span className="title-accent"></span>
+        <PlatformBrand onClick={goHome} />
+        <span className="title-divider" aria-hidden="true">›</span>
         <span className="title-text">الطفو</span>
         <span className="title-sub">تجربة أرخميدس</span>
         <button

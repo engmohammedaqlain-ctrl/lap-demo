@@ -4,6 +4,7 @@
  * الشريط العلوي والأدوات واللوحة التفسيرية بطابع الموقع نفسه وباللغة العربية.
  */
 import { useCallback, useRef, useState } from "react";
+import PlatformBrand from "../components/PlatformBrand.jsx";
 import StaticScene from "./StaticScene.jsx";
 import StaticControls from "./components/StaticControls.jsx";
 import StaticInfoPanel from "./components/StaticInfoPanel.jsx";
@@ -53,9 +54,7 @@ export default function StaticApp({ onHome }) {
   return (
     <div className="st-stage">
       <header className="st-topbar">
-        <button type="button" className="st-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="st-home-text">الرئيسية</span>
-        </button>
+        <PlatformBrand onClick={onHome} />
         <div className="st-title">
           <span className="st-title-bolt" aria-hidden="true">⚡</span>
           <span className="st-title-main">الكهرباء الساكنة</span>

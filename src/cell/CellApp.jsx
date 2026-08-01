@@ -7,6 +7,7 @@
  * أوامر التأثيرات عبر مرجع أمري.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import PlatformBrand from "../components/PlatformBrand.jsx";
 import CellScene from "./CellScene.jsx";
 import CellControls from "./components/CellControls.jsx";
 import CellInfoPanel from "./components/CellInfoPanel.jsx";
@@ -168,9 +169,7 @@ export default function CellApp({ onHome }) {
   return (
     <div className="cl-stage" ref={stageRef}>
       <header className="cl-topbar">
-        <button type="button" className="cl-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="cl-home-text">الرئيسية</span>
-        </button>
+        <PlatformBrand onClick={onHome} />
         <div className="cl-title">
           <span className="cl-title-main">رحلة داخل الخلية</span>
         </div>

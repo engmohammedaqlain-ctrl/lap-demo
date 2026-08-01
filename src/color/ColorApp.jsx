@@ -2,6 +2,7 @@
  * ColorApp.jsx — واجهة فاتحة أنيقة، التحكم المباشر من العرض بدون محددات أسفله وبدون إيموجي.
  */
 import { useState, useRef } from "react";
+import PlatformBrand from "../components/PlatformBrand.jsx";
 import ColorScene from "./ColorScene.jsx";
 import { ColorSound } from "./colorAudio.js";
 import "./color.css";
@@ -53,13 +54,11 @@ export default function ColorApp({ onHome }) {
     <div className="color-app">
       {/* Header — ستايل فاتح أنيق بدون إيموجي */}
       <header className="color-header">
-        <button type="button" className="color-btn-home" onClick={onHome}>
-          🏠 الرئيسية
-        </button>
+        <PlatformBrand onClick={onHome} />
         <div className="color-header-title">
           <h1>رؤية الألوان وكيف يراها الدماغ</h1>
         </div>
-        <button type="button" className="color-btn-home" onClick={handleReset}>
+        <button type="button" className="color-btn-reset" onClick={handleReset}>
           إعادة ضبط
         </button>
       </header>

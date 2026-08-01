@@ -1,0 +1,117 @@
+/* ===== شاشة التحميل ===== */
+.loading {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+  background: radial-gradient(circle at 50% -10%, #ffffff 0%, var(--ps-cream) 45%, #f0e8d8 100%);
+  background-image: var(--keffiyeh), radial-gradient(circle at 50% -10%, #ffffff 0%, var(--ps-cream) 45%, #f0e8d8 100%);
+  opacity: 1;
+  transition: opacity 0.38s ease;
+  z-index: 100;
+}
+
+.loading-leave {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-inner {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  animation: loading-rise 0.5s ease both;
+}
+
+@keyframes loading-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.loading-ring-outer {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  padding: 7px;
+  margin-top: 6px;
+  background: conic-gradient(
+    var(--ps-black) 0 25%,
+    #ffffff 25% 50%,
+    var(--ps-green) 50% 75%,
+    var(--ps-red) 75% 100%
+  );
+  box-shadow: 0 6px 22px rgba(15, 77, 42, 0.18);
+  animation: loading-spin 1.6s linear infinite;
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--ps-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-ring-emoji {
+  font-size: 2.1rem;
+  line-height: 1;
+  display: inline-block;
+  animation: loading-bob 1.2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.15));
+}
+
+@keyframes loading-bob {
+  from { transform: translateY(-2px) rotate(-6deg); }
+  to   { transform: translateY(2px) rotate(6deg); }
+}
+
+.loading-bar-track {
+  width: min(260px, 68vw);
+  height: 8px;
+  border-radius: 6px;
+  background: rgba(27, 115, 64, 0.12);
+  border: 1px solid rgba(27, 115, 64, 0.18);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(to left, var(--ps-green), var(--ps-terracotta));
+  transition: width 0.1s linear;
+}
+
+.loading-status-row {
+  width: min(260px, 68vw);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.loading-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ps-olive);
+}
+
+.loading-percent {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ps-green-dark);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}

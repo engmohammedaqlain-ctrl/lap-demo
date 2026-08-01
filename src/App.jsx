@@ -5,6 +5,7 @@
  * "رجوع" في المتصفح ويمكن مشاركة رابط تجربة مباشرة.
  */
 import { useEffect, useState } from "react";
+import LoadingScreen from "./LoadingScreen.jsx";
 import HomeScreen from "./HomeScreen.jsx";
 import BuoyancyApp from "./BuoyancyApp.jsx";
 import PhApp from "./ph/PhApp.jsx";
@@ -21,6 +22,7 @@ function viewFromHash() {
 
 export default function App() {
   const [view, setView] = useState(viewFromHash);
+  const [booting, setBooting] = useState(true);
 
   useEffect(() => {
     const onHashChange = () => setView(viewFromHash());
@@ -36,6 +38,8 @@ export default function App() {
     window.location.hash = "";
     setView("home");
   }
+
+  if (booting) return <LoadingScreen onDone={() => setBooting(false)} />;
 
   if (view === "buoyancy") return <BuoyancyApp onHome={home} />;
   if (view === "ph") return <PhApp onHome={home} />;

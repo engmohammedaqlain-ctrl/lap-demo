@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls *)",
+      "Bash(node _shot.js)",
+      "Bash(node _shot.cjs)",
+      "Read(//c/Users/sa/AppData/Local/Temp/**)",
+      "Bash(rm -f C:/Users/sa/AppData/Local/Temp/loading1.png C:/Users/sa/AppData/Local/Temp/loading2.png C:/Users/sa/AppData/Local/Temp/home.png /tmp/shot.js /tmp/vite.log; git status --short)",
+      "Bash(npx kill-port *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\sa\\AppData\\Local\\Temp"
+    ]
+  }
+}
