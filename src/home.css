@@ -108,6 +108,14 @@
   color: #c2185b;
   border-top-color: #c2185b;
 }
+.home-card.accent-blue {
+  color: #0284c7;
+  border-top-color: #0284c7;
+}
+.home-card.accent-gold {
+  color: #b45309;
+  border-top-color: #d97706;
+}
 
 .home-card:hover {
   transform: translateY(-4px);

@@ -45,6 +45,14 @@ const EXPERIMENTS = [
     emoji: "🔬",
     accent: "crimson",
   },
+  {
+    key: "circuit",
+    title: "الدوائر الكهربائية",
+    subtitle: "بناء وفحص الدوائر · قانون أوم",
+    desc: "ابنِ دوائر توالي وتوازي، قِس الجهد والتيار بالفولتميتر، واكتشف سلوك المكثف والدايود والماس الكهربائي.",
+    emoji: "⚡",
+    accent: "gold",
+  },
 ];
 
 export default function HomeScreen({ onOpen }) {

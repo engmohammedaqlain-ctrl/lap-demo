@@ -12,8 +12,9 @@ import PhApp from "./ph/PhApp.jsx";
 import StaticApp from "./static/StaticApp.jsx";
 import ColorApp from "./color/ColorApp.jsx";
 import CellApp from "./cell/CellApp.jsx";
+import CircuitApp from "./circuit/CircuitApp.jsx";
 
-const ROUTES = new Set(["buoyancy", "ph", "static", "color", "cell"]);
+const ROUTES = new Set(["buoyancy", "ph", "static", "color", "cell", "circuit"]);
 
 function viewFromHash() {
   const h = window.location.hash.replace(/^#\/?/, "");
@@ -46,5 +47,6 @@ export default function App() {
   if (view === "static") return <StaticApp onHome={home} />;
   if (view === "color") return <ColorApp onHome={home} />;
   if (view === "cell") return <CellApp onHome={home} />;
+  if (view === "circuit") return <CircuitApp onHome={home} />;
   return <HomeScreen onOpen={open} />;
 }

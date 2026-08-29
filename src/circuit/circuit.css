@@ -1,0 +1,519 @@
+/* ===== تجربة الدوائر الكهربائية — تصميم موحّد فائق الجودة متوافق مع المنصة ===== */
+
+.circuit-app {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--ps-cream);
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  color: var(--ps-black);
+}
+
+/* ---- الشريط العلوي ---- */
+.circuit-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid rgba(27, 115, 64, 0.16);
+  box-shadow: 0 2px 10px rgba(15, 77, 42, 0.05);
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+.circuit-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.circuit-title-bolt {
+  font-size: 1.35rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(201, 162, 39, 0.4));
+}
+
+.circuit-title-main {
+  font-size: clamp(1.05rem, 2.8vw, 1.35rem);
+  font-weight: 700;
+  color: var(--ps-green-dark);
+}
+
+/* Preset Picker Pills */
+.cir-preset-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0ede4;
+  padding: 3px 4px;
+  border-radius: 24px;
+  border: 1px solid rgba(27, 115, 64, 0.14);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cir-preset-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.cir-preset-btn {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  color: #4a4a4a;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.cir-preset-btn:hover {
+  color: var(--ps-green-dark);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.cir-preset-btn.active {
+  background: var(--ps-green);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(27, 115, 64, 0.28);
+}
+
+/* Tools Container */
+.circuit-topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.cir-divider {
+  width: 1.5px;
+  height: 22px;
+  background: rgba(27, 115, 64, 0.2);
+  margin: 0 3px;
+}
+
+/* Color Swatches */
+.cir-swatch-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cir-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cir-color-dot:hover {
+  transform: scale(1.15);
+}
+
+.cir-color-dot.active {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2.5px var(--ps-green);
+}
+
+/* Standard UI Buttons */
+.cir-btn-ui {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 1.5px solid rgba(27, 115, 64, 0.25);
+  background: #ffffff;
+  color: var(--ps-green-dark);
+  border-radius: 18px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.cir-btn-ui:hover {
+  background: rgba(27, 115, 64, 0.08);
+  transform: translateY(-1px);
+}
+
+.cir-btn-ui.active {
+  background: var(--ps-green);
+  color: #ffffff;
+  border-color: var(--ps-green);
+}
+
+.cir-btn-ui:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cir-btn-danger:hover {
+  background: #fee2e2;
+  color: var(--ps-red);
+  border-color: var(--ps-red);
+}
+
+.cir-round-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* ---- مساحة العمل الرئيسية ---- */
+.circuit-workspace {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---- درج المكونات (Sidebar) ---- */
+.circuit-sidebar {
+  width: 140px;
+  background: rgba(255, 255, 255, 0.96);
+  border-inline-start: 1.5px solid rgba(27, 115, 64, 0.16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 8px;
+  gap: 7px;
+  z-index: 20;
+  overflow-y: auto;
+  box-shadow: 2px 0 12px rgba(15, 77, 42, 0.04);
+}
+
+.circuit-sidebar-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--ps-terracotta);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.circuit-palette-card {
+  width: 100%;
+  background: #faf8f3;
+  border: 1.5px solid rgba(27, 115, 64, 0.18);
+  border-radius: 12px;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.circuit-palette-card:hover {
+  border-color: var(--ps-green);
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(27, 115, 64, 0.14);
+}
+
+.circuit-palette-card:active {
+  cursor: grabbing;
+}
+
+.circuit-palette-preview {
+  width: 58px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circuit-palette-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ps-black);
+}
+
+/* ---- لوحة الرسم (Canvas Viewport) ---- */
+.circuit-viewport {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(circle at 1px 1px, rgba(27, 115, 64, 0.12) 1.5px, transparent 0) 0 0 / 20px 20px,
+              linear-gradient(180deg, #fdfbf7 0%, #f7f4ec 100%);
+  overflow: hidden;
+}
+
+.circuit-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* ---- دليل التجربة التعليمي العائم ---- */
+.cir-edu-banner {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 16px;
+  inset-inline-end: 16px;
+  max-width: 680px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(27, 115, 64, 0.2);
+  border-inline-start: 5px solid var(--ps-green);
+  border-radius: 14px;
+  padding: 8px 16px;
+  box-shadow: 0 6px 20px rgba(15, 77, 42, 0.08);
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  animation: cirFadeIn 0.2s ease-out;
+}
+
+.cir-edu-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cir-edu-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--ps-green-dark);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cir-edu-desc {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #333333;
+  line-height: 1.45;
+}
+
+.cir-edu-close {
+  background: transparent;
+  border: none;
+  color: #777;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all 0.12s;
+}
+
+.cir-edu-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ps-black);
+}
+
+/* ---- لوحة فحص العنصر العائمة (Inspector Popover) ---- */
+.cir-popover-inspector {
+  position: absolute;
+  top: 75px;
+  inset-inline-end: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(27, 115, 64, 0.22);
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow: 0 10px 25px rgba(15, 77, 42, 0.12);
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  width: 220px;
+  animation: cirFadeIn 0.15s ease-out;
+}
+
+.cir-popover-inspector.active {
+  display: flex;
+}
+
+@keyframes cirFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cir-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(27, 115, 64, 0.15);
+  padding-bottom: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--ps-green-dark);
+}
+
+.cir-popover-val {
+  font-family: "JetBrains Mono", monospace;
+  color: var(--ps-green);
+  font-weight: 700;
+}
+
+.cir-popover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cir-popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #555555;
+}
+
+.cir-popover-slider {
+  width: 100%;
+  accent-color: var(--ps-green);
+  cursor: pointer;
+}
+
+.cir-popover-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cir-btn-action-sm {
+  flex: 1;
+  background: #ffffff;
+  border: 1.5px solid rgba(27, 115, 64, 0.22);
+  color: var(--ps-green-dark);
+  padding: 5px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.cir-btn-action-sm:hover {
+  background: rgba(27, 115, 64, 0.08);
+  border-color: var(--ps-green);
+}
+
+.cir-btn-action-sm.del:hover {
+  background: #fee2e2;
+  color: var(--ps-red);
+  border-color: var(--ps-red);
+}
+
+/* ---- أدوات التنقل العائمة (Zoom / Pan) ---- */
+.cir-nav-tools {
+  position: absolute;
+  bottom: 16px;
+  inset-inline-start: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 25;
+}
+
+.cir-btn-nav-float {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid rgba(27, 115, 64, 0.22);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ps-green-dark);
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(15, 77, 42, 0.08);
+  transition: all 0.15s;
+}
+
+.cir-btn-nav-float:hover {
+  border-color: var(--ps-green);
+  background: #ffffff;
+  transform: scale(1.08);
+}
+
+/* ---- تنبيه الماس الكهربائي (Short Circuit) ---- */
+.cir-toast-danger {
+  position: absolute;
+  top: 65px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-150%);
+  background: #fee2e2;
+  border: 2px solid var(--ps-red);
+  color: #991b1b;
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 25px rgba(206, 17, 38, 0.25);
+  z-index: 50;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.cir-toast-danger.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Responsive Breakpoints ---- */
+@media (max-width: 1024px) {
+  .circuit-topbar {
+    flex-wrap: wrap;
+  }
+  .cir-preset-pills {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .circuit-topbar {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .circuit-sidebar {
+    width: 110px;
+    padding: 6px 4px;
+  }
+  .circuit-palette-label {
+    font-size: 0.65rem;
+  }
+}
