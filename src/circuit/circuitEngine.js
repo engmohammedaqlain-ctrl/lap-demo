@@ -419,7 +419,7 @@ export function solveSubstep(components, junctions, wires, dt = 0.002, onSpark =
           src.current = X[numNodeEqs + sIdx];
           src.voltageDrop = src.val;
           src.power = Math.abs(src.current * src.val);
-          if (Math.abs(src.current) > 35) {
+          if (Math.abs(src.current) > 60) {
             isShortCircuit = true;
             if (onSpark) onSpark(src.x, src.y);
           }
@@ -471,8 +471,20 @@ export function solveSubstep(components, junctions, wires, dt = 0.002, onSpark =
   });
 
   wires.forEach((w) => {
-    const cA = w.termA.parent;
-    w.current = cA instanceof Component ? cA.current : 0.0;
+    const pA = w.termA.parent;
+    const pB = w.termB.parent;
+    if (pA instanceof Component && !(pB instanceof Component)) {
+      w.current = pA.type === "switch" && pA.isOpen ? 0.0 : pA.current;
+    } else if (pB instanceof Component && !(pA instanceof Component)) {
+      w.current = pB.type === "switch" && pB.isOpen ? 0.0 : pB.current;
+    } else if (pA instanceof Component && pB instanceof Component) {
+      w.current = pA.type === "switch" && pA.isOpen ? 0.0 : pA.current;
+    } else {
+      // Both are junctions or wires — propagate node voltage drop
+      const v1 = w.termA.node ? w.termA.node.voltage : 0;
+      const v2 = w.termB.node ? w.termB.node.voltage : 0;
+      w.current = (v2 - v1) / 0.001;
+    }
   });
 
   return { isShortCircuit, nodes };
@@ -566,185 +578,259 @@ export const EXPERIMENT_PRESETS = {
   series: {
     key: "series",
     title: "التوصيل على التوالي (Series)",
-    desc: "يمر نفس التيار في جميع المصابيح، ويتقاسم المصباحان فرق الجهد فيقل سطوعهما (4.5V لكل مصباح). إذا فُصل أي مصباح تنطفئ الدائرة كاملة.",
+    desc: "مصباحان (كل منهما 10Ω) على التوالي مع بطارية 9V. المقاومة الكلية = 20Ω ← التيار = 9÷20 = 0.45A ← كل مصباح يستهلك 4.5V ← سطوع متساوٍ ولكن منخفض. إذا فُصل أحدهما تنطفئ الدائرة كاملة.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
-      const b = new Component("battery", -120, -50);
-      const sw = new Component("switch", 0, -50);
-      const b1 = new Component("bulb", 100, -50);
-      const b2 = new Component("bulb", 100, 50);
+      // Battery 9V → Switch → Bulb1(10Ω) → Bulb2(10Ω) → Ammeter → back to Battery
+      // Expected: I = 9V / (10+10)Ω = 0.45A, V_each = 4.5V
+      const b = new Component("battery", -120, -60);
+      b.val = 9;
+      const sw = new Component("switch", 0, -60);
+      sw.isOpen = false;
+      const b1 = new Component("bulb", 120, -60);
+      b1.val = 10;
+      const b2 = new Component("bulb", 120, 60);
+      b2.val = 10;
       b2.rotation = Math.PI;
-      const amm = new Component("ammeter", -120, 50);
+      const amm = new Component("ammeter", -120, 60);
       amm.rotation = Math.PI;
       components.push(b, sw, b1, b2, amm);
 
+      // Top path: battery(+) → switch → bulb1
       wires.push(new ElasticWire(b.t2, sw.t1, "#1B7340"));
       wires.push(new ElasticWire(sw.t2, b1.t1, "#1B7340"));
-      wires.push(new ElasticWire(b1.t2, b2.t1, "#1B7340"));
+      // Right corner: bulb1 → bulb2 (downward)
+      wires.push(new ElasticWire(b1.t2, b2.t1, "#0284c7", [{ x: 156, y: 0 }]));
+      // Bottom path: bulb2 → ammeter → battery(-)
       wires.push(new ElasticWire(b2.t2, amm.t1, "#CE1126"));
       wires.push(new ElasticWire(amm.t2, b.t1, "#CE1126"));
 
       return { components, junctions, wires };
     },
   },
+
   parallel: {
     key: "parallel",
     title: "التوصيل على التوازي (Parallel)",
-    desc: "يحصل كل مصباح على الجهد الكامل للبطارية (9V) ويكون بكامل سطوعه. إذا فُصل أحد المسارين يظل المسار الآخر مضيئاً دون تأثر.",
+    desc: "مصباحان (كل منهما 10Ω) على التوازي مع بطارية 9V. كل مصباح يحصل على الجهد الكامل 9V ← تيار كل فرع = 0.9A ← التيار الكلي = 1.8A. إذا فُصل أحدهما يبقى الآخر مضيئاً بنفس السطوع.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
-      const b = new Component("battery", -140, 0);
+      // Battery 9V vertical, two bulbs (10Ω each) in parallel branches
+      // Expected: I_each = 9V/10Ω = 0.9A, I_total = 1.8A, V_each = 9V
+      const b = new Component("battery", -160, 0);
+      b.val = 9;
       b.rotation = Math.PI / 2;
-      const b1 = new Component("bulb", 0, -50);
-      const b2 = new Component("bulb", 0, 50);
+
+      const b1 = new Component("bulb", 40, -60);
+      b1.val = 10;
+      const b2 = new Component("bulb", 40, 60);
+      b2.val = 10;
       components.push(b, b1, b2);
 
-      const jTop = new JunctionNode(-60, -50);
-      const jBot = new JunctionNode(-60, 50);
-      junctions.push(jTop, jBot);
+      // Junction nodes for splitting/merging current
+      const jLeft = new JunctionNode(-60, 0);
+      const jRight = new JunctionNode(130, 0);
+      junctions.push(jLeft, jRight);
 
-      wires.push(new ElasticWire(b.t1, jTop.terminal, "#1B7340"));
-      wires.push(new ElasticWire(jTop.terminal, b1.t1, "#1B7340"));
-      wires.push(new ElasticWire(jTop.terminal, b2.t1, "#1B7340"));
+      // Battery(+) → jLeft, then split into two branches
+      wires.push(new ElasticWire(b.t2, jLeft.terminal, "#1B7340"));
 
-      wires.push(new ElasticWire(b.t2, jBot.terminal, "#CE1126"));
-      wires.push(new ElasticWire(jBot.terminal, b1.t2, "#CE1126"));
-      wires.push(new ElasticWire(jBot.terminal, b2.t2, "#CE1126"));
+      // Branch 1: jLeft → bulb1 → jRight
+      wires.push(new ElasticWire(jLeft.terminal, b1.t1, "#1B7340", [{ x: -60, y: -60 }]));
+      wires.push(new ElasticWire(b1.t2, jRight.terminal, "#1B7340", [{ x: 130, y: -60 }]));
+
+      // Branch 2: jLeft → bulb2 → jRight
+      wires.push(new ElasticWire(jLeft.terminal, b2.t1, "#0284c7", [{ x: -60, y: 60 }]));
+      wires.push(new ElasticWire(b2.t2, jRight.terminal, "#0284c7", [{ x: 130, y: 60 }]));
+
+      // jRight → Battery(-)
+      wires.push(new ElasticWire(jRight.terminal, b.t1, "#CE1126", [{ x: 130, y: 120 }, { x: -160, y: 120 }]));
 
       return { components, junctions, wires };
     },
   },
+
   ohms: {
     key: "ohms",
-    title: "قانون أوم ومجزئ الجهد (Potentiometer)",
-    desc: "حرّك المقبض الأزرق للمقاومة المتغيرة؛ يتقسم جهد البطارية (9V) بين طرفي المقاومة والطرف الأوسط (Wiper) مما يغير قراءة الفولتميتر والسطوع وفق V = I × R.",
+    title: "قانون أوم ومجزئ الجهد (Ohm's Law)",
+    desc: "بطارية 12V مع مقاومة متغيرة (50Ω) ومصباح (10Ω) على التوالي. حرّك المقبض الأخضر لتغيير مقدار المقاومة ولاحظ كيف يتغير سطوع المصباح والتيار المار في الدائرة وفق قانون أوم: V = I × R.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
+      // Battery 12V → Potentiometer(50Ω, wiper=0.5) → Bulb(10Ω) → Battery
+      // At wiper=0.5: R_pot_section = 25Ω, R_total ≈ 25+10 = 35Ω, I ≈ 0.34A
+      // At wiper=0: R_pot_section ≈ 0Ω, I ≈ 1.2A (bright)
+      // At wiper=1: R_pot_section = 50Ω, I ≈ 0.2A (dim)
       const b = new Component("battery", -140, 0);
+      b.val = 12;
       b.rotation = Math.PI / 2;
-      const pot = new Component("potentiometer", 0, 0);
+
+      const pot = new Component("potentiometer", 20, -60);
       pot.val = 50;
       pot.wiper = 0.5;
-      const bulb = new Component("bulb", 120, 0);
-      bulb.rotation = Math.PI / 2;
-      components.push(b, pot, bulb);
 
-      wires.push(
-        new ElasticWire(b.t1, pot.t1, "#1B7340", [
-          { x: -140, y: -60 },
-          { x: -20, y: -60 },
-        ])
-      );
-      wires.push(
-        new ElasticWire(pot.tw, bulb.t1, "#1B7340", [
-          { x: 0, y: 60 },
-          { x: 120, y: 60 },
-        ])
-      );
-      wires.push(
-        new ElasticWire(bulb.t2, b.t2, "#CE1126", [
-          { x: 120, y: -80 },
-          { x: -140, y: -80 },
-        ])
-      );
-      wires.push(new ElasticWire(pot.t2, b.t2, "#CE1126", [{ x: 20, y: -80 }]));
+      const bulb = new Component("bulb", 120, 0);
+      bulb.val = 10;
+      bulb.rotation = Math.PI / 2;
+
+      const amm = new Component("ammeter", -40, 80);
+      components.push(b, pot, bulb, amm);
+
+      // Battery(+) → pot T1
+      wires.push(new ElasticWire(b.t2, pot.t1, "#1B7340", [{ x: -140, y: -60 }]));
+
+      // pot Wiper → Bulb
+      wires.push(new ElasticWire(pot.tw, bulb.t2, "#1B7340", [{ x: 20, y: -20 }, { x: 120, y: -20 }]));
+
+      // pot T2 → (also connects to the battery side — unused end, just tie to circuit)
+      // In a proper voltage divider, T2 connects to the same node as T1's circuit
+      // But for simplicity, leave T2 unconnected (open) — the wiper taps off
+
+      // Bulb → Ammeter → Battery(-)
+      wires.push(new ElasticWire(bulb.t1, amm.t1, "#CE1126", [{ x: 120, y: 80 }]));
+      wires.push(new ElasticWire(amm.t2, b.t1, "#CE1126", [{ x: -140, y: 80 }]));
+
+      // pot T2 ties to battery(-) to complete the divider
+      wires.push(new ElasticWire(pot.t2, b.t1, "#CE1126", [{ x: 40, y: 100 }, { x: -160, y: 100 }]));
 
       return { components, junctions, wires };
     },
   },
+
   short_circuit: {
     key: "short_circuit",
     title: "الماس الكهربائي (Short Circuit)",
-    desc: "أغلق المفتاح الموازي للمصباح؛ ستلاحظ أن التيار يفضل المسار الأسهل (السلك منعدم المقاومة) متجاوزاً المصباح فينطفئ، ويرتفع التيار لمستويات خطيرة ومسبباً شرراً.",
+    desc: "مفتاح مفتوح موصول على التوازي مع مصباح 10Ω. أغلق المفتاح ← التيار يسلك المسار الأقل مقاومة (السلك ~0Ω) فينطفئ المصباح ← يرتفع التيار بشكل خطير ← تظهر شرارات تحذيرية.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
-      const b = new Component("battery", -120, 0);
+      // Battery 9V, Bulb(10Ω) in parallel with Switch(open)
+      // Switch open: I = 9/10 = 0.9A through bulb (lit)
+      // Switch closed: short circuit! I → very high, bulb bypassed
+      const b = new Component("battery", -140, 0);
+      b.val = 9;
       b.rotation = Math.PI / 2;
-      const bulb = new Component("bulb", 40, 0);
-      bulb.rotation = Math.PI / 2;
-      const sw = new Component("switch", 40, -70);
+
+      const bulb = new Component("bulb", 60, -60);
+      bulb.val = 10;
+
+      const sw = new Component("switch", 60, 60);
       sw.isOpen = true;
       components.push(b, bulb, sw);
 
-      const j1 = new JunctionNode(-40, -70);
-      const j2 = new JunctionNode(-40, 70);
-      junctions.push(j1, j2);
+      // Junction nodes
+      const jA = new JunctionNode(-40, 0);
+      const jB = new JunctionNode(140, 0);
+      junctions.push(jA, jB);
 
-      wires.push(new ElasticWire(b.t1, j1.terminal, "#1B7340"));
-      wires.push(new ElasticWire(j1.terminal, bulb.t1, "#1B7340"));
-      wires.push(new ElasticWire(j1.terminal, sw.t1, "#1B7340"));
+      // Battery(+) → jA
+      wires.push(new ElasticWire(b.t2, jA.terminal, "#1B7340"));
 
-      wires.push(new ElasticWire(b.t2, j2.terminal, "#CE1126"));
-      wires.push(new ElasticWire(j2.terminal, bulb.t2, "#CE1126"));
-      wires.push(new ElasticWire(sw.t2, j2.terminal, "#CE1126"));
+      // Branch 1: jA → bulb → jB
+      wires.push(new ElasticWire(jA.terminal, bulb.t1, "#1B7340", [{ x: -40, y: -60 }]));
+      wires.push(new ElasticWire(bulb.t2, jB.terminal, "#1B7340", [{ x: 140, y: -60 }]));
+
+      // Branch 2 (short): jA → switch → jB
+      wires.push(new ElasticWire(jA.terminal, sw.t1, "#f59e0b", [{ x: -40, y: 60 }]));
+      wires.push(new ElasticWire(sw.t2, jB.terminal, "#f59e0b", [{ x: 140, y: 60 }]));
+
+      // jB → Battery(-)
+      wires.push(new ElasticWire(jB.terminal, b.t1, "#CE1126", [{ x: 160, y: 120 }, { x: -140, y: 120 }]));
 
       return { components, junctions, wires };
     },
   },
+
   led_polarity: {
     key: "led_polarity",
-    title: "اتجاهية التيار في الدايود (LED)",
-    desc: "الدايود المشع (LED) يسمح بمرور التيار في اتجاه واحد فقط (انحياز أمامي). إذا عكست أطراف الدايود أو قمت بتدوير البطارية فلن يضيء.",
+    title: "اتجاهية الدايود المشع (LED Polarity)",
+    desc: "بطارية 9V مع مقاومة حماية 330Ω ودايود LED أحمر (جهد عتبة ~2V). التيار المتوقع ≈ (9−2)÷330 ≈ 21mA. الـ LED يسمح بمرور التيار في اتجاه واحد فقط (من الأنود + إلى الكاثود −). جرّب تدوير الـ LED 180° لتلاحظ أنه لا يضيء عند عكس القطبية.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
+      // Battery 9V → Resistor(330Ω) → LED → Battery(-)
+      // Expected: I = (9-2)/330 ≈ 21.2mA (safe for standard LED)
       const b = new Component("battery", -120, 0);
-      const r = new Component("resistor", 0, -40);
-      r.val = 220;
+      b.val = 9;
+
+      const r = new Component("resistor", 0, -50);
+      r.val = 330; // Protection resistor — standard value for LED
+
       const led = new Component("led", 100, 0);
       led.rotation = Math.PI / 2;
       components.push(b, r, led);
 
-      wires.push(new ElasticWire(b.t2, r.t1, "#1B7340"));
-      wires.push(new ElasticWire(r.t2, led.t2, "#1B7340"));
-      wires.push(new ElasticWire(led.t1, b.t1, "#CE1126"));
+      // Battery(+) → Resistor
+      wires.push(new ElasticWire(b.t2, r.t1, "#1B7340", [{ x: -80, y: -50 }]));
+      // Resistor → LED (anode)
+      wires.push(new ElasticWire(r.t2, led.t2, "#1B7340", [{ x: 100, y: -50 }]));
+      // LED (cathode) → Battery(-)
+      wires.push(new ElasticWire(led.t1, b.t1, "#CE1126", [{ x: 100, y: 70 }, { x: -120, y: 70 }]));
 
       return { components, junctions, wires };
     },
   },
+
   capacitor: {
     key: "capacitor",
-    title: "شحن وتفريغ المكثف (RC Transient)",
-    desc: "يقوم المكثف بتخزين الطاقة في صورة مجال كهربائي؛ عند غلق المفتاح يشحن المكثف ثم يفرغ شحنته في المصباح فيضيء بقوة ثم يخفت تدريجياً وفق الثابت الزمني τ = RC.",
+    title: "شحن وتفريغ المكثف (RC Circuit)",
+    desc: "بطارية 9V مع مقاومة 100Ω ومكثف 4700µF. الثابت الزمني τ = R×C = 100×0.0047 = 0.47 ثانية. عند غلق المفتاح يشحن المكثف تدريجياً حتى يصل جهده إلى جهد البطارية ويتناقص التيار حتى يصبح صفراً. لاحظ المصباح يسطع ثم يخفت تدريجياً.",
     build: () => {
       resetIds();
       const components = [];
       const junctions = [];
       const wires = [];
 
-      const b = new Component("battery", -120, 0);
-      const sw = new Component("switch", -20, -50);
-      const cap = new Component("capacitor", 60, -50);
-      cap.val = 3000;
-      const bulb = new Component("bulb", 60, 50);
-      bulb.rotation = Math.PI;
-      components.push(b, sw, cap, bulb);
+      // Battery 9V → Switch → Resistor(100Ω) → Capacitor(4700µF) → Battery(-)
+      // Also a bulb in series to visually see the charging current
+      // τ = RC = 100 × 4700e-6 = 0.47s → takes ~2.35s (5τ) to fully charge
+      const b = new Component("battery", -140, 0);
+      b.val = 9;
+      b.rotation = Math.PI / 2;
 
-      wires.push(new ElasticWire(b.t2, sw.t1, "#1B7340"));
-      wires.push(new ElasticWire(sw.t2, cap.t1, "#1B7340"));
-      wires.push(new ElasticWire(cap.t2, bulb.t1, "#1B7340"));
-      wires.push(new ElasticWire(bulb.t2, b.t1, "#CE1126"));
+      const sw = new Component("switch", -40, -80);
+      sw.isOpen = false;
+
+      const r = new Component("resistor", 60, -80);
+      r.val = 100;
+
+      const cap = new Component("capacitor", 140, 0);
+      cap.val = 4700; // 4700µF
+      cap.rotation = Math.PI / 2;
+
+      const bulb = new Component("bulb", 0, 80);
+      bulb.val = 10; // Low resistance to see current
+      components.push(b, sw, r, cap, bulb);
+
+      // Battery(+) → Switch
+      wires.push(new ElasticWire(b.t2, sw.t1, "#1B7340", [{ x: -140, y: -80 }]));
+      // Switch → Resistor
+      wires.push(new ElasticWire(sw.t2, r.t1, "#1B7340"));
+      // Resistor → Capacitor top
+      wires.push(new ElasticWire(r.t2, cap.t2, "#0284c7", [{ x: 140, y: -80 }]));
+      // Capacitor bottom → Bulb → Battery(-)
+      wires.push(new ElasticWire(cap.t1, bulb.t2, "#CE1126", [{ x: 140, y: 80 }]));
+      wires.push(new ElasticWire(bulb.t1, b.t1, "#CE1126", [{ x: -140, y: 80 }]));
 
       return { components, junctions, wires };
     },
   },
 };
+

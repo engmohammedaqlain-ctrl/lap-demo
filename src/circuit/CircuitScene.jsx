@@ -38,6 +38,7 @@ const CircuitScene = forwardRef(function CircuitScene(
     dmmVisible = true,
     onHistoryChange,
     onShortCircuitChange,
+    onMetricsChange,
     activePresetKey = "series",
   },
   ref
@@ -52,6 +53,7 @@ const CircuitScene = forwardRef(function CircuitScene(
   const selectedItemRef = useRef(null);
   const sparkParticlesRef = useRef([]);
   const isShortRef = useRef(false);
+  const lastMetricsReportRef = useRef(0);
 
   // Viewport transformation
   const panRef = useRef({ x: 0, y: 0 });
@@ -140,7 +142,36 @@ const CircuitScene = forwardRef(function CircuitScene(
       if (shortAlert) CircuitSound.playShort();
       if (onShortCircuitChange) onShortCircuitChange(shortAlert);
     }
-  }, [onShortCircuitChange]);
+
+    const now = Date.now();
+    if (onMetricsChange && now - lastMetricsReportRef.current > 180) {
+      lastMetricsReportRef.current = now;
+      let totalCurrent = 0;
+      let totalPower = 0;
+      let hasBattery = false;
+      let openSwitches = 0;
+
+      componentsRef.current.forEach((c) => {
+        if (c.type === "battery") {
+          hasBattery = true;
+          totalCurrent += Math.abs(c.current);
+          totalPower += Math.abs(c.power);
+        } else if (c.type === "switch" && c.isOpen) {
+          openSwitches++;
+        }
+      });
+
+      onMetricsChange({
+        totalCurrent,
+        totalPower,
+        hasBattery,
+        openSwitches,
+        isShortCircuit: isShortRef.current,
+        compCount: componentsRef.current.length,
+        wireCount: wiresRef.current.length,
+      });
+    }
+  }, [onMetricsChange, onShortCircuitChange]);
 
   const toWorld = useCallback((sx, sy) => {
     const canvas = canvasRef.current;
@@ -150,6 +181,17 @@ const CircuitScene = forwardRef(function CircuitScene(
     return {
       x: (sx - w / 2 - panRef.current.x) / zoomRef.current,
       y: (sy - h / 2 - panRef.current.y) / zoomRef.current,
+    };
+  }, []);
+
+  const toScreen = useCallback((wx, wy) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 400, y: 300 };
+    const w = canvas.clientWidth || 800;
+    const h = canvas.clientHeight || 600;
+    return {
+      x: wx * zoomRef.current + w / 2 + panRef.current.x,
+      y: wy * zoomRef.current + h / 2 + panRef.current.y,
     };
   }, []);
 
@@ -193,22 +235,38 @@ const CircuitScene = forwardRef(function CircuitScene(
     if (!item) {
       setSelectedItemState(null);
     } else if (item instanceof Component) {
+      const sp = toScreen(item.x, item.y);
       setSelectedItemState({
         type: "component",
+        id: item.id,
         compType: item.type,
         title: item.title,
         val: item.val,
         unit: item.unit,
         wiper: item.wiper,
+        isOpen: item.isOpen,
+        voltageDrop: item.voltageDrop || 0,
+        current: item.current || 0,
+        power: item.power || 0,
+        worldX: item.x,
+        worldY: item.y,
+        screenX: sp.x,
+        screenY: sp.y,
       });
     } else if (item instanceof ElasticWire) {
+      const midX = (item.termA.x + item.termB.x) / 2;
+      const midY = (item.termA.y + item.termB.y) / 2;
+      const sp = toScreen(midX, midY);
       setSelectedItemState({
         type: "wire",
+        id: item.id,
         color: item.color,
-        current: item.current,
+        current: item.current || 0,
+        screenX: sp.x,
+        screenY: sp.y,
       });
     }
-  }, []);
+  }, [toScreen]);
 
   // Expose Controls via Ref
   useImperativeHandle(ref, () => ({
@@ -221,12 +279,10 @@ const CircuitScene = forwardRef(function CircuitScene(
         wiresRef.current = data.wires;
         updateSelectedItem(null);
         stepPhysics();
-        if (onHistoryChange) {
-          onHistoryChange({
-            canUndo: historyIndexRef.current > 0,
-            canRedo: historyIndexRef.current < historyStackRef.current.length - 1,
-          });
-        }
+        onHistoryChange({
+          canUndo: historyIndexRef.current > 0,
+          canRedo: historyIndexRef.current < historyStackRef.current.length - 1,
+        });
       }
     },
     redo() {
@@ -238,13 +294,49 @@ const CircuitScene = forwardRef(function CircuitScene(
         wiresRef.current = data.wires;
         updateSelectedItem(null);
         stepPhysics();
-        if (onHistoryChange) {
-          onHistoryChange({
-            canUndo: historyIndexRef.current > 0,
-            canRedo: historyIndexRef.current < historyStackRef.current.length - 1,
-          });
-        }
+        onHistoryChange({
+          canUndo: historyIndexRef.current > 0,
+          canRedo: historyIndexRef.current < historyStackRef.current.length - 1,
+        });
       }
+    },
+    autoTidy() {
+      // 1. Snap all component and junction positions to neat grid
+      componentsRef.current.forEach((c) => {
+        c.x = Math.round(c.x / 40) * 40;
+        c.y = Math.round(c.y / 40) * 40;
+      });
+      junctionsRef.current.forEach((j) => {
+        j.x = Math.round(j.x / 40) * 40;
+        j.y = Math.round(j.y / 40) * 40;
+      });
+
+      // 2. Orthogonalize wires with clean 90° Manhattan bends
+      wiresRef.current.forEach((w) => {
+        const ax = w.termA.x;
+        const ay = w.termA.y;
+        const bx = w.termB.x;
+        const by = w.termB.y;
+
+        const dx = Math.abs(ax - bx);
+        const dy = Math.abs(ay - by);
+
+        if (dx <= 12 || dy <= 12) {
+          w.waypoints = [];
+        } else {
+          // Midpoint orthogonal bend
+          const midX = Math.round((ax + bx) / 80) * 40;
+          w.waypoints = [
+            { x: midX, y: Math.round(ay) },
+            { x: midX, y: Math.round(by) },
+          ];
+        }
+      });
+
+      updateSelectedItem(null);
+      recordHistory();
+      stepPhysics();
+      CircuitSound.playClick();
     },
     resetView() {
       zoomRef.current = 1.0;
@@ -1193,16 +1285,26 @@ const CircuitScene = forwardRef(function CircuitScene(
         <div className="cir-popover-inspector active">
           <div className="cir-popover-header">
             <span>{selectedItemState.title || "سلك توصيل"}</span>
-            <span className="cir-popover-val">
-              {selectedItemState.type === "component" &&
-                selectedItemState.compType === "potentiometer" &&
-                `${(selectedItemState.val * selectedItemState.wiper).toFixed(1)} / ${selectedItemState.val} Ω`}
-              {selectedItemState.type === "component" &&
-                selectedItemState.compType !== "potentiometer" &&
-                `${selectedItemState.val} ${selectedItemState.unit || ""}`}
-              {selectedItemState.type === "wire" &&
-                `${(selectedItemState.current * 1000).toFixed(1)} mA`}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="cir-popover-val">
+                {selectedItemState.type === "component" &&
+                  selectedItemState.compType === "potentiometer" &&
+                  `${(selectedItemState.val * selectedItemState.wiper).toFixed(1)} / ${selectedItemState.val} Ω`}
+                {selectedItemState.type === "component" &&
+                  selectedItemState.compType !== "potentiometer" &&
+                  `${selectedItemState.val} ${selectedItemState.unit || ""}`}
+                {selectedItemState.type === "wire" &&
+                  `${(selectedItemState.current * 1000).toFixed(1)} mA`}
+              </span>
+              <button
+                type="button"
+                className="cir-edu-close"
+                onClick={() => updateSelectedItem(null)}
+                title="إغلاق لوحة الخصائص"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {selectedItemState.type === "component" &&
