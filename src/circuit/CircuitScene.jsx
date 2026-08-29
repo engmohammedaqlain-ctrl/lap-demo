@@ -1237,17 +1237,50 @@ const CircuitScene = forwardRef(function CircuitScene(
     stepPhysics();
   };
 
-  const handleRotate = () => {
+  const handleStepValue = (delta) => {
+    const item = selectedItemRef.current;
+    if (!item || !(item instanceof Component)) return;
+    if (item.type === "potentiometer") {
+      item.wiper = Math.max(0, Math.min(1, Math.round((item.wiper + delta * 0.05) * 100) / 100));
+    } else {
+      const step = item.type === "capacitor" ? 100 : item.type === "battery" ? 1 : 5;
+      item.val = Math.max(1, Math.round(item.val + delta * step));
+    }
+    CircuitSound.playClick();
+    updateSelectedItem(item);
+    recordHistory();
+    stepPhysics();
+  };
+
+  const handleRotate = useCallback(() => {
     const item = selectedItemRef.current;
     if (!item || !(item instanceof Component)) return;
     item.rotation = (item.rotation + Math.PI / 2) % (Math.PI * 2);
     item.x = snap(item.x);
     item.y = snap(item.y);
     CircuitSound.playClick();
+    updateSelectedItem(item);
+    recordHistory();
     stepPhysics();
-  };
+  }, [snap, updateSelectedItem, stepPhysics, recordHistory]);
 
-  const handleDelete = () => {
+  const handleDuplicate = useCallback(() => {
+    const item = selectedItemRef.current;
+    if (!item || !(item instanceof Component)) return;
+    const dup = new Component(item.type, snap(item.x + 40), snap(item.y + 40));
+    dup.val = item.val;
+    dup.rotation = item.rotation;
+    dup.isOpen = item.isOpen;
+    dup.color = item.color;
+    dup.wiper = item.wiper;
+    componentsRef.current.push(dup);
+    updateSelectedItem(dup);
+    CircuitSound.playClick();
+    recordHistory();
+    stepPhysics();
+  }, [snap, updateSelectedItem, stepPhysics, recordHistory]);
+
+  const handleDeleteSelected = useCallback(() => {
     const item = selectedItemRef.current;
     if (!item) return;
     if (item instanceof Component) {
@@ -1263,7 +1296,37 @@ const CircuitScene = forwardRef(function CircuitScene(
     CircuitSound.playTrash();
     recordHistory();
     stepPhysics();
-  };
+  }, [updateSelectedItem, stepPhysics, recordHistory]);
+
+  // Global Keyboard Shortcuts (Delete, R, D, Escape)
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      const key = e.key.toLowerCase();
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedItemRef.current) {
+          e.preventDefault();
+          handleDeleteSelected();
+        }
+      } else if (key === "r" && !e.ctrlKey && !e.metaKey) {
+        if (selectedItemRef.current instanceof Component) {
+          e.preventDefault();
+          handleRotate();
+        }
+      } else if (key === "d" && !e.ctrlKey && !e.metaKey) {
+        if (selectedItemRef.current instanceof Component) {
+          e.preventDefault();
+          handleDuplicate();
+        }
+      } else if (e.key === "Escape") {
+        updateSelectedItem(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleDeleteSelected, handleRotate, handleDuplicate, updateSelectedItem]);
 
   return (
     <div
@@ -1280,111 +1343,105 @@ const CircuitScene = forwardRef(function CircuitScene(
         onWheel={handleWheel}
       />
 
-      {/* Floating Inspector Popover */}
-      {selectedItemState && (
-        <div className="cir-popover-inspector active">
-          <div className="cir-popover-header">
-            <span>{selectedItemState.title || "سلك توصيل"}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="cir-popover-val">
-                {selectedItemState.type === "component" &&
-                  selectedItemState.compType === "potentiometer" &&
-                  `${(selectedItemState.val * selectedItemState.wiper).toFixed(1)} / ${selectedItemState.val} Ω`}
-                {selectedItemState.type === "component" &&
-                  selectedItemState.compType !== "potentiometer" &&
-                  `${selectedItemState.val} ${selectedItemState.unit || ""}`}
-                {selectedItemState.type === "wire" &&
-                  `${(selectedItemState.current * 1000).toFixed(1)} mA`}
-              </span>
+      {/* المربع الصغير الأنيق في الزاوية اليسرى للتحكم بالقيم */}
+      {selectedItemState &&
+        selectedItemState.type === "component" &&
+        (selectedItemState.compType === "battery" ||
+          selectedItemState.compType === "resistor" ||
+          selectedItemState.compType === "bulb" ||
+          selectedItemState.compType === "potentiometer" ||
+          selectedItemState.compType === "capacitor") && (
+          <div className="cir-corner-inspector-card">
+            <div className="cir-corner-card-head">
+              <div className="cir-corner-card-title-grp">
+                <span className="cir-corner-card-title">{selectedItemState.title}</span>
+                <span className="cir-corner-card-val">
+                  {selectedItemState.compType === "potentiometer"
+                    ? `${(selectedItemState.val * selectedItemState.wiper).toFixed(1)} / ${selectedItemState.val} Ω`
+                    : `${selectedItemState.val} ${selectedItemState.unit || ""}`}
+                </span>
+              </div>
               <button
                 type="button"
                 className="cir-edu-close"
                 onClick={() => updateSelectedItem(null)}
-                title="إغلاق لوحة الخصائص"
+                title="إغلاق (Esc)"
               >
                 ✕
               </button>
             </div>
-          </div>
 
-          {selectedItemState.type === "component" &&
-            (selectedItemState.compType === "battery" ||
-              selectedItemState.compType === "resistor" ||
-              selectedItemState.compType === "bulb" ||
-              selectedItemState.compType === "potentiometer" ||
-              selectedItemState.compType === "capacitor") && (
-              <div className="cir-popover-body">
-                <div className="cir-popover-row">
-                  <span>
-                    {selectedItemState.compType === "battery"
-                      ? "الجهد (V):"
-                      : selectedItemState.compType === "capacitor"
-                      ? "السعة (µF):"
-                      : selectedItemState.compType === "potentiometer"
-                      ? "الموضع (Wiper):"
-                      : "المقاومة (Ω):"}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  className="cir-popover-slider"
-                  min={
-                    selectedItemState.compType === "battery"
-                      ? 1
-                      : selectedItemState.compType === "capacitor"
-                      ? 100
-                      : selectedItemState.compType === "potentiometer"
-                      ? 0
-                      : 1
-                  }
-                  max={
-                    selectedItemState.compType === "battery"
-                      ? 120
-                      : selectedItemState.compType === "capacitor"
-                      ? 5000
-                      : selectedItemState.compType === "potentiometer"
-                      ? 1
-                      : 100
-                  }
-                  step={
-                    selectedItemState.compType === "capacitor"
-                      ? 100
-                      : selectedItemState.compType === "potentiometer"
-                      ? 0.01
-                      : 1
-                  }
-                  value={
-                    selectedItemState.compType === "potentiometer"
-                      ? selectedItemState.wiper
-                      : selectedItemState.val
-                  }
-                  onChange={(e) => handleSliderChange(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="cir-corner-telemetry">
+              <span>⚡ {Math.abs(selectedItemState.voltageDrop).toFixed(2)}V</span>
+              <span>·</span>
+              <span>
+                {Math.abs(selectedItemState.current) < 0.05
+                  ? `${(Math.abs(selectedItemState.current) * 1000).toFixed(1)}mA`
+                  : `${Math.abs(selectedItemState.current).toFixed(2)}A`}
+              </span>
+              <span>·</span>
+              <span>{Math.abs(selectedItemState.power).toFixed(2)}W</span>
+            </div>
 
-          <div className="cir-popover-actions">
-            {selectedItemState.type === "component" && (
+            <div className="cir-corner-slider-wrap">
               <button
                 type="button"
-                className="cir-btn-action-sm"
-                onClick={handleRotate}
-                title="تدوير (R)"
+                className="cir-step-btn"
+                onClick={() => handleStepValue(-1)}
+                title="إنقاص القيمة"
               >
-                🔄 تدوير
+                −
               </button>
-            )}
-            <button
-              type="button"
-              className="cir-btn-action-sm del"
-              onClick={handleDelete}
-              title="حذف"
-            >
-              🗑️ حذف
-            </button>
+              <input
+                type="range"
+                className="cir-popover-slider"
+                min={
+                  selectedItemState.compType === "battery"
+                    ? 1
+                    : selectedItemState.compType === "capacitor"
+                    ? 100
+                    : selectedItemState.compType === "potentiometer"
+                    ? 0
+                    : 1
+                }
+                max={
+                  selectedItemState.compType === "battery"
+                    ? 48
+                    : selectedItemState.compType === "capacitor"
+                    ? 10000
+                    : selectedItemState.compType === "potentiometer"
+                    ? 1
+                    : 500
+                }
+                step={
+                  selectedItemState.compType === "capacitor"
+                    ? 100
+                    : selectedItemState.compType === "potentiometer"
+                    ? 0.01
+                    : 1
+                }
+                value={
+                  selectedItemState.compType === "potentiometer"
+                    ? selectedItemState.wiper
+                    : selectedItemState.val
+                }
+                onChange={(e) => handleSliderChange(e.target.value)}
+              />
+              <button
+                type="button"
+                className="cir-step-btn"
+                onClick={() => handleStepValue(1)}
+                title="زيادة القيمة"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="cir-corner-shortcuts-hint">
+              <span>R: تدوير</span> · <span>D: تكرار</span> · <span>Del: حذف</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Floating Zoom & Pan Controls */}
       <div className="cir-nav-tools">

@@ -662,105 +662,122 @@
   color: var(--ps-black);
 }
 
-/* ---- لوحة فحص العنصر العائمة (Inspector Popover) ---- */
-.cir-popover-inspector {
+/* ---- المربع الصغير في الزاوية اليسرى للتحكم بالقيم (Compact Left Corner Card) ---- */
+.cir-corner-inspector-card {
   position: absolute;
-  top: 75px;
-  inset-inline-end: 16px;
+  top: 16px;
+  left: 16px;
+  width: 260px;
+  max-width: calc(100vw - 32px);
   background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(14px);
-  border: 1.5px solid rgba(27, 115, 64, 0.22);
-  border-radius: 14px;
-  padding: 12px 16px;
-  box-shadow: 0 10px 25px rgba(15, 77, 42, 0.12);
-  z-index: 40;
-  display: none;
+  backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(27, 115, 64, 0.24);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 26px rgba(15, 77, 42, 0.12);
+  z-index: 35;
+  display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 220px;
-  animation: cirFadeIn 0.15s ease-out;
+  animation: cirCornerFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
 }
 
-.cir-popover-inspector.active {
-  display: flex;
+@keyframes cirCornerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes cirFadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.cir-popover-header {
+.cir-corner-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(27, 115, 64, 0.15);
-  padding-bottom: 6px;
-  font-weight: 800;
-  font-size: 0.85rem;
-  color: var(--ps-green-dark);
-}
-
-.cir-popover-val {
-  font-family: "JetBrains Mono", monospace;
-  color: var(--ps-green);
-  font-weight: 700;
-}
-
-.cir-popover-body {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
-.cir-popover-row {
+.cir-corner-card-title-grp {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cir-corner-card-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ps-green-dark);
+}
+
+.cir-corner-card-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ps-green);
+}
+
+.cir-corner-telemetry {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #555555;
-}
-
-.cir-popover-slider {
-  width: 100%;
-  accent-color: var(--ps-green);
-  cursor: pointer;
-}
-
-.cir-popover-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.cir-btn-action-sm {
-  flex: 1;
-  background: #ffffff;
-  border: 1.5px solid rgba(27, 115, 64, 0.22);
-  color: var(--ps-green-dark);
-  padding: 5px;
+  justify-content: space-around;
+  background: #f0fdf4;
+  border: 1px solid rgba(27, 115, 64, 0.18);
   border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
+  padding: 5px 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ps-green-dark);
+}
+
+/* Slider Stepper Group */
+.cir-corner-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cir-step-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(27, 115, 64, 0.25);
+  background: #ffffff;
+  color: var(--ps-green-dark);
+  font-size: 1rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  transition: all 0.15s;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
 }
 
-.cir-btn-action-sm:hover {
-  background: rgba(27, 115, 64, 0.08);
-  border-color: var(--ps-green);
+.cir-step-btn:hover {
+  background: var(--ps-green);
+  color: #ffffff;
 }
 
-.cir-btn-action-sm.del:hover {
-  background: #fee2e2;
-  color: var(--ps-red);
-  border-color: var(--ps-red);
+.cir-popover-slider {
+  flex: 1;
+  accent-color: var(--ps-green);
+  cursor: pointer;
+  height: 6px;
+}
+
+.cir-corner-shortcuts-hint {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #777777;
+  text-align: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 6px;
 }
 
 /* ---- أدوات التنقل العائمة (Zoom / Pan) ---- */

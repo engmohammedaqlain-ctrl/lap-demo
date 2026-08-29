@@ -174,6 +174,17 @@ export default function CircuitApp({ onHome }) {
             <span>💡</span> الدليل
           </button>
 
+          {/* زر تنسيق الدائرة الهندسي */}
+          <button
+            type="button"
+            className="cir-btn-ui"
+            onClick={() => sceneRef.current?.autoTidy()}
+            title="ترتيب وتنسيق مسارات الأسلاك هندسياً بزوايا قائمة 90° ومحاذاة العناصر"
+          >
+            <span>✨</span>
+            <span>تنسيق</span>
+          </button>
+
           {/* Undo / Redo */}
           <button
             type="button"
