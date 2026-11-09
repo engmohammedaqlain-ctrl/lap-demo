@@ -46,13 +46,12 @@ export default function CellInfoPanel({ selectedId, cellType, zoom, particleCoun
           <span className="cl-org-name">{org.name}</span>
           <span className="cl-org-latin">{org.latin}</span>
           <p className="cl-org-func">{org.func}</p>
-          <p className="cl-org-anim">🎬 {ANIM_CAPTION[org.anim] || ""}</p>
+          <p className="cl-org-anim">{ANIM_CAPTION[org.anim] || ""}</p>
           <span className="cl-org-hint">اضغط أي مكان فارغ للعودة</span>
         </div>
       ) : (
         <>
           <div className="cl-tooltip">
-            <span className="cl-tooltip-emoji">💡</span>
             <div>
               <b>الخلية مزدحمة!</b> عكس رسوم الكتب المدرسية، السيتوبلازم مكتظّ بمئات
               الآلاف من البروتينات والجزيئات في حركة دائمة لا تتوقّف. ما تراه هنا أقرب
@@ -66,21 +65,18 @@ export default function CellInfoPanel({ selectedId, cellType, zoom, particleCoun
             </span>
             {diffs.map((d) => (
               <span key={d.label} className="cl-diff-item">
-                <span className="cl-diff-emoji">{d.emoji}</span> {d.label}
+                <span className={`cl-dot ${d.kind}`} aria-hidden="true" /> {d.label}
               </span>
             ))}
           </div>
 
-          <div className="cl-explore-hint">
-            👆 اضغط أي عضيّ لتعرف اسمه ووظيفته، ثم «🔬 اغطس داخله» لترى تركيبه — أو مرّر
-            المؤشّر فوقه لتنكشف مكوّناته.
-          </div>
+          <div className="cl-explore-hint">اضغط أي عضيّ لتعرف وظيفته، ثم «اغطس داخله» لترى تركيبه.</div>
         </>
       )}
 
       <div className="cl-perf">
         <span>الجسيمات النشطة: {particleCount.toLocaleString("ar-EG")}</span>
-        {perfReduced && <span className="cl-perf-note">⚙️ خُفّض العدد تلقائياً للحفاظ على السلاسة</span>}
+        {perfReduced && <span className="cl-perf-note">خُفّض العدد تلقائياً للحفاظ على السلاسة</span>}
       </div>
     </div>
   );

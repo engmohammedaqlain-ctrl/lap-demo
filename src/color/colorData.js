@@ -66,6 +66,44 @@ export const VISION_MODES = [
   { id: "tritanopia", name: "عمى الأزرق" },
 ];
 
+/* تحويل تقريبي من تدرّج اللون (hue) إلى الطول الموجي المهيمن بالنانومتر */
+const HUE_NM = [
+  [0, 700],
+  [0.083, 620],
+  [0.166, 580],
+  [0.333, 530],
+  [0.5, 490],
+  [0.666, 465],
+  [0.78, 430],
+];
+function hueToNm(h) {
+  for (let i = 1; i < HUE_NM.length; i++) {
+    const [h1, n1] = HUE_NM[i];
+    const [h0, n0] = HUE_NM[i - 1];
+    if (h <= h1) return Math.round(n0 + ((h - h0) / (h1 - h0)) * (n1 - n0));
+  }
+  return 430;
+}
+
+/* اسم اللون من (التدرّج بالدرجات، التشبّع، السطوع) — يغطي كل الألوان بلا "لون مركب" */
+function nameColor(hue, sat, val) {
+  if (val < 0.07) return "أسود";
+  if (sat < 0.12) return val > 0.85 ? "أبيض" : val > 0.45 ? "رمادي" : "رمادي داكن";
+  let base;
+  if (hue < 15 || hue >= 345) base = "أحمر";
+  else if (hue < 40) base = "برتقالي";
+  else if (hue < 70) base = "أصفر";
+  else if (hue < 95) base = "أخضر ليموني";
+  else if (hue < 165) base = "أخضر";
+  else if (hue < 195) base = "سماوي (سايان)";
+  else if (hue < 255) base = "أزرق";
+  else if (hue < 285) base = "بنفسجي";
+  else base = "أرجواني (ماجنتا)";
+  if (val < 0.55) return `${base} داكن`;
+  if (sat < 0.5) return `${base} فاتح`;
+  return base;
+}
+
 export function calculatePerceivedColor(rPercent, gPercent, bPercent, visionMode = "normal") {
   let r = CLAMP(rPercent, 0, 100) * 2.55;
   let g = CLAMP(gPercent, 0, 100) * 2.55;
@@ -93,29 +131,6 @@ export function calculatePerceivedColor(rPercent, gPercent, bPercent, visionMode
   const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 
   const total = r + g + b;
-  let arabicName = "أسود";
-
-  if (total < 15) {
-    arabicName = "أسود";
-  } else if (r > 200 && g > 200 && b > 200) {
-    arabicName = "أبيض";
-  } else if (r > 160 && g > 160 && b < 80) {
-    arabicName = r > g + 40 ? "برتقالي" : "أصفر";
-  } else if (r > 160 && b > 160 && g < 80) {
-    arabicName = "أرجواني (ماجنتا)";
-  } else if (g > 160 && b > 160 && r < 80) {
-    arabicName = "سماوي (سايان)";
-  } else if (r > g + 50 && r > b + 50) {
-    arabicName = "أحمر";
-  } else if (g > r + 50 && g > b + 50) {
-    arabicName = "أخضر";
-  } else if (b > r + 50 && b > g + 50) {
-    arabicName = "أزرق";
-  } else if (Math.abs(r - g) < 40 && Math.abs(g - b) < 40) {
-    arabicName = "رمادي";
-  } else {
-    arabicName = "لون مركب";
-  }
 
   const rN = r / 255, gN = g / 255, bN = b / 255;
   const max = Math.max(rN, gN, bN), min = Math.min(rN, gN, bN);
@@ -129,7 +144,10 @@ export function calculatePerceivedColor(rPercent, gPercent, bPercent, visionMode
     }
     h /= 6;
   }
-  let wavelengthNm = Math.round(CLAMP(700 - h * 300, 380, 750));
+  // الألوان المحايدة (أبيض/رمادي/أسود) والأرجوانيات لا طول موجي واحد لها (غير طيفية)
+  const wavelengthNm = max - min < 0.04 || h > 0.78 ? null : hueToNm(h);
+
+  const arabicName = nameColor(h * 360, max === 0 ? 0 : (max - min) / max, max);
 
   return { r, g, b, hex, arabicName, total, lCone, mCone, sCone, wavelengthNm };
 }

@@ -25,6 +25,7 @@ const CHARACTER_URLS = { boy: personBoyUrl, girl: personGirlUrl };
 const EYE = EYE_CENTER;
 const CORTEX = CORTEX_CENTER;
 const MAX_PARTICLES = 260;
+const FILTER_NAMES = { red: "أحمر", green: "أخضر", blue: "أزرق", yellow: "أصفر" };
 const DEBUG_ALIGN = false; // علامات محاذاة مؤقتة
 
 /* هندسة كلّ شعاع: اتجاهه وزاويته من عدسة الكشّاف إلى العين (ميل + تجمّع).
@@ -50,6 +51,10 @@ const ColorScene = forwardRef(function ColorScene(
   const pulsesRef = useRef([]);
   const draggingRef = useRef(null); // 'red' | 'green' | 'blue'
   const imgsRef = useRef({}); // صور الشخصيات المحمّلة { boy, girl }
+  const scaleRef = useRef(1); // بكسل CSS لكل وحدة تصميم (لإبقاء النصوص/المقابض مقروءة وملموسة)
+  const kRef = useRef(1); // نسبة مخزن الرسم إلى وحدات التصميم (dpr)
+  const hintRef = useRef(true); // نبضة تلميح حتى أول سحب
+  const fs = (n, min = 11) => Math.max(n, min / scaleRef.current);
 
   const propsRef = useRef({});
   propsRef.current = { rVal, gVal, bVal, onValChange, isPlaying, beamMode, visionMode, filterEnabled, filterColor, character, onStatus };
@@ -61,15 +66,13 @@ const ColorScene = forwardRef(function ColorScene(
     },
   }));
 
-  /* ===== تفاعل: سحب مقياس الشدّة على كلّ كشّاف ===== */
+  /* ===== تفاعل: سحب مقياس الشدّة على كلّ كشّاف (Pointer Events: فأرة + لمس + قلم) ===== */
   function getCanvasCoords(e) {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-      x: (clientX - rect.left) * (SCENE_W / rect.width),
-      y: (clientY - rect.top) * (SCENE_H / rect.height),
+      x: (e.clientX - rect.left) * (SCENE_W / rect.width),
+      y: (e.clientY - rect.top) * (SCENE_H / rect.height),
     };
   }
   // يحوّل نقطة الشاشة إلى الإطار المحلّي للكشّاف (محور +x نحو العين)
@@ -87,23 +90,39 @@ const ColorScene = forwardRef(function ColorScene(
     const cb = propsRef.current.onValChange;
     cb && cb(bm.id, clamped);
   }
-  function handleDown(e) {
-    const { x, y } = getCanvasCoords(e);
+  // أيّ مقياس تحت المؤشّر؟ منطقة اللمس ≥ ٢٤px على الشاشة مهما صغر المشهد
+  function hitTrack(x, y) {
+    const sc = scaleRef.current || 1;
+    const tolY = Math.max(22, 24 / sc);
+    const tolX = Math.max(16, 20 / sc);
     for (const bm of BEAMS) {
       const { lx, ly } = toLocal(bm, x, y);
-      if (lx >= TRACK_MIN - 16 && lx <= TRACK_MAX + 16 && Math.abs(ly) <= 22) {
-        draggingRef.current = bm.id;
-        setFromLocal(bm, lx);
-        e.preventDefault();
-        return;
-      }
+      if (lx >= TRACK_MIN - tolX && lx <= TRACK_MAX + tolX && Math.abs(ly) <= tolY) return { bm, lx };
     }
+    return null;
+  }
+  function handleDown(e) {
+    const { x, y } = getCanvasCoords(e);
+    const hit = hitTrack(x, y);
+    if (!hit) return;
+    draggingRef.current = hit.bm.id;
+    hintRef.current = false;
+    try {
+      canvasRef.current.setPointerCapture(e.pointerId);
+    } catch {
+      /* مؤشّر غير نشط */
+    }
+    setFromLocal(hit.bm, hit.lx);
+    e.preventDefault();
   }
   function handleMove(e) {
-    const id = draggingRef.current;
-    if (!id) return;
-    const bm = BEAMS.find((b) => b.id === id);
     const { x, y } = getCanvasCoords(e);
+    const id = draggingRef.current;
+    if (!id) {
+      canvasRef.current.style.cursor = hitTrack(x, y) ? "ew-resize" : "default";
+      return;
+    }
+    const bm = BEAMS.find((b) => b.id === id);
     const { lx } = toLocal(bm, x, y);
     setFromLocal(bm, lx);
     e.preventDefault();
@@ -117,7 +136,26 @@ const ColorScene = forwardRef(function ColorScene(
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     let t = 0;
+    let lastStatusKey = "";
     const beams = BEAMS;
+
+    // دقة المخزن تتبع حجم العرض الفعلي × dpr (حادّة على شاشات الجوال)
+    const resize = () => {
+      const r = canvas.getBoundingClientRect();
+      if (!r.width) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const bw = Math.round(r.width * dpr);
+      const bh = Math.round((bw * SCENE_H) / SCENE_W);
+      if (canvas.width !== bw || canvas.height !== bh) {
+        canvas.width = bw;
+        canvas.height = bh;
+      }
+      scaleRef.current = r.width / SCENE_W;
+      kRef.current = bw / SCENE_W;
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
 
     // تحميل صور الشخصيات (مضمّنة في الحزمة، تعمل دون اتصال)
     for (const key of Object.keys(CHARACTER_URLS)) {
@@ -143,8 +181,14 @@ const ColorScene = forwardRef(function ColorScene(
       }
 
       const info = calculatePerceivedColor(effR, effG, effB, p.visionMode);
-      p.onStatus && p.onStatus(info);
+      const statusKey = `${info.hex}|${info.arabicName}|${info.wavelengthNm}`;
+      if (statusKey !== lastStatusKey) {
+        lastStatusKey = statusKey;
+        p.onStatus && p.onStatus(info); // فقط عند التغيّر (لا إعادة عرض كل إطار)
+      }
 
+      const k = kRef.current;
+      ctx.setTransform(k, 0, 0, k, 0, 0);
       ctx.clearRect(0, 0, SCENE_W, SCENE_H);
       drawBackground(ctx);
 
@@ -183,7 +227,10 @@ const ColorScene = forwardRef(function ColorScene(
       rafRef.current = requestAnimationFrame(frame);
     }
     rafRef.current = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      ro.disconnect();
+    };
   }, []);
 
   /* ================= الخلفية (بيضاء لتندمج مع خلفية الصورة) ================= */
@@ -472,9 +519,12 @@ const ColorScene = forwardRef(function ColorScene(
 
       // ---- مقياس الشدّة على الجسم (قابل للسحب) ----
       const knobX = TRACK_MIN + (val / 100) * (TRACK_MAX - TRACK_MIN);
+      const sc = scaleRef.current || 1;
+      const kr = Math.max(9, 11 / sc); // نصف قطر المقبض (يكبر على الشاشات الصغيرة)
+      const tw = Math.max(6, 5 / sc);
       // مجرى
       ctx.strokeStyle = "rgba(255,255,255,0.28)";
-      ctx.lineWidth = 6;
+      ctx.lineWidth = tw;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(TRACK_MIN, 0);
@@ -486,9 +536,21 @@ const ColorScene = forwardRef(function ColorScene(
       ctx.moveTo(TRACK_MIN, 0);
       ctx.lineTo(knobX, 0);
       ctx.stroke();
+      // تلميح نابض حتى أول سحب + حلقة عند السحب
+      const dragging = draggingRef.current === bm.id;
+      if (hintRef.current || dragging) {
+        const pulse = dragging ? 7 : 7 + Math.sin(performance.now() / 260 + i) * 3.5;
+        ctx.beginPath();
+        ctx.arc(knobX, 0, kr + pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = bm.color;
+        ctx.globalAlpha = dragging ? 0.45 : 0.55;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       // مقبض
       ctx.beginPath();
-      ctx.arc(knobX, 0, 9, 0, Math.PI * 2);
+      ctx.arc(knobX, 0, kr, 0, Math.PI * 2);
       ctx.fillStyle = "#ffffff";
       ctx.fill();
       ctx.strokeStyle = bm.color;
@@ -503,7 +565,7 @@ const ColorScene = forwardRef(function ColorScene(
       ctx.save();
       ctx.textAlign = "center";
       ctx.fillStyle = bm.color;
-      ctx.font = "800 15px 'IBM Plex Sans Arabic', sans-serif";
+      ctx.font = `800 ${fs(15, 12)}px 'IBM Plex Sans Arabic', sans-serif`;
       ctx.fillText(`${bm.name} ${val}%`, ax, ay - 30);
       ctx.restore();
     });
@@ -528,9 +590,9 @@ const ColorScene = forwardRef(function ColorScene(
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = "#475569";
-    ctx.font = "700 12px 'IBM Plex Sans Arabic', sans-serif";
+    ctx.font = `700 ${fs(12)}px 'IBM Plex Sans Arabic', sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText("مرشّح " + name, fx, 48);
+    ctx.fillText("مرشّح " + FILTER_NAMES[name], fx, 48);
     ctx.restore();
   }
 
@@ -632,15 +694,27 @@ const ColorScene = forwardRef(function ColorScene(
     ctx.ellipse(swX - 12, cy - 13, 11, 6, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // اسم اللون فقط (بلا رمز)
+    // اسم اللون: الاسم الرئيسي كبير، والقوسان/التوضيح في سطر ثانٍ (يتّسع الاسم دائماً داخل السحابة)
+    const full = info.arabicName;
+    const paren = full.indexOf("(");
+    const main = paren > 0 ? full.slice(0, paren).trim() : full;
+    const sub = paren > 0 ? full.slice(paren).trim() : "ما يراه الدماغ";
+    const textX = cx + 92;
+    const maxW = 106;
     ctx.fillStyle = "#1f2937";
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    ctx.font = "800 23px 'IBM Plex Sans Arabic', sans-serif";
-    ctx.fillText(info.arabicName, cx + 66, cy - 6);
-    ctx.font = "600 12px 'IBM Plex Sans Arabic', sans-serif";
+    let size = fs(23, 14);
+    ctx.font = `800 ${size}px 'IBM Plex Sans Arabic', sans-serif`;
+    const w = ctx.measureText(main).width;
+    if (w > maxW) {
+      size = Math.max(fs(12, 11), size * (maxW / w));
+      ctx.font = `800 ${size}px 'IBM Plex Sans Arabic', sans-serif`;
+    }
+    ctx.fillText(main, textX, cy - 6);
+    ctx.font = `600 ${fs(12)}px 'IBM Plex Sans Arabic', sans-serif`;
     ctx.fillStyle = "#6b7280";
-    ctx.fillText("ما يراه الدماغ", cx + 66, cy + 18);
+    ctx.fillText(sub, textX, cy + 18);
 
     ctx.restore();
   }
@@ -652,13 +726,10 @@ const ColorScene = forwardRef(function ColorScene(
         width={SCENE_W}
         height={SCENE_H}
         className="color-canvas"
-        onMouseDown={handleDown}
-        onMouseMove={handleMove}
-        onMouseUp={handleUp}
-        onMouseLeave={handleUp}
-        onTouchStart={handleDown}
-        onTouchMove={handleMove}
-        onTouchEnd={handleUp}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
       />
     </div>
   );

@@ -2,13 +2,15 @@
  * CellHelpModal.jsx — نافذة "عن التجربة": شرح الدرس بلغة صف سابع، ملاحظة الدقّة
  * العلمية (الخلية مزدحمة)، وكيفية التنقّل (زووم/لمس/ماوس).
  */
+import { IconClose } from "../../ui/icons.jsx";
+
 export default function CellHelpModal({ open, onClose }) {
   if (!open) return null;
   return (
     <div className="cl-help-overlay" onClick={onClose}>
       <div className="cl-help-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="cl-help-close" onClick={onClose} aria-label="إغلاق">
-          ✕
+          <IconClose width="18" height="18" />
         </button>
         <h2 className="cl-help-title">رحلة داخل الخلية</h2>
         <span className="cl-help-sub">من نقطة ماء… إلى داخل الخلية الحيّة</span>
@@ -26,13 +28,12 @@ export default function CellHelpModal({ open, onClose }) {
             <li>اسحب داخل الخلية للتنقّل بين العضيّات.</li>
             <li>اضغط أيّ عضيّ لتعرف اسمه ووظيفته وتراه يعمل.</li>
             <li>مرّر المؤشّر (hover) فوق عضيّ لتنكشف مكوّناته بأنيميشن.</li>
-            <li>بعد اختيار عضيّ، اضغط «🔬 اغطس داخله» لترى تركيبه الداخلي.</li>
-            <li>زر ⛶ لملء الشاشة والغوص بلا تشتيت.</li>
+            <li>بعد اختيار عضيّ، اضغط «اغطس داخله» لترى تركيبه الداخلي.</li>
           </ul>
         </div>
 
         <div className="cl-help-section">
-          <h3>معلومة علمية 🔬</h3>
+          <h3>معلومة علمية</h3>
           <p className="cl-help-note">
             رسوم الكتب المدرسية تُظهر الخلية شبه فارغة، لكن الخلية الحقيقية <b>مزدحمة
             جداً</b>: مئات الآلاف من الجزيئات تتحرّك في كل لحظة. أظهرنا هذا الازدحام عمداً

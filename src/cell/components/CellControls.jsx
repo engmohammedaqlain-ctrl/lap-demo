@@ -2,23 +2,25 @@
  * CellControls.jsx — شريط أدوات التجربة: تبديل خلية حيوانية/نباتية، وضع
  * (استكشاف/تحدٍّ)، وإعادة ضبط المشهد. تصميم موحّد مع بقيّة الموقع.
  */
+import { IconReset } from "../../ui/icons.jsx";
+
 export default function CellControls({ cellType, onCellType, mode, onMode, onReset }) {
   return (
-    <div className="cl-controls">
+    <div className="cl-controls g-controls">
       <div className="cl-seg" role="group" aria-label="نوع الخلية">
         <button
           type="button"
           className={`cl-seg-btn${cellType === "animal" ? " active" : ""}`}
           onClick={() => onCellType("animal")}
         >
-          🐾 خلية حيوانية
+          خلية حيوانية
         </button>
         <button
           type="button"
           className={`cl-seg-btn${cellType === "plant" ? " active" : ""}`}
           onClick={() => onCellType("plant")}
         >
-          🌿 خلية نباتية
+          خلية نباتية
         </button>
       </div>
 
@@ -28,19 +30,20 @@ export default function CellControls({ cellType, onCellType, mode, onMode, onRes
           className={`cl-seg-btn${mode === "explore" ? " active" : ""}`}
           onClick={() => onMode("explore")}
         >
-          🔍 استكشاف
+          استكشاف
         </button>
         <button
           type="button"
           className={`cl-seg-btn${mode === "challenge" ? " active" : ""}`}
           onClick={() => onMode("challenge")}
         >
-          🎯 تحدٍّ
+          تحدٍّ
         </button>
       </div>
 
       <button type="button" className="cl-reset" onClick={onReset}>
-        ↺ أعِد الرحلة
+        <IconReset width="18" height="18" />
+        <span>أعِد الرحلة</span>
       </button>
     </div>
   );

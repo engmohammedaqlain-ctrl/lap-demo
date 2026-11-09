@@ -1,14 +1,12 @@
 /**
- * cellAudio.js — محرّك صوت برمجي (Web Audio) لتجربة «رحلة داخل الخلية».
- * كل الأصوات مُولّدة رياضياً بلا ملفات، فتعمل دون اتصال:
- *  - startAmbient/stopAmbient: طنين حيويّ خافت داخل الخلية (طبقتا أوسسيلاتور).
- *  - playDive: تصاعد صوتي درامي للحظة تجاوز حدّ المجهر.
- *  - playPulse: نبضة طاقة (ATP) للميتوكوندريا.
- *  - playPop: انفصال حويصلة من جولجي / بناء حلقة بروتين.
- *  - playSelect: توهّج اختيار عضي.
- *  - playClick: نقرة أزرار.
- *  - playCorrect/playWrong: تغذية راجعة لطيفة في وضع التحدّي (بلا عقاب).
+ * cellAudio.js — صوت تجربة «رحلة داخل الخلية».
+ *  - المؤثرات اللحظية (نقر، اختيار، غوص، نبضة، فرقعة، صح/خطأ) من مكتبة SFX
+ *    الاحترافية عبر audio/sfx.js (ملفات مضغوطة تعمل دون اتصال).
+ *  - الأصوات المستمرة فقط مُولّدة رياضياً (Web Audio): طنين الخلية الخافت
+ *    startAmbient، وهسيس الزووم updateZoom الذي تتبع شدّته سرعة التكبير.
  */
+import { play, setMuted as setSfxMuted } from "../audio/sfx.js";
+
 class CellSoundEngine {
   constructor() {
     this.ctx = null;
@@ -34,6 +32,7 @@ class CellSoundEngine {
 
   setMuted(m) {
     this.muted = m;
+    setSfxMuted(m);
     if (this.master) this.master.gain.value = m ? 0 : 1;
     if (m) {
       this.stopAmbient();
@@ -144,205 +143,47 @@ class CellSoundEngine {
     this.whoosh = null;
   }
 
-  /** تحديد "خيالي عالمي" — رنين بلّوري متصاعد + انتفاخ عكسي */
+  /** تحديد عضيّ: نغمة اختيار نظيفة */
   playFantasySelect() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    // أربتيج بلّوري
-    [660, 880, 1320, 1760].forEach((f, i) => {
-      const o = this.ctx.createOscillator();
-      o.type = "triangle";
-      o.frequency.value = f;
-      const g = this.ctx.createGain();
-      const s = t + i * 0.05;
-      g.gain.setValueAtTime(0.0001, s);
-      g.gain.linearRampToValueAtTime(0.09, s + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, s + 0.5);
-      o.connect(g).connect(this.master);
-      o.start(s);
-      o.stop(s + 0.55);
-    });
-    // انتفاخ عكسي (shimmer swell)
-    const src = this.ctx.createBufferSource();
-    const n = Math.floor(this.ctx.sampleRate * 0.5);
-    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (i / n);
-    src.buffer = buf;
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 3000;
-    const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.0001, t);
-    g2.gain.linearRampToValueAtTime(0.08, t + 0.35);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-    src.connect(hp).connect(g2).connect(this.master);
-    src.start(t);
-    src.stop(t + 0.55);
+    play("select", { volume: 0.9 });
   }
 
-  /** رنين الغوص داخل عضيّ */
+  /** الغوص داخل عضيّ: همسة انتقال واسعة */
   playDiveIn() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.setValueAtTime(180, t);
-    o.frequency.exponentialRampToValueAtTime(90, t + 0.6);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.14, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.72);
-    this.playFantasySelect();
+    play("cell_iris", { volume: 0.85, throttle: 300 });
   }
 
+  /** عبور حدّ المجهر: صاعدة درامية */
   playDive() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sawtooth";
-    o.frequency.setValueAtTime(60, t);
-    o.frequency.exponentialRampToValueAtTime(520, t + 1.1);
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.setValueAtTime(300, t);
-    lp.frequency.exponentialRampToValueAtTime(4000, t + 1.1);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.14, t + 0.5);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
-    o.connect(lp).connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 1.45);
-    // "انفجار تفاصيل": رشقة ضجيج ناعمة عند الوصول
-    const src = this.ctx.createBufferSource();
-    const n = Math.floor(this.ctx.sampleRate * 0.5);
-    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    src.buffer = buf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 900;
-    const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.0001, t + 1.0);
-    g2.gain.linearRampToValueAtTime(0.1, t + 1.15);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
-    src.connect(bp).connect(g2).connect(this.master);
-    src.start(t + 1.0);
-    src.stop(t + 1.6);
+    play("cell_riser", { volume: 0.9, throttle: 600 });
   }
 
+  /** نبضة طاقة (ATP) */
   playPulse() {
-    this._ensure();
-    if (!this.ctx || this.muted || !this._gate("pulse", 120)) return;
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.setValueAtTime(330, t);
-    o.frequency.exponentialRampToValueAtTime(660, t + 0.12);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.09, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.18);
+    play("tick", { volume: 0.55, throttle: 120, jitter: 0.12 });
   }
 
+  /** انفصال حويصلة / بناء حلقة بروتين */
   playPop() {
-    this._ensure();
-    if (!this.ctx || this.muted || !this._gate("pop", 90)) return;
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "triangle";
-    o.frequency.setValueAtTime(220, t);
-    o.frequency.exponentialRampToValueAtTime(120, t + 0.1);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.08, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.15);
+    play("cell_pop", { volume: 0.7, throttle: 90, jitter: 0.1 });
   }
 
   playSelect() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.setValueAtTime(440, t);
-    o.frequency.exponentialRampToValueAtTime(880, t + 0.14);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.1, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.22);
+    play("select", { volume: 0.85 });
   }
 
   playClick() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.setValueAtTime(520, t);
-    o.frequency.exponentialRampToValueAtTime(760, t + 0.05);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.1, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.1);
+    play("click");
   }
 
   playCorrect() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    [523, 659, 784].forEach((f, i) => {
-      const o = this.ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = f;
-      const g = this.ctx.createGain();
-      const s = t + i * 0.1;
-      g.gain.setValueAtTime(0.0001, s);
-      g.gain.linearRampToValueAtTime(0.11, s + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.001, s + 0.28);
-      o.connect(g).connect(this.master);
-      o.start(s);
-      o.stop(s + 0.3);
-    });
+    play("success", { volume: 0.9 });
+    play("sparkle", { volume: 0.5, delay: 0.12 });
   }
 
-  /** خطأ في التحدّي: نغمة لطيفة غير عقابية (لا هبوط حادّ محبِط) */
+  /** خطأ في التحدّي: نغمة لطيفة غير عقابية */
   playWrong() {
-    this._ensure();
-    if (!this.ctx || this.muted) return;
-    this._resume();
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.setValueAtTime(300, t);
-    o.frequency.linearRampToValueAtTime(250, t + 0.18);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.08, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-    o.connect(g).connect(this.master);
-    o.start(t);
-    o.stop(t + 0.24);
+    play("back", { volume: 0.7 });
   }
 }
 

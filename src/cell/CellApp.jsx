@@ -1,10 +1,10 @@
 /**
  * CellApp.jsx — تجربة «رحلة داخل الخلية».
  *
- * القشرة العليا بطابع الموقع: شريط علوي (رئيسية/عنوان/؟+🔊)، شريط أدوات
- * (حيواني↔نباتي، استكشاف↔تحدٍّ، إعادة الرحلة)، المشهد (canvas)، واللوحة
- * التفسيرية. إدارة الحالة هنا؛ المشهد يبثّ الزووم/الأداء/النقر للأعلى، ويتلقّى
- * أوامر التأثيرات عبر مرجع أمري.
+ * القشرة العليا بنفس لغة تصميم المختبر: أزرار الواجهة المشتركة (Hud)، عمود أدوات
+ * زجاجي (حيواني↔نباتي، استكشاف↔تحدٍّ، إعادة الرحلة)، المشهد (canvas) بملء
+ * المساحة، واللوحة التفسيرية في دُرج. إدارة الحالة هنا؛ المشهد يبثّ
+ * الزووم/الأداء/النقر للأعلى، ويتلقّى أوامر التأثيرات عبر مرجع أمري.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import CellScene from "./CellScene.jsx";
@@ -12,11 +12,19 @@ import CellControls from "./components/CellControls.jsx";
 import CellInfoPanel from "./components/CellInfoPanel.jsx";
 import CellChallenge from "./components/CellChallenge.jsx";
 import CellHelpModal from "./components/CellHelpModal.jsx";
-import { challengePool, CROWD, interiorFor, INTERIORS, organelleKind } from "./cellData.js";
+import { challengePool, CROWD, interiorFor, INTERIORS, organelleKind, ORGANELLES, ENVELOPE } from "./cellData.js";
 import { CellSound } from "./cellAudio.js";
 import "./cell.css";
 
+import { InfoDrawer } from "../mobile/GameChrome.jsx";
+import Hud from "../ui/Hud.jsx";
+import { IconDive, IconBack } from "../ui/icons.jsx";
+
 const INTERIOR_TITLE = (id) => (INTERIORS[organelleKind(id)] ? INTERIORS[organelleKind(id)].title : "");
+
+const BY_ID = {};
+for (const o of ORGANELLES) BY_ID[o.id] = o;
+for (const k in ENVELOPE) BY_ID[ENVELOPE[k].id] = ENVELOPE[k];
 
 const ORG_NAME = {};
 for (const o of challengePool("plant")) ORG_NAME[o.id] = o.name;
@@ -40,27 +48,17 @@ export default function CellApp({ onHome }) {
 
   const [challenge, setChallenge] = useState({ target: null, feedback: null, attempts: 0, score: 0 });
   const [focus, setFocus] = useState({ focusId: null, inside: false });
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const [hinted, setHinted] = useState(false);
   const sceneRef = useRef(null);
-  const stageRef = useRef(null);
-  const sceneCardRef = useRef(null);
   const advanceTimer = useRef(0);
 
-  const onFocus = useCallback((f) => setFocus(f), []);
-
-  /* ملء شاشة المشهد نفسه (لا الموقع) */
+  // التلميح العابر يكفي مرة واحدة: يختفي نهائياً بعد أول اختيار
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-  function toggleFullscreen() {
-    const el = sceneCardRef.current;
-    if (!document.fullscreenElement) el?.requestFullscreen?.().catch(() => {});
-    else document.exitFullscreen?.();
-    click();
-  }
+    if (selectedId) setHinted(true);
+  }, [selectedId]);
+
+  const onFocus = useCallback((f) => setFocus(f), []);
 
   const click = useCallback(() => {
     if (soundEnabled) CellSound.playClick();
@@ -158,45 +156,17 @@ export default function CellApp({ onHome }) {
   }
 
   return (
-    <div className="cl-stage" ref={stageRef}>
-      <header className="cl-topbar">
-        <button type="button" className="cl-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="cl-home-text">الرئيسية</span>
-        </button>
-        <div className="cl-title">
-          <span className="cl-title-main">رحلة داخل الخلية</span>
-        </div>
-        <div className="cl-topbar-actions">
-          <button
-            type="button"
-            className="cl-fs-btn"
-            onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء شاشة المشهد"}
-            title={isFullscreen ? "إنهاء ملء الشاشة" : "ملء شاشة المشهد"}
-          >
-            {isFullscreen ? "🗗" : "⛶"}
-          </button>
-          <button
-            type="button"
-            className="cl-help-btn"
-            onClick={() => {
-              setHelpOpen(true);
-              click();
-            }}
-            aria-label="شرح الدرس"
-            title="شرح الدرس"
-          >
-            ؟
-          </button>
-          <button
-            type="button"
-            className="cl-sound-btn"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
-          >
-            {soundEnabled ? "🔊" : "🔇"}
-          </button>
-        </div>
+    <div className="cl-stage g-stage g-fill">
+      <header className="g-topbar">
+        <Hud
+          onHome={onHome}
+          onHelp={() => {
+            setHelpOpen(true);
+            click();
+          }}
+          sound={soundEnabled}
+          onSound={toggleSound}
+        />
       </header>
 
       <CellHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
@@ -209,9 +179,9 @@ export default function CellApp({ onHome }) {
         onReset={reset}
       />
 
-      <div className="cl-experiment">
-        <div className="cl-scene-col">
-          <div className="cl-scene-card" ref={sceneCardRef}>
+      <div className="cl-experiment g-experiment">
+        <div className="cl-scene-col g-scene-col">
+          <div className="cl-scene-card g-scene-card">
             <CellScene
               ref={sceneRef}
               cellType={cellType}
@@ -225,6 +195,23 @@ export default function CellApp({ onHome }) {
               onFocus={onFocus}
             />
 
+            {/* مؤشّر الرحلة: أين أنا الآن ومقدار التكبير */}
+            <div className="cl-zoom-chip" aria-live="polite">
+              <span className="cl-zoom-chip-stage">{zoom.stage}</span>
+              <span className="cl-zoom-chip-mag">{zoom.mag}</span>
+              <span className="cl-zoom-chip-bar">
+                <i style={{ width: `${zoom.pct}%` }} />
+              </span>
+            </div>
+
+            {/* بطاقة العضيّ المحدّد: الاسم + الوظيفة بلا فتح الدُرج */}
+            {mode === "explore" && selectedId && !focus.focusId && BY_ID[selectedId] && (
+              <div className="cl-pick-card" key={selectedId}>
+                <b>{BY_ID[selectedId].name}</b>
+                <span>{BY_ID[selectedId].func}</span>
+              </div>
+            )}
+
             {/* زر الغوص داخل العضي المحدّد */}
             {mode === "explore" && !focus.focusId && selectedId && interiorFor(selectedId) && (
               <button
@@ -235,7 +222,8 @@ export default function CellApp({ onHome }) {
                   click();
                 }}
               >
-                🔬 اغطس داخل {INTERIOR_TITLE(selectedId).replace("داخل ", "")} ⤵
+                <IconDive width="20" height="20" />
+                <span>اغطس داخل {INTERIOR_TITLE(selectedId).replace("داخل ", "")}</span>
               </button>
             )}
 
@@ -249,7 +237,8 @@ export default function CellApp({ onHome }) {
                   click();
                 }}
               >
-                ⤴ رجوع إلى الخلية
+                <IconBack width="20" height="20" />
+                <span>رجوع إلى الخلية</span>
               </button>
             )}
 
@@ -263,18 +252,20 @@ export default function CellApp({ onHome }) {
               />
             )}
           </div>
-          <span className="cl-scene-hint">
-            💡 كبّر بعجلة الماوس أو بإصبعين — وتجاوز حدّ المجهر المدرسي!
-          </span>
+          {mode === "explore" && !hinted && !selectedId && (
+            <span className="cl-scene-hint g-hint">كبّر بإصبعين أو بعجلة الماوس، ثم اضغط أي عضيّ</span>
+          )}
         </div>
 
-        <CellInfoPanel
-          selectedId={selectedId}
-          cellType={cellType}
-          zoom={zoom}
-          particleCount={particleCount}
-          perfReduced={particleCount < CROWD.target}
-        />
+        <InfoDrawer label="معلومات">
+          <CellInfoPanel
+            selectedId={selectedId}
+            cellType={cellType}
+            zoom={zoom}
+            particleCount={particleCount}
+            perfReduced={particleCount < CROWD.target}
+          />
+        </InfoDrawer>
       </div>
     </div>
   );

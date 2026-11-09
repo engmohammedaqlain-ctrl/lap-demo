@@ -1,1051 +1,738 @@
 /**
- * StaticScene.jsx — لوحة (canvas) تفاعلية عالية الحركة لتجربة الكهرباء
- * الساكنة. تُدار الفيزياء والرسم في حلقة requestAnimationFrame على مرجع
- * واحد (simRef) لأداء ٦٠ إطاراً/ثانية دون إعادة تصيير React. تتلقّى وضع
- * عرض الشحنات ووجود الجدار وعدد البالونات من الأعلى، وتُبلّغ حالة الدرس
- * الحيّة عبر onStatus لتحديث اللوحة التفسيرية.
- *
- * الفكرة العلمية: فرك البالون بالسترة ينقل إلكترونات (−) من السترة إليه،
- * فيصبح البالون سالباً والسترة موجبة، فينجذب البالون للسترة. وقرب الجدار
- * المتعادل، تتباعد إلكتروناته فيقترب سطحه الموجب فيلتصق به البالون.
+ * StaticScene.jsx — مشهد الكهرباء الساكنة داخل غرفة جلوس على Canvas 2D.
+ * لا لوحات واجهة: الأدوات جزء من الغرفة نفسها:
+ *   - سلّة خوص فيها البالونات (اسحب بالوناً منها أو أعده).
+ *   - لوح جدار منزلق بمقبض نحاسي (المس المقبض لفتح/إغلاق الجدار).
+ *   - عدسة مكبّرة تكشف الشحنات (اسحبها فوق الأشياء، والمس مقبضها للتبديل
+ *     بين "كل الشحنات" و"الصافية فقط").
+ * الفيزياء في sim.js، والرسم الإجرائي في staticArt.js و room.js.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import {
-  SCENE_W,
-  SCENE_H,
-  SWEATER,
-  WALL,
-  BALLOON_SPECS,
-  BALLOON_R,
-  CHARGE,
-  buildSweaterCharges,
-  buildWallCharges,
-  CLAMP,
-} from "./staticData.js";
-import { StaticSound } from "./staticAudio.js";
+import { StaticWorld } from "./sim.js";
+import { computeLayout, LENS_R, LENS_ZOOM, insideSweater, CLAMP } from "./staticData.js";
+import { makeSweaterSprite, SWEATER_SPRITE, drawBalloon, drawString, drawCharge } from "./staticArt.js";
+import { renderRoom, renderWallPanel, renderBasket } from "./room.js";
+import { play, loop, setMuted } from "../audio/sfx.js";
+import { haptic } from "../mobile/device.js";
 
-const SWEATER_RIGHT = SWEATER.x + SWEATER.w;
+const FONT = "'IBM Plex Sans Arabic', sans-serif";
+let UI_S = 1;
+const fsz = (n) => Math.max(n, 11.5 / UI_S);
+const ar = (n) => Number(n).toLocaleString("ar-EG");
+const WALL_SLIDE = (L) => L.pillarW - 70;
 
-function makeBalloon(i) {
-  const spec = BALLOON_SPECS[i];
-  return {
-    i,
-    x: spec.start.x,
-    y: spec.start.y,
-    px: spec.start.x,
-    py: spec.start.y,
-    vx: 0,
-    vy: 0,
-    r: BALLOON_R,
-    color: spec.color,
-    dark: spec.dark,
-    light: spec.light,
-    held: false,
-    stuck: null, // null | 'sweater' | 'wall'
-    grabbed: [], // مراجع إلكترونات (من minus)
-    stickFlash: 0,
-    bobPhase: i * 1.7,
-    swayPhase: i * 0.9,
-  };
+/* ---------- عناصر صغيرة ---------- */
+function tip(g, text, x, y) {
+  const size = fsz(14);
+  g.save();
+  g.font = `600 ${size}px ${FONT}`;
+  const w = g.measureText(text).width + 22;
+  const h = size + 14;
+  const x0 = x - w / 2;
+  g.fillStyle = "rgba(24,28,26,0.86)";
+  g.beginPath();
+  g.roundRect(x0, y - h / 2, w, h, h / 2);
+  g.fill();
+  g.fillStyle = "#fff";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(text, x, y + 1);
+  g.restore();
 }
 
-function makeSim(balloonCount) {
-  const { plus, minus } = buildSweaterCharges();
-  const balloons = [];
-  for (let i = 0; i < balloonCount; i++) balloons.push(makeBalloon(i));
-  return {
-    plus,
-    minus,
-    wall: buildWallCharges(),
-    balloons,
-    sparks: [],
-    t: 0,
-  };
+function lensGeometry(lens) {
+  const R = LENS_R * lens.scale;
+  const th = 0.82;
+  const hx = lens.x + Math.cos(th) * (R + 52 * lens.scale);
+  const hy = lens.y + Math.sin(th) * (R + 52 * lens.scale);
+  return { R, th, hx, hy };
 }
 
-const StaticScene = forwardRef(function StaticScene(
-  { displayMode, wallOn, balloonCount, soundEnabled, onStatus },
-  ref
-) {
+const StaticScene = forwardRef(function StaticScene({ soundEnabled }, ref) {
   const canvasRef = useRef(null);
-  const simRef = useRef(makeSim(balloonCount));
-  const rafRef = useRef(0);
-  const lastTsRef = useRef(0);
-  const dragRef = useRef(null); // {balloon, dx, dy}
+  const wrapRef = useRef(null);
+  const st = useRef({ props: null });
+  st.current.props = { soundEnabled };
+
+  useImperativeHandle(ref, () => ({
+    reset() {
+      const s = st.current;
+      if (!s.world) return;
+      s.world.reset();
+      s.lens.mode = "net";
+      s.lens.x = s.L.lensRest.x;
+      s.lens.y = s.L.lensRest.y;
+      s.lens.scale = 0.62;
+      s.hintDone = false;
+      s.rubLoop?.stop();
+      s.rubLoop = null;
+    },
+  }));
 
-  // مرايا للـ props تُقرأ داخل الحلقة دون إعادة تشغيلها
-  const propsRef = useRef({ displayMode, wallOn, balloonCount, soundEnabled, onStatus });
-  propsRef.current = { displayMode, wallOn, balloonCount, soundEnabled, onStatus };
-  const statusSigRef = useRef("");
-
-  /* ===== إعادة الضبط ===== */
-  const reset = () => {
-    const count = propsRef.current.balloonCount;
-    simRef.current = makeSim(count);
-    StaticSound.stopRub();
-    StaticSound.stopFloat();
-    emitStatus(true);
-  };
-  useImperativeHandle(ref, () => ({ reset }));
-
-  /* ===== توليد شرارات ===== */
-  function spawnSparks(x, y, n, hue) {
-    const sp = simRef.current.sparks;
-    for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const s = 0.8 + Math.random() * 2.4;
-      sp.push({
-        x,
-        y,
-        vx: Math.cos(a) * s,
-        vy: Math.sin(a) * s - 0.6,
-        life: 1,
-        max: 22 + Math.random() * 14,
-        age: 0,
-        hue,
-      });
-    }
-  }
-
-  /* ===== حالة الدرس للّوحة التفسيرية ===== */
-  function emitStatus(force) {
-    const sim = simRef.current;
-    const { onStatus: cb } = propsRef.current;
-    let charge = 0;
-    let phase = "neutral";
-    let anyRub = false;
-    let stuckSweater = false;
-    let stuckWall = false;
-    let attracting = false;
-    for (const b of sim.balloons) {
-      charge = Math.max(charge, b.grabbed.length);
-      if (b.held && b._rubbing) anyRub = true;
-      if (b.stuck === "sweater") stuckSweater = true;
-      if (b.stuck === "wall") stuckWall = true;
-      if (!b.held && !b.stuck && b.grabbed.length > 0) attracting = true;
-    }
-    if (anyRub) phase = "rubbing";
-    else if (stuckWall) phase = "stuckWall";
-    else if (stuckSweater) phase = "stuckSweater";
-    else if (attracting) phase = "attracting";
-    else if (charge > 0) phase = "charged";
-    else phase = "neutral";
-    const sig = `${phase}:${charge}`;
-    if (!force && sig === statusSigRef.current) return;
-    statusSigRef.current = sig;
-    cb && cb({ phase, charge });
-  }
-
-  /* ===== الفيزياء ===== */
-  function step(dt) {
-    const sim = simRef.current;
-    const { wallOn: wall, soundEnabled: sound } = propsRef.current;
-    sim.t += dt;
-    let rubbingNow = false;
-
-    for (const b of sim.balloons) {
-      b._rubbing = false;
-      if (b.held) {
-        // السرعة من فرق الموضع (للكشف عن الفرك)
-        const speed = Math.hypot(b.x - b.px, b.y - b.py);
-        const overSweater =
-          b.x - b.r * 0.5 < SWEATER_RIGHT &&
-          b.x > SWEATER.x - 20 &&
-          b.y > SWEATER.y - 30 &&
-          b.y < SWEATER.y + SWEATER.h + 30;
-        if (overSweater && speed > 1.4) {
-          b._rubbing = true;
-          rubbingNow = true;
-          grabElectron(b, sound);
-        }
-        b.px = b.x;
-        b.py = b.y;
-      } else if (b.stuck) {
-        // ملتصق: اهتزاز ساكن طفيف
-        b.stickFlash = Math.max(0, b.stickFlash - dt);
-      } else {
-        applyForces(b, wall, dt);
-      }
-    }
-
-    // إلكترونات مسحوبة تتبع بالونها بنابض
-    for (const m of sim.minus) {
-      if (m.owner == null) continue;
-      const b = sim.balloons[m.owner];
-      if (!b) {
-        m.owner = null;
-        continue;
-      }
-      const tx = b.x + m.ox;
-      const ty = b.y + m.oy;
-      m.vx += (tx - m.x) * 0.22;
-      m.vy += (ty - m.y) * 0.22;
-      m.vx *= 0.72;
-      m.vy *= 0.72;
-      m.x += m.vx * dt;
-      m.y += m.vy * dt;
-    }
-
-    // استقطاب الجدار: إزاحة الإلكترونات بعيداً عن أقرب بالون سالب
-    for (const row of sim.wall) {
-      let infl = 0;
-      for (const b of sim.balloons) {
-        const q = b.grabbed.length;
-        if (q <= 0) continue;
-        const dx = row.minusHome.x - b.x;
-        if (dx < 0) continue; // البالون يمين الجدار؟ تجاهل
-        const dy = row.minusHome.y - b.y;
-        const d = Math.hypot(dx, dy) + 1;
-        infl = Math.max(infl, CLAMP((q * 26) / d, 0, 1));
-      }
-      const targetX = row.minusHome.x + infl * 12;
-      row.minus.x += (targetX - row.minus.x) * 0.15 * dt;
-      row._plusShift = infl; // لتوهّج السطح الموجب
-    }
-
-    // شرارات
-    for (let k = sim.sparks.length - 1; k >= 0; k--) {
-      const s = sim.sparks[k];
-      s.age += dt;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 0.05 * dt;
-      s.vx *= 0.96;
-      s.life = 1 - s.age / s.max;
-      if (s.life <= 0) sim.sparks.splice(k, 1);
-    }
-
-    // صوت الفرك
-    if (sound && rubbingNow) StaticSound.startRub();
-    else StaticSound.stopRub();
-
-    // صوت الطيران: بالون مشحون حرّ في الهواء أثناء انجذابه
-    let floatingNow = false;
-    for (const b of sim.balloons) {
-      if (!b.held && !b.stuck && b.grabbed.length > 0) floatingNow = true;
-    }
-    if (sound && floatingNow) StaticSound.startFloat();
-    else StaticSound.stopFloat();
-
-    emitStatus(false);
-  }
-
-  function grabElectron(b, sound) {
-    const sim = simRef.current;
-    // فترة بين عمليات السحب حتى تبدو تدريجية
-    b._grabT = (b._grabT || 0) + 1;
-    if (b._grabT < 5) return;
-    b._grabT = 0;
-    // أقرب إلكترون حرّ على السترة ضمن نطاق البالون
-    let best = null;
-    let bestD = (b.r + 26) * (b.r + 26);
-    for (const m of sim.minus) {
-      if (m.owner != null) continue;
-      const dx = m.x - b.x;
-      const dy = m.y - b.y;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestD) {
-        bestD = d2;
-        best = m;
-      }
-    }
-    if (!best) return;
-    best.owner = b.i;
-    const gi = b.grabbed.length;
-    // ترتيب أنيق داخل النصف السفلي للبالون
-    const perRow = 4;
-    const rr = Math.floor(gi / perRow);
-    const cc = gi % perRow;
-    best.ox = -24 + cc * 16;
-    best.oy = 2 + rr * 15;
-    b.grabbed.push(best);
-    spawnSparks(best.x, best.y, 5, "elec");
-    if (sound) StaticSound.playZap();
-  }
-
-  function applyForces(b, wall, dt) {
-    const q = b.grabbed.length;
-    if (q === 0) {
-      // متعادل: يبقى مكانه (لا قوة صافية) ويهدأ تدريجياً — سلوك متوقّع للطالب
-      b.vx *= 0.85;
-      b.vy *= 0.85;
-    } else {
-      let ax = 0;
-      let ay = 0;
-      // جذب نحو السترة: شحنة حقيقية صافية (تجاذب كولوم مباشر) — قويّة وتسقط
-      // كـ ١/د². هذه القوّة هي المهيمنة فيزيائياً.
-      const sy = CLAMP(b.y, SWEATER.y + 40, SWEATER.y + SWEATER.h - 40);
-      const dsx = SWEATER_RIGHT - b.x;
-      const dsy = sy - b.y;
-      const ds = Math.hypot(dsx, dsy) + 1;
-      const fS = Math.min(0.85, (q * 3000) / (ds * ds));
-      ax += (dsx / ds) * fS;
-      ay += (dsy / ds) * fS;
-      // جذب نحو الجدار: شحنة مُستحَثّة (استقطاب) فقط — أضعف بكثير وتسقط أسرع
-      // (١/د³)، فلا يفوز الجدار إلا حين يكون البالون ملاصقاً له تقريباً. هكذا
-      // قد يكون البالون أقرب للجدار ومع ذلك ينجذب إلى السترة — وهو الصحيح فيزيائياً.
-      if (wall) {
-        const dwx = WALL.x - b.x;
-        if (dwx > 0) {
-          const dw = dwx + 1;
-          const fW = Math.min(0.7, (q * 60000) / (dw * dw * dw));
-          ax += fW;
-          ay += (b.y < WALL.y + 40 ? 1 : b.y > WALL.y + WALL.h - 40 ? -1 : 0) * 0.04;
-        }
-      }
-      b.vx += ax * dt;
-      b.vy += ay * dt;
-      b.vx *= 0.9;
-      b.vy *= 0.9;
-    }
-
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-
-    // حدود المشهد
-    b.x = CLAMP(b.x, b.r * 0.5, SCENE_W - b.r * 0.5);
-    b.y = CLAMP(b.y, b.r + 8, SCENE_H - b.r * 0.6);
-
-    // التصاق بالسترة
-    if (q > 0 && b.x - b.r * 0.55 <= SWEATER_RIGHT && b.y < SWEATER.y + SWEATER.h && b.y > SWEATER.y) {
-      b.x = SWEATER_RIGHT + b.r * 0.5;
-      b.vx = 0;
-      b.vy = 0;
-      setStuck(b, "sweater");
-    }
-    // التصاق بالجدار
-    if (wall && q > 0 && b.x + b.r * 0.55 >= WALL.x) {
-      b.x = WALL.x - b.r * 0.5;
-      b.vx = 0;
-      b.vy = 0;
-      setStuck(b, "wall");
-    }
-  }
-
-  function setStuck(b, where) {
-    if (b.stuck === where) return;
-    b.stuck = where;
-    b.stickFlash = 16;
-    spawnSparks(b.x + (where === "wall" ? b.r * 0.5 : -b.r * 0.5), b.y, 14, "bolt");
-    if (propsRef.current.soundEnabled) StaticSound.playStick();
-  }
-
-  function sim_t() {
-    return simRef.current.t;
-  }
-
-  /* ===== الرسم ===== */
-  function render(ctx) {
-    const sim = simRef.current;
-    const { displayMode: mode, wallOn: wall } = propsRef.current;
-    ctx.clearRect(0, 0, SCENE_W, SCENE_H);
-    drawBackdrop(ctx);
-    drawSweater(ctx, sim, mode);
-    if (wall) drawWall(ctx, sim, mode);
-    for (const b of sim.balloons) drawBalloonString(ctx, b);
-    for (const b of sim.balloons) drawBalloon(ctx, b, mode);
-    drawSparks(ctx, sim);
-  }
-
-  function drawBackdrop(ctx) {
-    // جوّ ناعم: أعلى فاتح إلى أرضية دافئة، مع خط أفق لطيف
-    const g = ctx.createLinearGradient(0, 0, 0, SCENE_H);
-    g.addColorStop(0, "#eef6fc");
-    g.addColorStop(0.7, "#f6fbfe");
-    g.addColorStop(1, "#eaf3ee");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, SCENE_W, SCENE_H);
-    // أرضية
-    ctx.fillStyle = "rgba(120,150,120,0.10)";
-    ctx.fillRect(0, SCENE_H - 46, SCENE_W, 46);
-    ctx.strokeStyle = "rgba(90,120,95,0.18)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, SCENE_H - 46);
-    ctx.lineTo(SCENE_W, SCENE_H - 46);
-    ctx.stroke();
-  }
-
-  function drawSweater(ctx, sim, mode) {
-    const { x, y, w, h } = SWEATER;
-    const cx = x + w / 2;
-    const inkColor = "#26190C";
-    const inkWidth = 3;
-
-    ctx.save();
-
-    // 1. إسقاط ظل ناعم مجسّم خلف السترة الكاملة
-    ctx.shadowColor = "rgba(30, 12, 0, 0.28)";
-    ctx.shadowBlur = 35;
-    ctx.shadowOffsetY = 18;
-
-    const neckY = y + 24;
-    const collarRx = 58;
-    const collarRy = 22;
-
-    // --- 2. رسم الهيكل والمتنسق الرئيسي للسترة (Organic Knit Sweater Silhouette) ---
-    ctx.beginPath();
-    ctx.moveTo(cx - collarRx, neckY + 4);
-    // كتف أيسر منسدل لطيف
-    ctx.quadraticCurveTo(x + 20, y + 32, x - 26, y + 75);
-    // كم أيسر انسيابي
-    ctx.lineTo(x - 28, y + 238);
-    // إسورة أكمام أيسر
-    ctx.quadraticCurveTo(x - 6, y + 246, x + 16, y + 240);
-    // خصر وجانب أيسر مائل لطيف
-    ctx.quadraticCurveTo(x + 18, y + 160, x + 4, y + h - 22);
-    // انحناءة حاشية السترة السفلية
-    ctx.quadraticCurveTo(cx, y + h - 14, x + w - 4, y + h - 22);
-    // خصر وجانب أيمن
-    ctx.quadraticCurveTo(x + w - 18, y + 160, x + w - 16, y + 240);
-    // إسورة أكمام أيمن
-    ctx.quadraticCurveTo(x + w + 6, y + 246, x + w + 28, y + 238);
-    // كم أيمن انسيابي
-    ctx.lineTo(x + w + 26, y + 75);
-    // كتف أيمن منسدل لطيف
-    ctx.quadraticCurveTo(x + w - 20, y + 32, cx + collarRx, neckY + 4);
-    // الانحناءة الخلفية للياقة
-    ctx.quadraticCurveTo(cx, neckY - 14, cx - collarRx, neckY + 4);
-    ctx.closePath();
-
-    // لون السترة الصوفي الذهبي الدافئ الفاخر
-    const bodyGrad = ctx.createLinearGradient(x - 20, y + 20, x + w + 20, y + h);
-    bodyGrad.addColorStop(0, "#F7DC6F");
-    bodyGrad.addColorStop(0.2, "#F5B041");
-    bodyGrad.addColorStop(0.65, "#F39C12");
-    bodyGrad.addColorStop(0.9, "#E67E22");
-    bodyGrad.addColorStop(1, "#CA6F1E");
-    ctx.fillStyle = bodyGrad;
-    ctx.fill();
-
-    // إيقاف الظل لرسم التفاصيل واللمعات
-    ctx.shadowColor = "transparent";
-
-    // إضاءة كروية ناعمة بمنتصف السترة تمنحها تجسيماً ثلاثي الأبعاد (3D Volume Highlight)
-    const highlightGrad = ctx.createRadialGradient(cx, y + h * 0.45, 10, cx, y + h * 0.45, w * 0.65);
-    highlightGrad.addColorStop(0, "rgba(255, 250, 220, 0.28)");
-    highlightGrad.addColorStop(0.6, "rgba(255, 240, 190, 0.08)");
-    highlightGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = highlightGrad;
-    ctx.fill();
-
-    // --- 3. فتحة الرقبة العميقة والبطانة الداكنة (Neck Hole Depth & Lining) ---
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 4, collarRx - 4, collarRy - 4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#1E0D03";
-    ctx.fill();
-
-    // قماش القميص الداخلي بفتحة الرقبة
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 8, collarRx - 14, collarRy - 9, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#FAF5EB";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(38, 25, 12, 0.2)";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // بطاقة المقاس
-    ctx.fillStyle = "#C0392B";
-    roundRect(ctx, cx - 8, neckY + 7, 16, 9, 2);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 6.5px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("M", cx, neckY + 14);
-
-    // --- 4. الياقة الصوفية المطوية المضلّعة (Ribbed Crew Neck Collar) ---
-    ctx.beginPath();
-    ctx.ellipse(cx, neckY + 5, collarRx + 4, collarRy + 4, 0, Math.PI * 0.04, Math.PI * 0.96);
-    ctx.lineTo(cx - collarRx + 4, neckY + 3);
-    ctx.quadraticCurveTo(cx, neckY + 23, cx + collarRx - 4, neckY + 3);
-    ctx.closePath();
-
-    const collarGrad = ctx.createLinearGradient(cx - collarRx, neckY, cx + collarRx, neckY + 25);
-    collarGrad.addColorStop(0, "#D35400");
-    collarGrad.addColorStop(0.5, "#E65100");
-    collarGrad.addColorStop(1, "#A04000");
-    ctx.fillStyle = collarGrad;
-    ctx.fill();
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.stroke();
-
-    // خطوط تضليع الياقة
-    ctx.strokeStyle = "rgba(255, 245, 220, 0.7)";
-    ctx.lineWidth = 1.6;
-    for (let a = 0.11; a <= 0.89; a += 0.075) {
-      const angle = Math.PI * a;
-      const inX = cx + Math.cos(angle) * (collarRx - 6);
-      const inY = neckY + 4 + Math.sin(angle) * (collarRy - 6);
-      const outX = cx + Math.cos(angle) * (collarRx + 4);
-      const outY = neckY + 5 + Math.sin(angle) * (collarRy + 4);
-      ctx.beginPath();
-      ctx.moveTo(inX, inY);
-      ctx.lineTo(outX, outY);
-      ctx.stroke();
-    }
-
-    // --- 5. درزات الإبط والأكمام الصوفية المضلعة (Sleeve Seams & Ribbed Cuffs) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-
-    // درزات اتصال الأكمام (Armhole Seams)
-    ctx.beginPath();
-    ctx.moveTo(x + 20, y + 42);
-    ctx.quadraticCurveTo(x + 16, y + 110, x + 15, y + 165);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 20, y + 42);
-    ctx.quadraticCurveTo(x + w - 16, y + 110, x + w - 15, y + 165);
-    ctx.stroke();
-
-    // أساور الأكمام المضلعة
-    // كم أيسر
-    ctx.beginPath();
-    roundRect(ctx, x - 29, y + 236, 46, 18, 5);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.5;
-    for (let hx = x - 24; hx < x + 13; hx += 8) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + 237);
-      ctx.lineTo(hx + 0.5, y + 253);
-      ctx.stroke();
-    }
-
-    // كم أيمن
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.beginPath();
-    roundRect(ctx, x + w - 17, y + 236, 46, 18, 5);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.5;
-    for (let hx = x + w - 12; hx < x + w + 25; hx += 8) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + 237);
-      ctx.lineTo(hx + 0.5, y + 253);
-      ctx.stroke();
-    }
-
-    // --- 6. حاشية السترة السفلية (Bottom Ribbed Hem) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.beginPath();
-    roundRect(ctx, x + 2, y + h - 24, w - 4, 24, 8);
-    ctx.fillStyle = "#A04000";
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(255, 235, 200, 0.55)";
-    ctx.lineWidth = 1.6;
-    for (let hx = x + 12; hx < x + w - 10; hx += 9.5) {
-      ctx.beginPath();
-      ctx.moveTo(hx, y + h - 23);
-      ctx.lineTo(hx + 0.5, y + h - 2);
-      ctx.stroke();
-    }
-
-    // --- 7. أشرطة الصوف الملونة المزدوجة (Dual Knitted Fair-Isle Accent Bands) ---
-    ctx.save();
-    ctx.clip(); // القص ضمن حدود شكل السترة
-
-    // الشريط الصوفي العلوي (Emerald Band)
-    ctx.fillStyle = "rgba(22, 160, 133, 0.88)";
-    ctx.fillRect(x - 30, y + 115, w + 60, 34);
-
-    ctx.strokeStyle = "rgba(244, 208, 63, 0.95)";
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    for (let px = x - 20; px <= x + w + 20; px += 16) {
-      ctx.moveTo(px, y + 121);
-      ctx.lineTo(px + 8, y + 132);
-      ctx.lineTo(px + 16, y + 121);
-      ctx.moveTo(px, y + 143);
-      ctx.lineTo(px + 8, y + 132);
-      ctx.lineTo(px + 16, y + 143);
-    }
-    ctx.stroke();
-
-    // الشريط الصوفي السفلي (Burgundy Accent Band)
-    ctx.fillStyle = "rgba(144, 12, 63, 0.82)";
-    ctx.fillRect(x - 30, y + h - 95, w + 60, 28);
-
-    ctx.strokeStyle = "rgba(255, 240, 210, 0.9)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let px = x - 20; px <= x + w + 20; px += 14) {
-      ctx.moveTo(px, y + h - 90);
-      ctx.lineTo(px + 7, y + h - 81);
-      ctx.lineTo(px + 14, y + h - 90);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    // --- 8. غرز الصوف العمودية (Vertical Knitted Ribs & V-Stitches) ---
-    for (let col = 0; col < 11; col++) {
-      const rx = x + 24 + col * ((w - 48) / 10);
-      ctx.beginPath();
-      ctx.moveTo(rx, y + 55);
-      for (let sy = y + 55; sy <= y + h - 30; sy += 18) {
-        const offset = (col % 2 === 0 ? 1 : -1) * Math.sin((sy + col * 12) * 0.08) * 2.2;
-        ctx.lineTo(rx + offset, sy);
-      }
-      ctx.strokeStyle = col % 2 === 0 ? "rgba(150, 50, 0, 0.28)" : "rgba(255, 240, 200, 0.35)";
-      ctx.lineWidth = col % 2 === 0 ? 2 : 1.4;
-      ctx.stroke();
-
-      // غرز الصوف الصغير "v"
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.32)";
-      ctx.lineWidth = 1.3;
-      for (let sy = y + 70; sy <= y + h - 45; sy += 36) {
-        ctx.beginPath();
-        ctx.moveTo(rx - 3.5, sy - 3);
-        ctx.lineTo(rx, sy + 3);
-        ctx.lineTo(rx + 3.5, sy - 3);
-        ctx.stroke();
-      }
-    }
-
-    // --- 9. ثنيات وظلال الصوف الطبيعية (Soft Fabric Creases) ---
-    ctx.strokeStyle = "rgba(80, 30, 0, 0.22)";
-    ctx.lineWidth = 2;
-    // ثنيات الإبطين
-    ctx.beginPath();
-    ctx.moveTo(x + 20, y + 165);
-    ctx.quadraticCurveTo(x + 48, y + 182, x + 68, y + 177);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 20, y + 165);
-    ctx.quadraticCurveTo(x + w - 48, y + 182, x + w - 68, y + 177);
-    ctx.stroke();
-
-    // ثنية الانحناءة السفلية
-    ctx.beginPath();
-    ctx.moveTo(x + 35, y + h - 70);
-    ctx.quadraticCurveTo(cx, y + h - 60, x + w - 35, y + h - 70);
-    ctx.strokeStyle = "rgba(80, 30, 0, 0.16)";
-    ctx.stroke();
-
-    // --- 10. خطوط الحبر الخارجية لجسم السترة الكامل (Outer Ink Outlines) ---
-    ctx.strokeStyle = inkColor;
-    ctx.lineWidth = inkWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.beginPath();
-    ctx.moveTo(cx - collarRx, neckY + 4);
-    ctx.quadraticCurveTo(x + 20, y + 32, x - 26, y + 75);
-    ctx.lineTo(x - 28, y + 238);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx + collarRx, neckY + 4);
-    ctx.quadraticCurveTo(x + w - 20, y + 32, x + w + 26, y + 75);
-    ctx.lineTo(x + w + 28, y + 238);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + h - 22);
-    ctx.quadraticCurveTo(x + 18, y + 160, x + 16, y + 240);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + w - 4, y + h - 22);
-    ctx.quadraticCurveTo(x + w - 18, y + 160, x + w - 16, y + 240);
-    ctx.stroke();
-
-    ctx.restore();
-
-    // الشحنات
-    for (let i = 0; i < sim.plus.length; i++) {
-      const p = sim.plus[i];
-      const m = sim.minus[i];
-      const removed = m.owner != null;
-      if (mode === "none") continue;
-      if (mode === "diff") {
-        // أظهر فقط الشحنة الموجبة الصافية (حيث غادر الإلكترون)
-        if (removed) drawCharge(ctx, p.x + 9, p.y, "+", 1);
-        continue;
-      }
-      // all
-      drawCharge(ctx, p.x, p.y, "+", 1);
-      if (m.owner == null) drawCharge(ctx, m.x, m.y, "-", 1);
-    }
-  }
-
-  function drawWall(ctx, sim, mode) {
-    const { x, y, w, h } = WALL;
-    ctx.save();
-    ctx.shadowColor = "rgba(30,50,40,0.14)";
-    ctx.shadowBlur = 16;
-    ctx.shadowOffsetX = -6;
-    const g = ctx.createLinearGradient(x, 0, x + w, 0);
-    g.addColorStop(0, "#dfe7ee");
-    g.addColorStop(1, "#c4d0da");
-    ctx.fillStyle = g;
-    roundRect(ctx, x, y, w, h, 14);
-    ctx.fill();
-    ctx.shadowColor = "transparent";
-    // خطوط ألواح خفيفة
-    ctx.strokeStyle = "rgba(120,140,155,0.35)";
-    ctx.lineWidth = 1.5;
-    for (let i = 1; i < WALL.h / 60; i++) {
-      const ly = y + i * 60;
-      ctx.beginPath();
-      ctx.moveTo(x + 4, ly);
-      ctx.lineTo(x + w - 4, ly);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    if (mode === "none") return;
-    for (const row of sim.wall) {
-      if (mode === "diff") {
-        // الجدار متعادل؛ في وضع "الفرق" يظهر الاستقطاب فقط إن كان مؤثراً
-        if (row._plusShift > 0.08) {
-          drawCharge(ctx, row.plus.x, row.plus.y, "+", 0.55 + row._plusShift * 0.45);
-        }
-        continue;
-      }
-      drawCharge(ctx, row.plus.x, row.plus.y, "+", 1);
-      drawCharge(ctx, row.minus.x, row.minus.y, "-", 1);
-    }
-  }
-
-  function drawBalloonString(ctx, b) {
-    const bob = b.held || b.stuck ? 0 : Math.sin(sim_t() * 0.04 + b.bobPhase) * 4;
-    const knotX = b.x;
-    const knotY = b.y + bob + b.r * 1.12;
-    // خيط أطول وأكثر واقعية: منحنى مزدوج (S) مع ترهّل بالجاذبية وتمايل حيّ
-    const LEN = 158;
-    const sway = Math.sin(sim_t() * 0.028 + b.swayPhase) * (b.stuck ? 5 : 20);
-    const sway2 = Math.sin(sim_t() * 0.045 + b.swayPhase + 1) * (b.stuck ? 3 : 11);
-    const endY = Math.min(SCENE_H - 6, knotY + LEN);
-    const midY = knotY + LEN * 0.5;
-    const c1x = knotX + sway * 0.5;
-    const c2x = knotX + sway;
-    const endX = knotX + sway2;
-    ctx.save();
-    ctx.strokeStyle = "rgba(60,62,72,0.6)";
-    ctx.lineWidth = 1.8;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(knotX, knotY);
-    ctx.bezierCurveTo(c1x, midY - LEN * 0.18, c2x, midY + LEN * 0.14, endX, endY);
-    ctx.stroke();
-    // عقيصة صغيرة في نهاية الخيط
-    ctx.fillStyle = "rgba(60,62,72,0.6)";
-    ctx.beginPath();
-    ctx.arc(endX, endY, 2.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawBalloon(ctx, b, mode) {
-    const bob = b.held || b.stuck ? 0 : Math.sin(sim_t() * 0.04 + b.bobPhase) * 4;
-    const cx = b.x;
-    const cy = b.y + bob;
-    const rx = b.r * 0.9;
-    const ry = b.r;
-
-    // وهج التصاق (برق)
-    if (b.stickFlash > 0 && b.stuck) {
-      drawLightning(ctx, b);
-    }
-
-    ctx.save();
-    ctx.shadowColor = "rgba(20,30,40,0.26)";
-    ctx.shadowBlur = 22;
-    ctx.shadowOffsetY = 10;
-    // تدرّج جسم البالون: فاتح أعلى-يسار إلى غامق أسفل-يمين لإحساس ثلاثي الأبعاد فاخر
-    const g = ctx.createRadialGradient(cx - rx * 0.32, cy - ry * 0.42, ry * 0.12, cx, cy, ry * 1.15);
-    g.addColorStop(0, b.light);
-    g.addColorStop(0.45, b.color);
-    g.addColorStop(1, b.dark);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // حافة داخلية غامقة رقيقة تعطي حجماً وعمقاً
-    ctx.save();
-    ctx.strokeStyle = "rgba(0,0,0,0.10)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx - 1, ry - 1, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // عقدة
-    ctx.fillStyle = b.dark;
-    ctx.beginPath();
-    ctx.moveTo(cx - 7, cy + ry * 0.99);
-    ctx.lineTo(cx + 7, cy + ry * 0.99);
-    ctx.lineTo(cx, cy + ry * 1.12);
-    ctx.closePath();
-    ctx.fill();
-
-    // لمعان راقٍ: هلال ضوئي رفيع منحنٍ (لا بقعة بيضاء) — يُقصّ داخل البالون
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const sheen = ctx.createLinearGradient(cx - rx, cy - ry, cx - rx * 0.1, cy - ry * 0.1);
-    sheen.addColorStop(0, "rgba(255,255,255,0.42)");
-    sheen.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = sheen;
-    ctx.beginPath();
-    ctx.ellipse(cx - rx * 0.36, cy - ry * 0.4, rx * 0.5, ry * 0.62, -0.55, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // شحنات البالون: في وضع "الكل" يُظهر شحناته الذاتية المتوازنة (٣ موجبة
-    // + ٣ سالبة) ثم أيّ إلكترونات مكتسبة إضافية (تجعله سالباً صافياً).
-    if (mode === "all") {
-      drawInherentCharges(ctx, cx, cy, rx, ry);
-    }
-    if (mode !== "none") {
-      for (const m of b.grabbed) {
-        drawCharge(ctx, m.x, m.y, "-", 1);
-      }
-    }
-  }
-
-  function drawInherentCharges(ctx, cx, cy, rx, ry) {
-    // ٣ موجبة + ٣ سالبة ثابتة موزّعة بأناقة في أعلى البالون (متعادل تماماً)
-    const plusPts = [
-      [cx + rx * 0.34, cy - ry * 0.44],
-      [cx - rx * 0.02, cy - ry * 0.52],
-      [cx + rx * 0.44, cy - ry * 0.08],
-    ];
-    const minusPts = [
-      [cx - rx * 0.4, cy - ry * 0.34],
-      [cx - rx * 0.42, cy + ry * 0.06],
-      [cx + rx * 0.16, cy - ry * 0.24],
-    ];
-    for (const [px, py] of plusPts) drawCharge(ctx, px, py, "+", 0.92);
-    for (const [px, py] of minusPts) drawCharge(ctx, px, py, "-", 0.92);
-  }
-
-  function drawCharge(ctx, x, y, sign, alpha) {
-    const r = CHARGE.r;
-    const isPlus = sign === "+";
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    // هالة ناعمة
-    const halo = ctx.createRadialGradient(x, y, 1, x, y, r * 1.9);
-    halo.addColorStop(0, isPlus ? "rgba(217,59,59,0.35)" : "rgba(47,111,176,0.35)");
-    halo.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 1.9, 0, Math.PI * 2);
-    ctx.fill();
-    // القرص
-    const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.4, 1, x, y, r);
-    g.addColorStop(0, isPlus ? "#ff6b6b" : "#5a9bd8");
-    g.addColorStop(1, isPlus ? CHARGE.plusDark : CHARGE.minusDark);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    // العلامة
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(x - r * 0.5, y);
-    ctx.lineTo(x + r * 0.5, y);
-    if (isPlus) {
-      ctx.moveTo(x, y - r * 0.5);
-      ctx.lineTo(x, y + r * 0.5);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawLightning(ctx, b) {
-    const x0 = b.x + (b.stuck === "wall" ? b.r * 0.5 : -b.r * 0.5);
-    const y0 = b.y;
-    const x1 = b.stuck === "wall" ? WALL.x : SWEATER_RIGHT;
-    const seg = 5;
-    ctx.save();
-    ctx.strokeStyle = `rgba(255,238,140,${CLAMP(b.stickFlash / 16, 0, 1)})`;
-    ctx.lineWidth = 2.4;
-    ctx.shadowColor = "rgba(255,220,80,0.9)";
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    for (let i = 1; i <= seg; i++) {
-      const tx = x0 + ((x1 - x0) * i) / seg;
-      const ty = y0 + (Math.random() - 0.5) * 22;
-      ctx.lineTo(tx, ty);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawSparks(ctx, sim) {
-    for (const s of sim.sparks) {
-      const a = CLAMP(s.life, 0, 1);
-      if (s.hue === "bolt") {
-        ctx.fillStyle = `rgba(255,220,90,${a})`;
-      } else {
-        ctx.fillStyle = `rgba(90,155,216,${a})`;
-      }
-      const rad = 1.5 + a * 2.4;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, rad, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
-  }
-
-  /* ===== حلقة الرسم ===== */
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = SCENE_W * dpr;
-    canvas.height = SCENE_H * dpr;
-    ctx.scale(dpr, dpr);
+    setMuted(!soundEnabled);
+    if (!soundEnabled) {
+      st.current.rubLoop?.stop();
+      st.current.rubLoop = null;
+    }
+  }, [soundEnabled]);
 
-    const loop = (ts) => {
-      const last = lastTsRef.current || ts;
-      const dt = CLAMP((ts - last) / 16.667, 0, 2.5);
-      lastTsRef.current = ts;
-      step(dt);
-      render(ctx);
-      rafRef.current = requestAnimationFrame(loop);
+  useEffect(() => {
+    const s = st.current;
+    const canvas = canvasRef.current;
+    const wrap = wrapRef.current;
+    const g = canvas.getContext("2d");
+    let alive = true;
+    let raf = 0;
+    let last = performance.now();
+    s.sweater = makeSweaterSprite();
+    s.lens = { x: 0, y: 0, scale: 0.62, held: false, mode: "net", dragOff: { x: 0, y: 0 }, moved: false, down: null };
+    s.hover = null;
+    s.pressTip = null;
+    s.hintDone = false;
+    s.t0 = performance.now();
+
+    function build() {
+      const r = wrap.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      s.dpr = dpr;
+      s.cssW = r.width;
+      s.cssH = r.height;
+      const L = computeLayout(r.width, r.height);
+      const first = !s.world;
+      s.L = L;
+      s.bg = renderRoom(L, dpr);
+      s.panel = renderWallPanel(L, dpr);
+      s.basket = renderBasket(L, dpr);
+      if (first) {
+        s.world = new StaticWorld(L, 1);
+        s.lens.x = L.lensRest.x;
+        s.lens.y = L.lensRest.y;
+      } else {
+        const oldRest = s.lens.scale <= 0.63;
+        s.world.setLayout(L);
+        if (oldRest) {
+          s.lens.x = L.lensRest.x;
+          s.lens.y = L.lensRest.y;
+        }
+      }
+    }
+    build();
+    const ro = new ResizeObserver(build);
+    ro.observe(wrap);
+    if (import.meta.env.DEV) window.__st = s;
+
+    /* ---------- إحداثيات ---------- */
+    function toDesign(e) {
+      const r = canvas.getBoundingClientRect();
+      return { X: (((e.clientX - r.left) / r.width) * s.cssW) / s.L.s, Y: (((e.clientY - r.top) / r.height) * s.cssH) / s.L.s };
+    }
+    const capture = (e) => {
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* مؤشر غير نشط */
+      }
     };
-    rafRef.current = requestAnimationFrame(loop);
-    emitStatus(true);
+
+    function hitLens(X, Y) {
+      const { R, hx, hy } = lensGeometry(s.lens);
+      const inGlass = Math.hypot(X - s.lens.x, Y - s.lens.y) < R + 8;
+      const onHandle = Math.hypot(X - hx, Y - hy) < 34 * Math.max(0.8, s.lens.scale) + 14;
+      return { inGlass, onHandle, any: inGlass || onHandle };
+    }
+    function hitWallHandle(X, Y) {
+      const L = s.L;
+      const wx = L.pillarX + (1 - s.world.wall.p) * WALL_SLIDE(L) + 40;
+      return X > wx - 34 && X < wx + 34 && Y > L.floorY - 290 && Y < L.floorY - 150;
+    }
+    function hitBalloon(X, Y) {
+      const bs = s.world.balloons;
+      let best = null;
+      for (let i = bs.length - 1; i >= 0; i--) {
+        const b = bs[i];
+        if (Math.hypot(X - b.x, Y - b.y) < b.r + 10) {
+          best = b;
+          break;
+        }
+      }
+      return best;
+    }
+    function overBasket(X, Y) {
+      const k = s.L.basket;
+      return Math.abs(X - k.cx) < k.w / 2 + 26 && Y > s.L.floorY - 170 && Y < k.base + 30;
+    }
+
+    /* ---------- مؤشر ---------- */
+    function onDown(e) {
+      const { X, Y } = toDesign(e);
+      setMuted(!s.props.soundEnabled);
+      const lh = hitLens(X, Y);
+      if (lh.any) {
+        capture(e);
+        s.lens.held = true;
+        s.lens.moved = false;
+        s.lens.down = { X, Y, onHandle: lh.onHandle && !lh.inGlass };
+        s.lens.dragOff = { x: s.lens.x - X, y: s.lens.y - Y };
+        s.drag = "lens";
+        play("select", { volume: 0.7 });
+        haptic(8);
+        return;
+      }
+      if (hitWallHandle(X, Y)) {
+        capture(e);
+        s.drag = "wall";
+        s.wallDown = { X, Y };
+        s.pressTip = { text: "الجدار", until: performance.now() + 1400, x: X, y: Y };
+        return;
+      }
+      const b = hitBalloon(X, Y);
+      if (b) {
+        capture(e);
+        const w = s.world;
+        if (!b.out) w.takeBalloon(b);
+        b.held = true;
+        b.stuck = null;
+        b.vx = 0;
+        b.vy = 0;
+        b.grab = { dx: b.x - X, dy: b.y - Y };
+        b.target = { x: b.x, y: b.y };
+        b.trail = [];
+        s.drag = b;
+        s.hintDone = true;
+        play("grab", { volume: 0.9 });
+        haptic(8);
+        return;
+      }
+      if (overBasket(X, Y)) s.pressTip = { text: "بالونات", until: performance.now() + 1300, x: s.L.basket.cx, y: s.L.floorY - 190 };
+    }
+
+    function onMove(e) {
+      const { X, Y } = toDesign(e);
+      s.pointer = { X, Y };
+      const d = s.drag;
+      if (d === "lens") {
+        if (Math.hypot(X - s.lens.down.X, Y - s.lens.down.Y) > 8) s.lens.moved = true;
+        s.lens.target = { x: X + s.lens.dragOff.x, y: Y + s.lens.dragOff.y };
+        canvas.style.cursor = "grabbing";
+        return;
+      }
+      if (d === "wall") return;
+      if (d) {
+        d.target = { x: X + d.grab.dx, y: Y + d.grab.dy };
+        canvas.style.cursor = "grabbing";
+        return;
+      }
+      // تمرير: مؤشر وتلميح
+      if (hitLens(X, Y).any) s.hover = hitLens(X, Y).onHandle && !hitLens(X, Y).inGlass ? "lensHandle" : "lens";
+      else if (hitWallHandle(X, Y)) s.hover = "wall";
+      else if (hitBalloon(X, Y)) s.hover = "balloon";
+      else if (overBasket(X, Y)) s.hover = "basket";
+      else s.hover = null;
+      canvas.style.cursor = s.hover === "basket" || !s.hover ? "default" : "pointer";
+    }
+
+    function onUp(e) {
+      const d = s.drag;
+      s.drag = null;
+      canvas.style.cursor = "default";
+      if (!d) return;
+      const { X, Y } = toDesign(e);
+      const w = s.world;
+      if (d === "lens") {
+        const lens = s.lens;
+        lens.held = false;
+        if (!lens.moved && lens.down.onHandle) {
+          lens.mode = lens.mode === "net" ? "all" : "net";
+          play("tick", { rate: lens.mode === "all" ? 1.25 : 0.9 });
+          s.pressTip = { text: lens.mode === "all" ? "كل الشحنات" : "الشحنة الصافية", until: performance.now() + 1600, x: lens.x, y: lens.y - LENS_R * lens.scale - 34 };
+        } else if (Math.hypot(lens.x - s.L.lensRest.x, lens.y - s.L.lensRest.y) < 110) {
+          lens.target = { x: s.L.lensRest.x, y: s.L.lensRest.y };
+          lens.snap = true;
+        }
+        return;
+      }
+      if (d === "wall") {
+        if (Math.hypot(X - s.wallDown.X, Y - s.wallDown.Y) < 14) {
+          w.toggleWall();
+          play("whoosh", { volume: 0.7 });
+          haptic(12);
+        }
+        return;
+      }
+      d.held = false;
+      const tr = d.trail;
+      if (tr.length >= 2) {
+        const a = tr[0];
+        const z = tr[tr.length - 1];
+        const dt = Math.max(0.016, (z.t - a.t) / 1000);
+        d.vx = CLAMP((z.x - a.x) / dt, -900, 900);
+        d.vy = CLAMP((z.y - a.y) / dt, -900, 900);
+      }
+      if (overBasket(X, Y)) {
+        w.stowBalloon(d);
+        play("whoosh", { volume: 0.6 });
+        haptic(6);
+        return;
+      }
+      if (Math.hypot(d.vx, d.vy) > 400) play("whoosh", { volume: 0.5 });
+    }
+
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("pointerleave", () => (s.hover = null));
+
+    /* ---------- رسم العالم ---------- */
+    function drawCharges(g2, L, w, mode) {
+      const { cx, cy } = L.sweater;
+      const t = performance.now() / 1000;
+      // السترة
+      for (const e of w.electrons) {
+        const plusX = cx + e.slot.x - 7;
+        const plusY = cy + e.slot.y;
+        const missing = e.state !== "home";
+        if (mode === "all") {
+          drawCharge(g2, "plus", plusX, plusY, missing ? 19 : 17, missing ? 1 : 0.9);
+          if (!missing) drawCharge(g2, "minus", e.hx, e.hy, 17, 0.92);
+        } else if (missing) {
+          drawCharge(g2, "plus", plusX, plusY, 19, 1);
+        }
+        if (missing) {
+          g2.strokeStyle = `rgba(255,110,100,${0.35 + 0.25 * Math.sin(t * 4 + e.id)})`;
+          g2.lineWidth = 2;
+          g2.beginPath();
+          g2.arc(plusX, plusY, 14, 0, Math.PI * 2);
+          g2.stroke();
+        }
+      }
+      // البالونات
+      for (const b of w.balloons) {
+        if (!b.out) continue;
+        if (mode === "all") {
+          for (let k = 0; k < 7; k++) {
+            const a = -2.3 + k * 0.62;
+            const rr2 = b.r * (0.35 + (k % 2) * 0.28);
+            const bx = b.x + Math.cos(a) * rr2;
+            const by = b.y - 10 + Math.sin(a) * rr2 * 0.9 - 8;
+            drawCharge(g2, "plus", bx - 6, by, 14, 0.75);
+            drawCharge(g2, "minus", bx + 6, by, 14, 0.75);
+          }
+        }
+      }
+      for (const e of w.electrons) {
+        if (e.state === "home") continue;
+        // أثر متوهج للإلكترون المتحرك
+        if (e.state === "flying") {
+          g2.fillStyle = "rgba(110,180,255,0.25)";
+          g2.beginPath();
+          g2.arc(e.x - e.vx * 0.02, e.y - e.vy * 0.02, 11, 0, Math.PI * 2);
+          g2.fill();
+        }
+        drawCharge(g2, "minus", e.x, e.y, 17, 1);
+      }
+      // الجدار المتعادل (استقطاب)
+      if (w.wallOn && mode === "all") {
+        for (const row of w.wallRows) {
+          const infl = row.infl;
+          const x = L.pillarX + 22;
+          drawCharge(g2, "plus", x, row.y, 15, 0.7 + infl * 0.3);
+          drawCharge(g2, "minus", x + 22 + infl * 20, row.y, 15, 0.85);
+        }
+      }
+    }
+
+    function drawWorld(g2, L, withCharges, mode, time) {
+      const w = s.world;
+      g2.drawImage(s.bg, 0, 0, L.dW, L.dH);
+
+      // لوح الجدار المنزلق + ظله على الجدار
+      const px = L.pillarX + (1 - w.wall.p) * WALL_SLIDE(L);
+      const sh = g2.createLinearGradient(px - 90, 0, px, 0);
+      sh.addColorStop(0, "rgba(40,28,8,0)");
+      sh.addColorStop(1, "rgba(40,28,8,0.3)");
+      g2.fillStyle = sh;
+      g2.fillRect(px - 90, 24, 90, L.floorY - 24);
+      g2.drawImage(s.panel, px, -10, L.pillarW + 90, L.floorY + 30);
+
+      // السترة
+      const sp = SWEATER_SPRITE;
+      g2.drawImage(s.sweater, L.sweater.cx - sp.ox, L.sweater.cy - sp.oy, sp.w, sp.h);
+
+      // قصاصات الورق على الأرض
+      for (const c of w.confetti) if (c.attached < 0) drawPaper(g2, c);
+
+      // السلّة وما فيها
+      const k = L.basket;
+      const bp = s.basket;
+      const bx = k.cx - k.w / 2 - bp.pad;
+      const by = k.base - k.h - bp.pad;
+      g2.fillStyle = "rgba(25,12,0,0.28)";
+      g2.beginPath();
+      g2.ellipse(k.cx + 8, k.base + 4, k.w * 0.46, 13, 0, 0, Math.PI * 2);
+      g2.fill();
+      g2.drawImage(bp.back, bx, by, bp.back.width / bp.scale, bp.back.height / bp.scale);
+      for (const b of w.balloons) if (!b.out) {
+        drawString(g2, b);
+        drawBalloon(g2, b);
+      }
+      g2.drawImage(bp.front, bx, by, bp.front.width / bp.scale, bp.front.height / bp.scale);
+
+      // البالونات في الغرفة
+      const outs = w.balloons.filter((b) => b.out);
+      for (const b of outs) drawString(g2, b);
+      for (const b of outs) drawBalloon(g2, b);
+      for (const c of w.confetti) if (c.attached >= 0) drawPaper(g2, c);
+
+      if (withCharges) drawCharges(g2, L, w, mode);
+
+      // شرارات
+      for (const sp2 of w.sparks) {
+        const t = 1 - sp2.age / sp2.life;
+        if (sp2.bolt) {
+          g2.strokeStyle = `rgba(255,252,220,${t})`;
+          g2.shadowColor = "rgba(150,200,255,0.9)";
+          g2.shadowBlur = 14;
+          g2.lineWidth = 2.4;
+          g2.beginPath();
+          let x = sp2.x;
+          let y = sp2.y;
+          g2.moveTo(x, y);
+          const rnd = ((sp2.ang * 9301) % 1) || 0.3;
+          for (let i = 0; i < 5; i++) {
+            x += Math.cos(sp2.ang) * 11 + (rnd - 0.5) * 12 * (i % 2 ? 1 : -1);
+            y += Math.sin(sp2.ang) * 11 + (i % 2 ? 7 : -7);
+            g2.lineTo(x, y);
+          }
+          g2.stroke();
+          g2.shadowBlur = 0;
+        } else {
+          g2.fillStyle = sp2.kind === "elec" ? `rgba(140,200,255,${t})` : `rgba(255,246,200,${t})`;
+          g2.beginPath();
+          g2.arc(sp2.x, sp2.y, 2.4 * t + 0.6, 0, Math.PI * 2);
+          g2.fill();
+        }
+      }
+      void time;
+    }
+
+    function drawPaper(g2, c) {
+      g2.save();
+      g2.translate(c.x, c.y);
+      g2.rotate(c.rot + (c.attached >= 0 ? Math.sin(c.wob) * 0.12 : 0));
+      g2.shadowColor = "rgba(30,20,10,0.3)";
+      g2.shadowBlur = 4;
+      g2.shadowOffsetY = 2;
+      g2.fillStyle = c.color;
+      g2.beginPath();
+      g2.roundRect(-c.w / 2, -c.h / 2, c.w, c.h, 2);
+      g2.fill();
+      g2.shadowBlur = 0;
+      g2.fillStyle = "rgba(255,255,255,0.35)";
+      g2.fillRect(-c.w / 2 + 2, -c.h / 2 + 1, c.w - 4, 1.6);
+      g2.restore();
+    }
+
+    /* ---------- العدسة ---------- */
+    function drawLens(g2, L) {
+      const lens = s.lens;
+      const { R, th } = lensGeometry(lens);
+      const w = s.world;
+      const resting = lens.scale <= 0.64 && !lens.held;
+      g2.save();
+      // ظل
+      g2.fillStyle = "rgba(25,14,0,0.22)";
+      g2.beginPath();
+      g2.ellipse(lens.x + 10, lens.y + R + 10, R * 0.8, 10, 0, 0, Math.PI * 2);
+      g2.fill();
+      g2.translate(lens.x, lens.y);
+
+      // المقبض
+      g2.save();
+      g2.rotate(th);
+      const hl = 108 * lens.scale;
+      const hw = 17 * lens.scale;
+      const wood = g2.createLinearGradient(0, -hw, 0, hw);
+      wood.addColorStop(0, "#d9a768");
+      wood.addColorStop(0.5, "#f0c78a");
+      wood.addColorStop(1, "#8a5a2a");
+      g2.fillStyle = "rgba(25,12,0,0.35)";
+      g2.beginPath();
+      g2.roundRect(R - 2 + 3, -hw + 4, hl, hw * 2, hw);
+      g2.fill();
+      g2.fillStyle = wood;
+      g2.beginPath();
+      g2.roundRect(R - 2, -hw, hl, hw * 2, hw);
+      g2.fill();
+      // طوق نحاسي + قرص المؤشر
+      const brass = g2.createLinearGradient(0, -hw, 0, hw);
+      brass.addColorStop(0, "#fff0b0");
+      brass.addColorStop(0.5, "#c89a38");
+      brass.addColorStop(1, "#7a5518");
+      g2.fillStyle = brass;
+      g2.fillRect(R + 8 * lens.scale, -hw - 2, 20 * lens.scale, hw * 2 + 4);
+      const kx = R + 62 * lens.scale;
+      g2.fillStyle = "#2b2015";
+      g2.beginPath();
+      g2.arc(kx, 0, 15 * lens.scale, 0, Math.PI * 2);
+      g2.fill();
+      g2.strokeStyle = brass;
+      g2.lineWidth = 3 * lens.scale;
+      g2.stroke();
+      g2.rotate(-th);
+      // أيقونة الوضع (تدور مع الشاشة لتبقى مقروءة)
+      const kxx = Math.cos(th) * kx;
+      const kyy = Math.sin(th) * kx;
+      const ds = lens.scale * 0.8;
+      drawCharge(g2, "minus", kxx + (lens.mode === "all" ? 7 * ds : 0), kyy, 15 * ds, 1);
+      if (lens.mode === "all") drawCharge(g2, "plus", kxx - 7 * ds, kyy, 15 * ds, 1);
+      g2.restore();
+
+      g2.restore();
+
+      // المحتوى المكبّر داخل الزجاج
+      g2.save();
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R, 0, Math.PI * 2);
+      g2.clip();
+      g2.translate(lens.x, lens.y);
+      g2.scale(LENS_ZOOM, LENS_ZOOM);
+      g2.translate(-lens.x, -lens.y);
+      drawWorld(g2, L, true, lens.mode, 0);
+      g2.restore();
+
+      // الزجاج: صبغة + انعكاسات + قراءة
+      g2.save();
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R, 0, Math.PI * 2);
+      g2.clip();
+      const tint = g2.createRadialGradient(lens.x - R * 0.3, lens.y - R * 0.3, R * 0.1, lens.x, lens.y, R);
+      tint.addColorStop(0, "rgba(220,240,255,0.18)");
+      tint.addColorStop(0.7, "rgba(190,225,250,0.06)");
+      tint.addColorStop(1, "rgba(120,170,210,0.28)");
+      g2.fillStyle = tint;
+      g2.fillRect(lens.x - R, lens.y - R, R * 2, R * 2);
+      g2.strokeStyle = "rgba(255,255,255,0.8)";
+      g2.lineWidth = 5 * lens.scale;
+      g2.lineCap = "round";
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R * 0.8, Math.PI * 1.08, Math.PI * 1.42);
+      g2.stroke();
+      g2.lineWidth = 2.5 * lens.scale;
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R * 0.8, Math.PI * 1.5, Math.PI * 1.58);
+      g2.stroke();
+      g2.restore();
+
+      // الحلقة النحاسية
+      const ring = g2.createLinearGradient(lens.x - R, lens.y - R, lens.x + R, lens.y + R);
+      ring.addColorStop(0, "#fff0b0");
+      ring.addColorStop(0.35, "#c89a38");
+      ring.addColorStop(0.7, "#7a5518");
+      ring.addColorStop(1, "#d9b05a");
+      g2.strokeStyle = "rgba(25,12,0,0.45)";
+      g2.lineWidth = 16 * lens.scale;
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R + 4, 0, Math.PI * 2);
+      g2.stroke();
+      g2.strokeStyle = ring;
+      g2.lineWidth = 12 * lens.scale;
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R + 4, 0, Math.PI * 2);
+      g2.stroke();
+      g2.strokeStyle = "rgba(255,255,255,0.45)";
+      g2.lineWidth = 2;
+      g2.beginPath();
+      g2.arc(lens.x, lens.y, R + 8, Math.PI * 1.05, Math.PI * 1.45);
+      g2.stroke();
+
+      // قراءة الشحنة الصافية للجسم تحت العدسة
+      let label = null;
+      const lx = lens.x;
+      const ly = lens.y;
+      for (const b of w.balloons) {
+        if (b.out && Math.hypot(b.x - lx, b.y - ly) < b.r * 0.9 + R * 0.35) label = { sign: "−", n: b.q };
+      }
+      if (!label) {
+        const { lx: sx, ly: sy } = w.sweaterLocal(lx, ly);
+        if (insideSweater(sx, sy, 20)) label = { sign: "+", n: w.sweaterCharge };
+      }
+      if (!label && w.wallOn && lx > L.pillarX - R * 0.4) label = { sign: "", n: 0 };
+      if (label && !resting) {
+        const text = `${label.n === 0 ? "" : label.sign}${ar(label.n)}`;
+        const size = fsz(16);
+        g2.font = `700 ${size}px ${FONT}`;
+        const tw = g2.measureText(text).width + 20;
+        const cxx = lx;
+        const cyy = ly + R * 0.62;
+        g2.fillStyle = "rgba(20,24,30,0.78)";
+        g2.beginPath();
+        g2.roundRect(cxx - tw / 2, cyy - size * 0.9, tw, size * 1.8, size * 0.9);
+        g2.fill();
+        g2.fillStyle = label.sign === "+" ? "#ff8d86" : label.sign === "−" ? "#8cc4ff" : "#cfd8cf";
+        g2.textAlign = "center";
+        g2.textBaseline = "middle";
+        g2.fillText(text, cxx, cyy + 1);
+        g2.textBaseline = "alphabetic";
+      }
+    }
+
+    /* ---------- التلميح الأولي: سهم متحرك ---------- */
+    function drawHint(g2, L, time) {
+      const w = s.world;
+      const b = w.balloons[0];
+      if (s.hintDone || !b.out || b.q > 0 || b.held) return;
+      const a = Math.min(1, (time - 0.8) / 0.8);
+      if (a <= 0) return;
+      const tx = L.sweater.cx + 70;
+      const ty = L.sweater.cy + 10;
+      const sx = b.x - b.r - 8;
+      const sy = b.y;
+      g2.save();
+      g2.globalAlpha = 0.9 * a;
+      g2.strokeStyle = "#fff";
+      g2.lineWidth = 5;
+      g2.lineCap = "round";
+      g2.setLineDash([2, 14]);
+      g2.lineDashOffset = -time * 40;
+      g2.shadowColor = "rgba(0,0,0,0.35)";
+      g2.shadowBlur = 6;
+      g2.beginPath();
+      g2.moveTo(sx, sy);
+      g2.bezierCurveTo(sx - 80, sy - 90, tx + 90, ty - 70, tx, ty);
+      g2.stroke();
+      g2.setLineDash([]);
+      // سهمان صغيران للفرك
+      const k = (Math.sin(time * 4) + 1) / 2;
+      g2.beginPath();
+      g2.moveTo(tx - 30 + k * 26, ty - 4);
+      g2.lineTo(tx - 10 + k * 26, ty - 4);
+      g2.moveTo(tx - 16 + k * 26, ty - 12);
+      g2.lineTo(tx - 8 + k * 26, ty - 4);
+      g2.lineTo(tx - 16 + k * 26, ty + 4);
+      g2.stroke();
+      g2.restore();
+    }
+
+    /* ---------- الحلقة ---------- */
+    function frame(now) {
+      if (!alive) return;
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const L = s.L;
+      const w = s.world;
+      const time = (now - s.t0) / 1000;
+      UI_S = L.s;
+
+      // سحب البالونات والعدسة
+      for (const b of w.balloons) {
+        if (b.held && b.target) {
+          const k = Math.min(1, dt * 20);
+          b.x += (b.target.x - b.x) * k;
+          b.y += (b.target.y - b.y) * k;
+          b.trail.push({ x: b.target.x, y: b.target.y, t: now });
+          if (b.trail.length > 6) b.trail.shift();
+        }
+      }
+      const lens = s.lens;
+      if (lens.target) {
+        const k = Math.min(1, dt * 18);
+        lens.x += (lens.target.x - lens.x) * k;
+        lens.y += (lens.target.y - lens.y) * k;
+        if (!lens.held && Math.hypot(lens.target.x - lens.x, lens.target.y - lens.y) < 0.6) lens.target = null;
+      }
+      const atRest = !lens.held && lens.snap;
+      const goalScale = lens.held ? 1 : atRest ? 0.62 : lens.scale > 0.7 ? 1 : 0.62;
+      lens.scale += (goalScale - lens.scale) * Math.min(1, dt * 9);
+      if (!lens.held && lens.snap && Math.abs(lens.scale - 0.62) < 0.01) lens.snap = false;
+
+      w.step(dt, {});
+
+      // أحداث الصوت
+      for (const ev of w.drain()) {
+        if (ev.type === "transfer") {
+          play("tick", { volume: 0.5, rate: 1.4 + ev.q * 0.03, throttle: 120 });
+          haptic(4);
+        } else if (ev.type === "zap") {
+          play("zap", { volume: 0.6, throttle: 200, jitter: 0.12 });
+          haptic(10);
+        } else if (ev.type === "stick") {
+          play("grab", { volume: 0.9 });
+          play("sparkle", { volume: 0.5, delay: 0.05 });
+          haptic([10, 20]);
+        } else if (ev.type === "paper") play("tick", { volume: 0.6, rate: 1.8, throttle: 90 });
+        else if (ev.type === "stow") haptic(6);
+        else if (ev.type === "wall") play("grab", { volume: 0.7, delay: 0.25 });
+      }
+
+      // صوت الفرك
+      let rubSpeed = 0;
+      for (const b of w.balloons) if (b.rubbing) rubSpeed = Math.max(rubSpeed, b.speed);
+      if (rubSpeed > 0) {
+        if (!s.rubLoop && s.props.soundEnabled) s.rubLoop = loop("rub_loop", { volume: 0.25 });
+        s.rubLoop?.setVolume(CLAMP(rubSpeed / 650, 0.25, 1));
+        if (rubSpeed > 520 && now - (s.lastSqueak || 0) > 420) {
+          s.lastSqueak = now;
+          play("squeak", { volume: 0.4, jitter: 0.15, throttle: 200 });
+        }
+      } else if (s.rubLoop) {
+        s.rubLoop.stop();
+        s.rubLoop = null;
+      }
+
+      // ---- رسم ----
+      const { dpr } = s;
+      g.setTransform(dpr * L.s, 0, 0, dpr * L.s, 0, 0);
+      g.clearRect(0, 0, L.dW, L.dH);
+      drawWorld(g, L, false, "net", time);
+      drawHint(g, L, time);
+      drawLens(g, L);
+
+      // تلميحات اللمس/التمرير
+      let t = null;
+      if (s.pressTip && now < s.pressTip.until) t = s.pressTip;
+      else if (s.hover === "basket") t = { text: "بالونات", x: L.basket.cx, y: L.floorY - 190 };
+      else if (s.hover === "wall") t = { text: "الجدار", x: L.pillarX + (1 - w.wall.p) * WALL_SLIDE(L) + 40, y: L.floorY - 310 };
+      else if (s.hover === "lens" && !lens.held) t = { text: "عدسة الشحنات", x: lens.x, y: lens.y - LENS_R * lens.scale - 34 };
+      else if (s.hover === "lensHandle" && !lens.held) t = { text: lens.mode === "all" ? "كل الشحنات" : "الشحنة الصافية", x: lens.x, y: lens.y - LENS_R * lens.scale - 34 };
+      if (t) tip(g, t.text, t.x, t.y);
+      // نبضة تلميح للعدسة بعد فترة من اللعب
+      if (!lens.used && time > 7 && !lens.held && lens.scale < 0.7) {
+        g.save();
+        g.strokeStyle = `rgba(255,236,170,${0.5 + 0.4 * Math.sin(time * 3)})`;
+        g.lineWidth = 4;
+        g.beginPath();
+        g.arc(lens.x, lens.y, LENS_R * 0.62 + 12 + Math.sin(time * 3) * 4, 0, Math.PI * 2);
+        g.stroke();
+        g.restore();
+      }
+      if (lens.held) lens.used = true;
+    }
+    raf = requestAnimationFrame(frame);
+
     return () => {
-      cancelAnimationFrame(rafRef.current);
-      StaticSound.stopRub();
-      StaticSound.stopFloat();
+      alive = false;
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointercancel", onUp);
+      s.rubLoop?.stop();
+      s.rubLoop = null;
+      if (import.meta.env.DEV && window.__st === s) delete window.__st;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ===== توفيق عدد البالونات ===== */
-  useEffect(() => {
-    const sim = simRef.current;
-    if (balloonCount === sim.balloons.length) return;
-    if (balloonCount > sim.balloons.length) {
-      sim.balloons.push(makeBalloon(sim.balloons.length));
-    } else {
-      // أزل البالون الأخير وأعد إلكتروناته إلى السترة
-      const removed = sim.balloons.pop();
-      for (const m of sim.minus) {
-        if (m.owner === removed.i) {
-          m.owner = null;
-          m.x = m.homeX;
-          m.y = m.homeY;
-          m.vx = m.vy = 0;
-        }
-      }
-    }
-    emitStatus(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balloonCount]);
-
-  /* ===== إزالة الجدار تُحرّر بالوناً ملتصقاً به ===== */
-  useEffect(() => {
-    if (wallOn) return;
-    for (const b of simRef.current.balloons) {
-      if (b.stuck === "wall") {
-        b.stuck = null;
-        b.vx = -1.5;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallOn]);
-
-  /* ===== كتم الصوت ===== */
-  useEffect(() => {
-    StaticSound.setMuted(!soundEnabled);
-  }, [soundEnabled]);
-
-  /* ===== تفاعل السحب ===== */
-  function toLocal(e) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * SCENE_W;
-    const y = ((e.clientY - rect.top) / rect.height) * SCENE_H;
-    return { x, y };
-  }
-
-  function onPointerDown(e) {
-    const { x, y } = toLocal(e);
-    const sim = simRef.current;
-    // اختر أقرب بالون تحت المؤشّر
-    let picked = null;
-    for (const b of sim.balloons) {
-      const dx = (x - b.x) / (b.r * 0.9);
-      const dy = (y - b.y) / b.r;
-      if (dx * dx + dy * dy <= 1.15) picked = b;
-    }
-    if (!picked) return;
-    e.preventDefault();
-    canvasRef.current.setPointerCapture(e.pointerId);
-    picked.held = true;
-    picked.stuck = null;
-    picked.vx = picked.vy = 0;
-    picked.px = picked.x;
-    picked.py = picked.y;
-    dragRef.current = { b: picked, dx: x - picked.x, dy: y - picked.y };
-    if (propsRef.current.soundEnabled) StaticSound.playClick();
-  }
-
-  function onPointerMove(e) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    const { x, y } = toLocal(e);
-    drag.b.x = CLAMP(x - drag.dx, drag.b.r * 0.5, SCENE_W - drag.b.r * 0.5);
-    drag.b.y = CLAMP(y - drag.dy, drag.b.r + 8, SCENE_H - drag.b.r * 0.6);
-  }
-
-  function onPointerUp(e) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    drag.b.held = false;
-    dragRef.current = null;
-    StaticSound.stopRub();
-    if (drag.b.grabbed.length > 0 && propsRef.current.soundEnabled) StaticSound.playWhoosh();
-    try {
-      canvasRef.current.releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-  }
-
   return (
-    <canvas
-      ref={canvasRef}
-      className="st-canvas"
-      style={{ aspectRatio: `${SCENE_W} / ${SCENE_H}` }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-    />
+    <div ref={wrapRef} className="ss-canvas-wrap">
+      <canvas ref={canvasRef} className="ss-canvas" />
+    </div>
   );
 });
 

@@ -3,7 +3,7 @@
  * بالسترة لتنقل إلكترونات فيصبح سالباً، ثم أفلته ليلتصق بالسترة أو الجدار.
  * الشريط العلوي والأدوات واللوحة التفسيرية بطابع الموقع نفسه وباللغة العربية.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import StaticScene from "./StaticScene.jsx";
 import StaticControls from "./components/StaticControls.jsx";
 import StaticInfoPanel from "./components/StaticInfoPanel.jsx";
@@ -11,6 +11,9 @@ import StaticHelpModal from "./components/StaticHelpModal.jsx";
 import { StaticSound } from "./staticAudio.js";
 import "./static.css";
 
+import { InfoDrawer } from "../mobile/GameChrome.jsx";
+import Hud from "../ui/Hud.jsx";
+import { SCENE_W, SCENE_H } from "./staticData.js";
 export default function StaticApp({ onHome }) {
   const [displayMode, setDisplayMode] = useState("all");
   const [wallOn, setWallOn] = useState(true);
@@ -42,6 +45,10 @@ export default function StaticApp({ onHome }) {
     sceneRef.current?.reset();
     click();
   }
+  useEffect(() => {
+    StaticSound.setMuted(false);
+  }, []);
+
   function toggleSound() {
     setSoundEnabled((prev) => {
       const next = !prev;
@@ -51,36 +58,17 @@ export default function StaticApp({ onHome }) {
   }
 
   return (
-    <div className="st-stage">
-      <header className="st-topbar">
-        <button type="button" className="st-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="st-home-text">الرئيسية</span>
-        </button>
-        <div className="st-title">
-          <span className="st-title-main">الكهرباء الساكنة</span>
-        </div>
-        <div className="st-topbar-actions">
-          <button
-            type="button"
-            className="st-help-btn"
-            onClick={() => {
-              setHelpOpen(true);
-              click();
-            }}
-            aria-label="شرح الدرس"
-            title="شرح الدرس"
-          >
-            ؟
-          </button>
-          <button
-            type="button"
-            className="st-sound-btn"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
-          >
-            {soundEnabled ? "🔊" : "🔇"}
-          </button>
-        </div>
+    <div className="st-stage g-stage">
+      <header className="g-topbar">
+        <Hud
+          onHome={onHome}
+          onHelp={() => {
+            setHelpOpen(true);
+            click();
+          }}
+          sound={soundEnabled}
+          onSound={toggleSound}
+        />
       </header>
 
       <StaticHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
@@ -95,9 +83,9 @@ export default function StaticApp({ onHome }) {
         onReset={reset}
       />
 
-      <div className="st-experiment">
-        <div className="st-scene-col">
-          <div className="st-scene-card">
+      <div className="st-experiment g-experiment">
+        <div className="st-scene-col g-scene-col">
+          <div className="st-scene-card g-scene-card" style={{ "--ratio": SCENE_W / SCENE_H }}>
             <StaticScene
               ref={sceneRef}
               displayMode={displayMode}
@@ -107,10 +95,12 @@ export default function StaticApp({ onHome }) {
               onStatus={onStatus}
             />
           </div>
-          <span className="st-scene-hint">💡 اسحب البالون وافركه بالسترة… ثم أفلته!</span>
+          <span className="st-scene-hint g-hint">اسحب البالون وافركه بالسترة… ثم أفلته</span>
         </div>
 
-        <StaticInfoPanel status={status} />
+        <InfoDrawer label="معلومات">
+          <StaticInfoPanel status={status} />
+        </InfoDrawer>
       </div>
     </div>
   );

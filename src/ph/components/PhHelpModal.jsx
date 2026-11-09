@@ -39,7 +39,7 @@ export default function PhHelpModal({ open, onClose }) {
         </p>
 
         <section className="help-section">
-          <h3>🔬 ما معنى pH؟</h3>
+          <h3>ما معنى pH؟</h3>
           <div className="help-formula">pH = −لو₁₀ [تركيز أيونات الهيدروجين ⁺H]</div>
           <ul className="help-list">
             <li>
@@ -56,7 +56,7 @@ export default function PhHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🧪 طريقة استخدام التجربة</h3>
+          <h3>طريقة استخدام التجربة</h3>
           <ul className="help-list">
             <li>
               <strong>اختر سائلاً</strong> من الشرائح في الأسفل.
@@ -77,7 +77,7 @@ export default function PhHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>💡 لماذا يقترب الـ pH من ٧ عند إضافة الماء؟</h3>
+          <h3>لماذا يقترب الـ pH من ٧ عند إضافة الماء؟</h3>
           <p className="help-intro" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>
             الماء النقي متعادل، فإضافته تُخفّف تركيز الأيونات الحمضية أو القاعدية، فيتحرّك الـ pH تدريجياً نحو
             التعادل — تماماً كما يحدث في الطبيعة.
@@ -85,7 +85,7 @@ export default function PhHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>⚗️ أمثلة من حياتك (قيمة pH)</h3>
+          <h3>أمثلة من حياتك (قيمة pH)</h3>
           <div className="help-table">
             {SOLUTION_ORDER.map((key) => {
               const s = SOLUTIONS[key];

@@ -4,9 +4,9 @@
  * تبويبات بقيّة الموقع.
  */
 const MODES = [
-  { key: "all", label: "كل الشحنات", emoji: "⊕⊖" },
-  { key: "diff", label: "الفرق فقط", emoji: "±" },
-  { key: "none", label: "بدون شحنات", emoji: "🚫" },
+  { key: "all", label: "كل الشحنات" },
+  { key: "diff", label: "الفرق فقط" },
+  { key: "none", label: "بدون شحنات" },
 ];
 
 export default function StaticControls({
@@ -19,7 +19,7 @@ export default function StaticControls({
   onReset,
 }) {
   return (
-    <div className="st-controls">
+    <div className="st-controls g-controls">
       <div className="st-seg" role="group" aria-label="عرض الشحنات">
         {MODES.map((m) => (
           <button
@@ -28,9 +28,6 @@ export default function StaticControls({
             className={`st-seg-btn${displayMode === m.key ? " active" : ""}`}
             onClick={() => onModeChange(m.key)}
           >
-            <span className="st-seg-emoji" aria-hidden="true">
-              {m.emoji}
-            </span>
             {m.label}
           </button>
         ))}
@@ -43,7 +40,7 @@ export default function StaticControls({
           onClick={() => onBalloonCount(balloonCount === 2 ? 1 : 2)}
           title="عدد البالونات"
         >
-          🎈 {balloonCount === 2 ? "بالونان" : "بالون واحد"}
+          {balloonCount === 2 ? "بالونان" : "بالون واحد"}
         </button>
 
         <button
@@ -52,11 +49,11 @@ export default function StaticControls({
           onClick={onToggleWall}
           title="إظهار/إزالة الجدار"
         >
-          🧱 {wallOn ? "الجدار ظاهر" : "أضف الجدار"}
+          {wallOn ? "الجدار ظاهر" : "أضف الجدار"}
         </button>
 
         <button type="button" className="st-reset" onClick={onReset}>
-          ↺ إعادة الضبط
+          إعادة الضبط
         </button>
       </div>
     </div>

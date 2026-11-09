@@ -487,6 +487,17 @@ const CellScene = forwardRef(function CellScene(
   /* ===================================================================== */
   /* الرسم                                                                  */
   /* ===================================================================== */
+  /**
+   * خط بحجم تصميمي لكن لا يقلّ عن ~١١px فعلية على الشاشة: يحافظ على القراءة على
+   * الجوال حيث يُصغَّر المشهد كله (cs ≈ ٠٫٥) فتصير نصوص ١٢–١٥px أصغر من ٨px.
+   */
+  function fitFont(ctx, weight, size, minScreen = 11) {
+    const dpr = viewRef.current ? viewRef.current.dpr || 1 : 1;
+    const a = Math.abs(ctx.getTransform().a) / dpr;
+    const px = a > 0 ? Math.max(size, minScreen / a) : size;
+    ctx.font = `${weight} ${px.toFixed(1)}px 'IBM Plex Sans Arabic', sans-serif`;
+  }
+
   function render(ctx) {
     const sim = simRef.current;
     const type = propsRef.current.cellType;
@@ -590,7 +601,7 @@ const CellScene = forwardRef(function CellScene(
     ctx.shadowBlur = 10;
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "bold 20px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "bold", 20);
     ctx.fillText(label, CX, CY - 62);
     ctx.restore();
   }
@@ -653,7 +664,7 @@ const CellScene = forwardRef(function CellScene(
     ctx.fillStyle = "#8a3b2a";
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "bold 16px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "bold", 16);
     ctx.fillText("الخدّ", cheekX, cheekY - 54);
   }
 
@@ -697,7 +708,7 @@ const CellScene = forwardRef(function CellScene(
     ctx.fillStyle = "#5a7a2a";
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "bold 16px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "bold", 16);
     ctx.fillText("بصلة", CX, CY - 10);
   }
 
@@ -999,7 +1010,7 @@ const CellScene = forwardRef(function CellScene(
     ctx.stroke();
     ctx.setLineDash([]);
     // أسماء المكوّنات تظهر تباعاً بوصلات — على أقراص داكنة لتباين عالٍ
-    ctx.font = "700 12px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "700", 12);
     ctx.direction = "rtl";
     ctx.textBaseline = "middle";
     const n = it.parts.length;
@@ -1077,12 +1088,12 @@ const CellScene = forwardRef(function CellScene(
       ctx.direction = "rtl";
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 24px 'IBM Plex Sans Arabic', sans-serif";
+      fitFont(ctx, "bold", 24);
       ctx.shadowColor = "rgba(0,0,0,0.75)";
       ctx.shadowBlur = 12;
       // ضمن نطاق آمن رأسياً (قد يُقصّ cover الحوافّ على الشاشات العريضة)
       ctx.fillText(it.title, CX, 96);
-      ctx.font = "600 15px 'IBM Plex Sans Arabic', sans-serif";
+      fitFont(ctx, "600", 15);
       ctx.fillText(it.caption, CX, SCENE_H - 76);
       ctx.restore();
     }
@@ -1554,7 +1565,7 @@ const CellScene = forwardRef(function CellScene(
     // لوحة داكنة صلبة خلف النص (تباين قصوى)
     ctx.direction = "rtl";
     ctx.textAlign = "center";
-    ctx.font = "800 26px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "800", 26);
     const txt = "هنا يتوقف المجهر المدرسي";
     const tw = ctx.measureText(txt).width;
     const bw = tw + 56;
@@ -1568,7 +1579,7 @@ const CellScene = forwardRef(function CellScene(
     // النص أبيض ناصع
     ctx.fillStyle = `rgba(255,255,255,${a})`;
     ctx.fillText(txt, CX, y - 4);
-    ctx.font = "700 14px 'IBM Plex Sans Arabic', sans-serif";
+    fitFont(ctx, "700", 14);
     ctx.fillStyle = `rgba(255,213,79,${a})`;
     ctx.fillText("▼ لكنّنا سنواصل الغوص إلى ما لا يراه ▼", CX, y + 20);
     ctx.restore();

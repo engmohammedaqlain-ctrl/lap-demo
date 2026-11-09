@@ -39,7 +39,7 @@ export default function StaticHelpModal({ open, onClose }) {
         </p>
 
         <section className="help-section">
-          <h3>⚡ كيف يُشحن البالون؟</h3>
+          <h3>كيف يُشحن البالون؟</h3>
           <ul className="help-list">
             <li>
               عند <strong>فرك البالون بالسترة</strong> تنتقل إلكترونات (−) من السترة إلى البالون.
@@ -54,7 +54,7 @@ export default function StaticHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🧲 قاعدة الشحنات</h3>
+          <h3>قاعدة الشحنات</h3>
           <div className="help-formula">الشحنات المتشابهة تتنافر — والمتعاكسة تتجاذب</div>
           <ul className="help-list">
             <li>
@@ -67,7 +67,7 @@ export default function StaticHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🧱 لماذا يلتصق البالون بالجدار؟</h3>
+          <h3>لماذا يلتصق البالون بالجدار؟</h3>
           <p className="help-intro" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>
             الجدار متعادل، لكن عندما يقترب منه البالون السالب فإنه <strong>يدفع إلكترونات الجدار بعيداً</strong>،
             فيبقى قرب سطحه شحنات موجبة تجذب البالون — وهذا ما يُسمّى <strong>الاستقطاب</strong>.
@@ -75,7 +75,7 @@ export default function StaticHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🎈 طريقة استخدام التجربة</h3>
+          <h3>طريقة استخدام التجربة</h3>
           <ul className="help-list">
             <li>
               <strong>اسحب البالون</strong> وحرّكه فوق السترة ذهاباً وإياباً <strong>لفركه</strong>.
@@ -94,7 +94,7 @@ export default function StaticHelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🌍 أمثلة من حياتك</h3>
+          <h3>أمثلة من حياتك</h3>
           <ul className="help-list">
             <li>وقوف شعرك عند خلع كنزة صوفية في الشتاء.</li>
             <li>الصعقة الخفيفة عند لمس مقبض باب معدني.</li>

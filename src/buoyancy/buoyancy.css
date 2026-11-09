@@ -1,0 +1,248 @@
+/**
+ * buoyancy.css — واجهة مختبر الطفو: المشهد (Canvas) هو البطل، والواجهة طبقة
+ * زجاجية صغيرة: أزرار أعلى اليمين، تبويبان بالوسط، لوحة السائل يساراً،
+ * ولوحة التخمين أسفل الوسط في وضع "الجسم الغامض".
+ */
+.bu-stage {
+  --glass: rgba(255, 255, 255, 0.86);
+  --ink: #1d2b22;
+  --muted: #667a6d;
+  --line: rgba(15, 77, 42, 0.14);
+  --green: #1b7340;
+  --pad-t: max(10px, env(safe-area-inset-top));
+  --pad-r: max(12px, env(safe-area-inset-right));
+  --pad-b: max(10px, env(safe-area-inset-bottom));
+  --pad-l: max(12px, env(safe-area-inset-left));
+  color: var(--ink);
+  background: #dfeae5;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bu-canvas-wrap { position: absolute; inset: 0; }
+.bu-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* زجاج عام */
+.bu-panel,
+.bu-btn,
+.bu-tabs {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(15, 50, 35, 0.16);
+}
+
+/* ---------- الشريط العلوي ---------- */
+.bu-topbar {
+  position: absolute;
+  z-index: 20;
+  top: var(--pad-t);
+  left: var(--pad-l);
+  right: var(--pad-r);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+.bu-topbar > * { pointer-events: auto; }
+.bu-cluster { display: flex; gap: 8px; }
+.bu-spacer { width: 160px; pointer-events: none !important; }
+
+.bu-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: inherit;
+  color: var(--green);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.bu-btn:hover { background: #fff; transform: translateY(-1px); }
+.bu-btn:active { transform: scale(0.92); }
+
+.bu-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 26px; }
+.bu-tabs button {
+  min-height: 38px;
+  padding: 0 20px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.bu-tabs button.on { background: var(--green); color: #fff; box-shadow: 0 2px 10px rgba(27, 115, 64, 0.35); }
+
+/* ---------- لوحة السائل ---------- */
+.bu-panel { border-radius: 22px; }
+.bu-fluid {
+  position: absolute;
+  z-index: 10;
+  left: var(--pad-l);
+  top: calc(var(--pad-t) + 62px);
+  width: 176px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100% - var(--pad-t) - var(--pad-b) - 70px);
+  overflow-y: auto;
+}
+.bu-h { margin: 0; padding: 0 4px; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+
+.bu-liquid-list { display: flex; flex-direction: column; gap: 6px; }
+.bu-liquid {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: start;
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+.bu-liquid:hover { transform: translateX(2px); }
+.bu-liquid:active { transform: scale(0.97); }
+.bu-liquid.active { border-color: var(--green); background: rgba(27, 115, 64, 0.1); box-shadow: 0 0 0 1px var(--green); }
+.bu-liquid-name { flex: 1; min-width: 0; line-height: 1.15; }
+.bu-liquid-d { font-size: 0.7rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bu-drop {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50% 8% 50% 50%;
+  transform: rotate(-45deg);
+  box-shadow: inset 2px 3px 5px rgba(255, 255, 255, 0.45), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.bu-slider { display: block; padding: 2px 4px; }
+.bu-slider input { width: 100%; height: 28px; accent-color: var(--green); cursor: pointer; }
+
+.bu-density { display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 6px 0 2px; border-top: 1px dashed var(--line); }
+.bu-density b { font-size: 1.25rem; font-variant-numeric: tabular-nums; color: var(--green); }
+.bu-density small { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+
+.bu-toggles { display: flex; gap: 6px; justify-content: space-between; }
+.bu-tog {
+  flex: 1;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: rgba(15, 77, 42, 0.06);
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bu-tog.on { color: #fff; background: var(--green); }
+.bu-tog:active { transform: scale(0.94); }
+
+/* ---------- لوحة التخمين (الجسم الغامض) ---------- */
+.bu-guess {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: var(--pad-b);
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.bu-guess .bu-h { white-space: nowrap; }
+.bu-choices { display: flex; gap: 6px; }
+.bu-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, opacity 0.15s;
+}
+.bu-choice img { border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+.bu-choice:hover { transform: translateY(-2px); border-color: rgba(27, 115, 64, 0.4); }
+.bu-choice.wrong { opacity: 0.35; text-decoration: line-through; }
+.bu-choice:disabled { cursor: default; }
+.bu-msg { margin: 0; font-size: 0.86rem; font-weight: 700; white-space: nowrap; color: var(--muted); }
+.bu-guess.is-right { border-color: var(--green); box-shadow: 0 0 0 2px var(--green), 0 8px 24px rgba(15, 50, 35, 0.2); }
+.bu-guess.is-right .bu-msg { color: var(--green); }
+.bu-guess.is-wrong .bu-msg { color: #b5522a; }
+.bu-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--green);
+  border: none;
+  border-radius: 21px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ======================================================================
+   الجوال بالعرض
+   ====================================================================== */
+@media (orientation: landscape) and (max-height: 560px) {
+  .bu-stage { --pad-t: max(6px, env(safe-area-inset-top)); --pad-b: max(6px, env(safe-area-inset-bottom)); --pad-r: max(8px, env(safe-area-inset-right)); --pad-l: max(8px, env(safe-area-inset-left)); }
+  .bu-btn { width: 42px; height: 42px; }
+  .bu-btn svg { width: 20px; height: 20px; }
+  .bu-spacer { width: 176px; }
+  .bu-tabs button { min-height: 34px; padding: 0 14px; font-size: 0.8rem; }
+
+  .bu-fluid { top: calc(var(--pad-t) + 50px); width: 138px; padding: 8px; gap: 5px; }
+  .bu-fluid > .bu-h { display: none; }
+  .bu-liquid { min-height: 34px; padding: 3px 8px; gap: 7px; font-size: 0.76rem; border-radius: 12px; }
+  .bu-liquid-d { display: none; }
+  .bu-drop { width: 18px; height: 18px; }
+  .bu-density { display: none; }
+  .bu-tog { min-height: 34px; border-radius: 11px; }
+  .bu-tog svg { width: 18px; height: 18px; }
+  .bu-slider input { height: 22px; }
+
+  .bu-guess { padding: 5px 8px; gap: 8px; border-radius: 18px; }
+  .bu-guess .bu-h { display: none; }
+  .bu-choice { min-width: 50px; padding: 3px 4px; font-size: 0.64rem; }
+  .bu-choice img { width: 28px; height: 28px; }
+  .bu-msg { font-size: 0.78rem; }
+  .bu-next { min-height: 36px; padding: 0 12px; font-size: 0.78rem; }
+}
+@media (orientation: landscape) and (max-height: 400px) {
+  .bu-liquid { min-height: 31px; }
+  .bu-fluid { width: 132px; gap: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bu-btn, .bu-liquid, .bu-choice { transition: none; }
+}

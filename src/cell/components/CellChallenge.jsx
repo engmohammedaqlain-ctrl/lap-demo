@@ -3,13 +3,17 @@
  * الصحيح على المشهد. فلسفة المنتج: الغلط مجاني — لا عقاب، تلميح ومحاولات بلا
  * حدّ. يعرض السؤال، عدّاد المحاولات، آخر تلميح، وعدد الإجابات الصحيحة.
  */
+import { IconNext, IconCheck } from "../../ui/icons.jsx";
+
 export default function CellChallenge({ target, feedback, attempts, score, onSkip }) {
   if (!target) return null;
   return (
     <div className={`cl-challenge tone-${feedback ? feedback.tone : "ask"}`}>
       <div className="cl-ch-top">
-        <span className="cl-ch-badge">🎯 تحدٍّ</span>
-        <span className="cl-ch-score">أحسنت في {score.toLocaleString("ar-EG")} ✓</span>
+        <span className="cl-ch-badge">تحدٍّ</span>
+        <span className="cl-ch-score">
+          <IconCheck width="14" height="14" /> {score.toLocaleString("ar-EG")}
+        </span>
       </div>
 
       <p className="cl-ch-question">
@@ -17,10 +21,7 @@ export default function CellChallenge({ target, feedback, attempts, score, onSki
       </p>
 
       {feedback ? (
-        <p className="cl-ch-feedback">
-          {feedback.tone === "correct" ? "🎉 " : "💡 "}
-          {feedback.text}
-        </p>
+        <p className="cl-ch-feedback">{feedback.text}</p>
       ) : (
         <p className="cl-ch-feedback muted">اضغط العضيّ الصحيح على الخلية…</p>
       )}
@@ -30,7 +31,8 @@ export default function CellChallenge({ target, feedback, attempts, score, onSki
           {attempts > 0 ? `محاولات: ${attempts.toLocaleString("ar-EG")} — لا بأس، جرّب ثانية!` : "لا عقاب على الخطأ"}
         </span>
         <button type="button" className="cl-ch-skip" onClick={onSkip}>
-          سؤال آخر ↻
+          <span>سؤال آخر</span>
+          <IconNext width="14" height="14" />
         </button>
       </div>
     </div>

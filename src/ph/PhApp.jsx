@@ -1,52 +1,51 @@
 /**
- * PhApp.jsx — تجربة الأس الهيدروجيني (pH) بمنضدة مختبر تفاعلية احترافية.
+ * PhApp.jsx — تجربة الأس الهيدروجيني في مختبر حقيقي (Canvas):
+ *   - اختر سائلاً من قوارير الرف (لمسة).
+ *   - الضغط المطوّل: حنفية الماء (تخفيف)، القطّارة (إضافة)، صمام التصريف.
+ *   - جهاز "محلول مخصّص": لفّ المقبض لضبط pH والرافعة للحجم.
+ * الواجهة الموحّدة الوحيدة: رئيسية / شرح / صوت / إعادة. كل شيء آخر داخل المشهد.
  *
- * وضعان:
- *  - "استكشف": اختر سائلاً من الشرائح، ثم تفاعل مع أدوات المنضدة مباشرة:
- *    القطّارة (استمر بالضغط لإسقاط السائل)، حنفية الماء (تخفيف)، وصنبور
- *    التصريف. السائل يأخذ لون مادته الحقيقي، والـ pH يظهر على المقياس.
- *  - "حضّر محلولك": اضبط pH والحجم بشريطي تمرير (لون الكاشف الشامل).
- *
- * الصبّ/الإسقاط/التصريف مستمرّ طالما الزر مضغوط عبر حلقة requestAnimationFrame
- * تعدّل الحجوم؛ مصدر الحقيقة volumesRef (يُقرأ/يُكتب فوراً) ونعكسه إلى state.
+ * المنطق: حلقة rAF تعدّل الحجوم طالما التدفّق مفعّل؛ مصدر الحقيقة volumesRef.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import PhScene from "./components/PhScene.jsx";
-import PhScaleBar from "./components/PhScaleBar.jsx";
-import InfoPanel from "./components/InfoPanel.jsx";
-import SolutionPicker from "./components/SolutionPicker.jsx";
-import CustomControls from "./components/CustomControls.jsx";
-import Beaker from "./components/Beaker.jsx";
-import ModeTabs from "./components/ModeTabs.jsx";
+import PhLab from "./PhLab.jsx";
 import PhHelpModal from "./components/PhHelpModal.jsx";
-import { SOLUTIONS, DEFAULT_SOLUTION, blendedColorCSS, solutionColorSolid } from "./phData.js";
-import { phColorCSS } from "./phColor.js";
-import {
-  computePH,
-  fillFraction,
-  formatAr,
-  MAX_VOLUME,
-  DEFAULT_SOLUTE_VOLUME,
-  NEUTRAL_PH,
-} from "./phModel.js";
+import { SOLUTIONS, DEFAULT_SOLUTION, blendedColorCSS } from "./phData.js";
+import { phColorRGB } from "./phColor.js";
+import { computePH, phStatus, MAX_VOLUME, DEFAULT_SOLUTE_VOLUME, NEUTRAL_PH } from "./phModel.js";
 import { PhSound } from "./phAudio.js";
+import Hud from "../ui/Hud.jsx";
 import "./ph.css";
 
 const WATER_RATE = 0.5; // لتر/ثانية
 const SOLUTE_RATE = 0.45; // لتر/ثانية (القطّارة)
 const DRAIN_RATE = 0.5; // لتر/ثانية
+const WATER_RGB = [200, 228, 240];
+
+function parseRGBA(css) {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(css);
+  if (!m) return { rgb: WATER_RGB.slice(), a: 0.5 };
+  return { rgb: [+m[1], +m[2], +m[3]], a: m[4] === undefined ? 1 : +m[4] };
+}
 
 export default function PhApp({ onHome }) {
-  const [mode, setMode] = useState("explore");
+  const [customActive, setCustomActive] = useState(false);
   const [solutionKey, setSolutionKey] = useState(DEFAULT_SOLUTION);
   const [volumes, setVolumes] = useState({ solute: DEFAULT_SOLUTE_VOLUME, water: 0 });
   const [customPH, setCustomPH] = useState(NEUTRAL_PH);
-  const [customVolume, setCustomVolume] = useState(0.5);
+  const [customVolume, setCustomVolume] = useState(0.6);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [pouringWater, setPouringWater] = useState(false);
-  const [dripping, setDripping] = useState(false);
-  const [draining, setDraining] = useState(false);
+  const [flows, setFlows] = useState({ water: false, dripping: false, draining: false });
+  const [waste, setWaste] = useState({ vol: 0, rgb: WATER_RGB.slice(), a: 0.5 });
   const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    PhSound.setMuted(false);
+    return () => {
+      PhSound.stopPour();
+      PhSound.stopDrainSound();
+    };
+  }, []);
 
   const volumesRef = useRef(volumes);
   const applyVolumes = useCallback((next) => {
@@ -54,30 +53,33 @@ export default function PhApp({ onHome }) {
     setVolumes(next);
   }, []);
 
-  const solutePH = SOLUTIONS[solutionKey].pH;
-
-  const totalVolume = mode === "explore" ? volumes.solute + volumes.water : customVolume;
+  const solution = SOLUTIONS[solutionKey];
+  const exploreTotal = volumes.solute + volumes.water;
+  const totalVolume = customActive ? customVolume : exploreTotal;
   const empty = totalVolume <= 0.001;
   const full = totalVolume >= MAX_VOLUME - 0.001;
-  const pH =
-    mode === "custom"
-      ? customPH
-      : empty
-      ? NEUTRAL_PH
-      : computePH({ soluteVolume: volumes.solute, waterVolume: volumes.water, solutePH });
+  const pH = customActive
+    ? customPH
+    : empty
+    ? NEUTRAL_PH
+    : computePH({ soluteVolume: volumes.solute, waterVolume: volumes.water, solutePH: solution.pH });
 
-  const liquidColor = mode === "custom" ? phColorCSS(customPH) : blendedColorCSS(solutionKey, volumes.solute, volumes.water);
-  const dropperColor = solutionColorSolid(solutionKey);
+  const exploreColor = parseRGBA(blendedColorCSS(solutionKey, volumes.solute, volumes.water));
+  const liquid = customActive ? { rgb: phColorRGB(customPH), a: 0.88 } : exploreColor;
+  const tone = empty ? "" : phStatus(pH).label;
 
   /* ===== حلقة الصبّ/الإسقاط/التصريف ===== */
   const rafRef = useRef(0);
   const lastTsRef = useRef(0);
   const flowsRef = useRef({ water: false, solute: false, drain: false });
+  const wasteRef = useRef(waste);
+  const colorRef = useRef(exploreColor);
+  colorRef.current = exploreColor;
 
   const tick = useCallback(
     (ts) => {
-      const flows = flowsRef.current;
-      if (!flows.water && !flows.solute && !flows.drain) {
+      const f = flowsRef.current;
+      if (!f.water && !f.solute && !f.drain) {
         rafRef.current = 0;
         return;
       }
@@ -86,41 +88,49 @@ export default function PhApp({ onHome }) {
       lastTsRef.current = ts;
 
       let { solute, water } = volumesRef.current;
-
-      if (flows.water) {
+      if (f.water) {
         const room = Math.max(0, MAX_VOLUME - (solute + water));
         water += Math.min(room, WATER_RATE * dt);
       }
-      if (flows.solute) {
+      if (f.solute) {
         const room = Math.max(0, MAX_VOLUME - (solute + water));
         solute += Math.min(room, SOLUTE_RATE * dt);
-        if (soundEnabled) PhSound.playDrip();
+        PhSound.playDrip();
       }
-      if (flows.drain) {
+      if (f.drain) {
         const total = solute + water;
         if (total > 0) {
           const frac = Math.min(1, (DRAIN_RATE * dt) / total);
+          const removed = total * frac;
           solute *= 1 - frac;
           water *= 1 - frac;
           if (solute + water < 0.002) {
             solute = 0;
             water = 0;
           }
+          const c = colorRef.current;
+          const w = wasteRef.current;
+          const nv = w.vol + removed;
+          const t = removed / Math.max(0.0001, nv);
+          wasteRef.current = {
+            vol: nv,
+            rgb: w.rgb.map((v, i) => v + (c.rgb[i] - v) * Math.min(1, t * 2.5)),
+            a: w.a + (c.a - w.a) * Math.min(1, t * 2.5),
+          };
+          setWaste(wasteRef.current);
         }
       }
-
       applyVolumes({ solute, water });
 
-      if ((flows.water || flows.solute) && solute + water >= MAX_VOLUME - 0.001) {
+      if ((f.water || f.solute) && solute + water >= MAX_VOLUME - 0.001) {
         stopWater();
         stopDrip();
       }
-      if (flows.drain && solute + water <= 0) stopDrain();
-
+      if (f.drain && solute + water <= 0) stopDrain();
       rafRef.current = requestAnimationFrame(tick);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [applyVolumes, soundEnabled]
+    [applyVolumes]
   );
 
   const startFlow = useCallback(
@@ -134,66 +144,94 @@ export default function PhApp({ onHome }) {
   const stopFlowKind = useCallback((kind) => {
     flowsRef.current[kind] = false;
   }, []);
-
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   /* ===== نغمة "تعادل" عند بلوغ pH ٧ ===== */
   const wasNeutralRef = useRef(false);
   useEffect(() => {
     const isNeutral = !empty && Math.abs(pH - NEUTRAL_PH) < 0.05;
-    if (isNeutral && !wasNeutralRef.current && soundEnabled) PhSound.playNeutralChime();
+    if (isNeutral && !wasNeutralRef.current && !customActive && soundEnabled) PhSound.playNeutralChime();
     wasNeutralRef.current = isNeutral;
-  }, [pH, empty, soundEnabled]);
+  }, [pH, empty, soundEnabled, customActive]);
 
   /* ===== أفعال ===== */
-  function selectSolution(key) {
-    // إيقاف جميع التدفقات قبل تغيير السائل لمنع تضارب الحالة
-    stopWater();
-    stopDrip();
-    stopDrain();
-    setSolutionKey(key);
-    applyVolumes({ solute: DEFAULT_SOLUTE_VOLUME, water: 0 });
-    if (soundEnabled) PhSound.playClick();
-  }
-
-  function startWater() {
-    if (totalVolume >= MAX_VOLUME - 0.001) return;
-    setPouringWater(true);
-    startFlow("water");
-    if (soundEnabled) PhSound.startPour();
+  function backToExplore() {
+    if (customActive) setCustomActive(false);
   }
   function stopWater() {
-    setPouringWater(false);
+    setFlows((f) => ({ ...f, water: false }));
     stopFlowKind("water");
     PhSound.stopPour();
   }
-  function startDrip() {
-    if (totalVolume >= MAX_VOLUME - 0.001) return;
-    setDripping(true);
-    startFlow("solute");
-  }
   function stopDrip() {
-    setDripping(false);
+    setFlows((f) => ({ ...f, dripping: false }));
     stopFlowKind("solute");
   }
-  function startDrain() {
-    if (empty) return;
-    setDraining(true);
-    startFlow("drain");
-    if (soundEnabled) PhSound.startDrainSound();
-  }
   function stopDrain() {
-    setDraining(false);
+    setFlows((f) => ({ ...f, draining: false }));
     stopFlowKind("drain");
     PhSound.stopDrainSound();
   }
-
-  function handleEmpty() {
+  function startWater() {
+    backToExplore();
+    if (volumesRef.current.solute + volumesRef.current.water >= MAX_VOLUME - 0.001) return;
+    setFlows((f) => ({ ...f, water: true }));
+    startFlow("water");
+    PhSound.startPour();
+  }
+  function startDrip() {
+    backToExplore();
+    if (volumesRef.current.solute + volumesRef.current.water >= MAX_VOLUME - 0.001) return;
+    setFlows((f) => ({ ...f, dripping: true }));
+    startFlow("solute");
+  }
+  function startDrain() {
+    backToExplore();
+    const t = volumesRef.current.solute + volumesRef.current.water;
+    if (t <= 0.001) return;
+    setFlows((f) => ({ ...f, draining: true }));
+    startFlow("drain");
+    PhSound.startDrainSound();
+  }
+  function stopAll() {
     stopWater();
     stopDrip();
     stopDrain();
-    applyVolumes({ solute: 0, water: 0 });
-    if (soundEnabled) PhSound.playClick();
+  }
+
+  function selectSolution(key) {
+    stopAll();
+    setCustomActive(false);
+    setSolutionKey(key);
+    applyVolumes({ solute: DEFAULT_SOLUTE_VOLUME, water: 0 });
+    PhSound.playClick();
+  }
+
+  function enterCustom() {
+    if (!customActive) {
+      stopAll();
+      setCustomActive(true);
+    }
+  }
+  function onCustomPH(v) {
+    enterCustom();
+    setCustomPH(v);
+  }
+  function onCustomVolume(v) {
+    enterCustom();
+    setCustomVolume(v);
+  }
+
+  function reset() {
+    stopAll();
+    setCustomActive(false);
+    setSolutionKey(DEFAULT_SOLUTION);
+    applyVolumes({ solute: DEFAULT_SOLUTE_VOLUME, water: 0 });
+    setCustomPH(NEUTRAL_PH);
+    setCustomVolume(0.6);
+    wasteRef.current = { vol: 0, rgb: WATER_RGB.slice(), a: 0.5 };
+    setWaste(wasteRef.current);
+    PhSound.playClick();
   }
 
   function toggleSound() {
@@ -204,112 +242,48 @@ export default function PhApp({ onHome }) {
     });
   }
 
-  function changeMode(next) {
-    if (next === mode) return;
-    stopWater();
-    stopDrip();
-    stopDrain();
-    setMode(next);
-    if (soundEnabled) PhSound.playClick();
-  }
-
   return (
     <div className="ph-stage">
-      <header className="ph-topbar">
-        <button type="button" className="ph-home-btn" onClick={onHome} title="الرئيسية">
-          🏠 <span className="ph-home-text">الرئيسية</span>
-        </button>
-        <div className="ph-title">
-          <span className="ph-title-main">الأس الهيدروجيني</span>
-        </div>
-        <div className="ph-topbar-actions">
-          <button
-            type="button"
-            className="ph-help-btn"
-            onClick={() => {
-              setHelpOpen(true);
-              if (soundEnabled) PhSound.playClick();
-            }}
-            aria-label="شرح الدرس"
-            title="شرح الدرس"
-          >
-            ؟
-          </button>
-          <button
-            type="button"
-            className="ph-sound-btn"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
-          >
-            {soundEnabled ? "🔊" : "🔇"}
-          </button>
-        </div>
+      <PhLab
+        mode={customActive ? "custom" : "explore"}
+        solutionKey={solutionKey}
+        solRGB={solution.color}
+        liquid={liquid}
+        total={totalVolume}
+        pH={pH}
+        empty={empty}
+        full={full}
+        tone={tone}
+        flows={flows}
+        waste={waste}
+        customActive={customActive}
+        customPH={customPH}
+        customVolume={customVolume}
+        onSelect={selectSolution}
+        onWaterStart={startWater}
+        onWaterStop={stopWater}
+        onDripStart={startDrip}
+        onDripStop={stopDrip}
+        onDrainStart={startDrain}
+        onDrainStop={stopDrain}
+        onCustomPH={onCustomPH}
+        onCustomVolume={onCustomVolume}
+      />
+
+      <header className="ph-hud">
+        <Hud
+          onHome={onHome}
+          onHelp={() => {
+            setHelpOpen(true);
+            PhSound.playClick();
+          }}
+          sound={soundEnabled}
+          onSound={toggleSound}
+          onReset={reset}
+        />
       </header>
 
       <PhHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-
-      <ModeTabs mode={mode} onChange={changeMode} />
-
-      {mode === "explore" ? (
-        <div className="ph-experiment">
-          {/* الصف العلوي: اختيار السائل (يمين) + المشهد والمقياس (الوسط) */}
-          <div className="ph-workspace">
-            <SolutionPicker activeKey={solutionKey} onSelect={selectSolution} />
-
-            <div className="ph-lab">
-              <div className="ph-scene-col">
-                <div className="ph-scene-card">
-                  <PhScene
-                    empty={empty}
-                    fillFraction={fillFraction(totalVolume)}
-                    liquidColor={liquidColor}
-                    dropperColor={dropperColor}
-                    volumeLabel={formatAr(totalVolume, 2)}
-                    pouringWater={pouringWater}
-                    dripping={dripping}
-                    draining={draining}
-                    onWaterStart={startWater}
-                    onWaterStop={stopWater}
-                    onDripStart={startDrip}
-                    onDripStop={stopDrip}
-                    onDrainStart={startDrain}
-                    onDrainStop={stopDrain}
-                    full={full}
-                  />
-                </div>
-                <div className="ph-bench-footer">
-                  <button type="button" className="ph-empty-btn" onClick={handleEmpty} disabled={empty}>
-                    🫗 تفريغ الكأس
-                  </button>
-                  <span className="ph-scene-hint">💡 اضغط باستمرار على القطّارة أو الحنفية أو صنبور التصريف</span>
-                </div>
-              </div>
-              <PhScaleBar pH={pH} empty={empty} />
-            </div>
-          </div>
-
-          {/* شريط سفلي يمتدّ بعرض الشاشة: الجانب النظري */}
-          <InfoPanel pH={pH} empty={empty} solutionKey={solutionKey} mode="explore" />
-        </div>
-      ) : (
-        <div className="ph-experiment">
-          <div className="ph-workspace">
-            <PhScaleBar pH={pH} empty={empty} />
-            <div className="ph-center">
-              <Beaker pH={pH} fillFraction={fillFraction(totalVolume)} volumeLabel={formatAr(totalVolume, 2)} pouring={false} />
-            </div>
-            <div className="ph-controls">
-              <CustomControls
-                customPH={customPH}
-                customVolume={customVolume}
-                onPHChange={setCustomPH}
-                onVolumeChange={setCustomVolume}
-              />
-              <InfoPanel pH={pH} empty={empty} solutionKey={solutionKey} mode="custom" />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

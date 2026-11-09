@@ -4,7 +4,9 @@
  * تتكرر الأرقام في مصدرين قد يختلفان لاحقاً.
  */
 import { useEffect } from "react";
-import { MATERIALS, LIQUIDS } from "../data/simulationData.js";
+import { OBJECTS as MATERIALS, LIQUIDS as ALL_LIQUIDS } from "../buoyancy/catalog.js";
+
+const LIQUIDS = Object.fromEntries(Object.entries(ALL_LIQUIDS).filter(([k]) => k !== "custom"));
 
 function densityTable(source) {
   return Object.values(source).sort((a, b) => a.density - b.density);
@@ -64,7 +66,7 @@ export default function HelpModal({ open, onClose }) {
         </p>
 
         <section className="help-section">
-          <h3>📐 القانون الأساسي — مبدأ أرخميدس</h3>
+          <h3>القانون الأساسي — مبدأ أرخميدس</h3>
           <div className="help-formula">قوة الطفو = كثافة السائل × الحجم المغمور × ٩٫٨١ (الجاذبية)</div>
           <div className="help-formula">الوزن = كثافة الجسم × حجمه الكامل × ٩٫٨١</div>
           <ul className="help-list">
@@ -83,38 +85,32 @@ export default function HelpModal({ open, onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>🧩 طريقة الاستخدام</h3>
+          <h3>طريقة الاستخدام</h3>
           <ul className="help-list">
             <li>
-              <strong>اسحب</strong> مادة من الشريط وأفلتها فوق البركة لإضافة جسم (حتى ٣ أجسام معاً).
+              <strong>اسحب</strong> جسماً من الرف وأفلته في الخزان (حتى ٤ أجسام). اسحبه فوق الرف لإرجاعه.
             </li>
             <li>
-              <strong>اضغط</strong> على شريحة مادة (بدون سحب) لتغيير مادة الجسم المحدَّد.
+              <strong>المس</strong> جسماً لإظهار كثافته. شاهد <strong>ارتفاع الماء</strong> وخطّه المتقطّع: الفرق هو حجم
+              الماء الذي أزاحه الجسم.
             </li>
             <li>
-              <strong>اضغط</strong> على أي جسم داخل البركة لتحديده — تظهر عليه حلقة خضراء وأسهم القوى وقياساته.
+              <strong>السهم الأحمر</strong> وزن الجسم لأسفل، و<strong>السهم الأزرق</strong> قوة الطفو لأعلى.
             </li>
+            <li>غيّر <strong>السائل</strong> من اللوحة اليسرى، أو اصنع سائلك بمنزلق الكثافة.</li>
             <li>
-              <strong>اسحب</strong> الجسم المحدَّد يمين/يسار/فوق/تحت لتحريكه بحرية.
+              في <strong>الجسم الغامض</strong>: جرّب الصندوق في السوائل، ثم خمّن مادته.
             </li>
-            <li>
-              زر <strong>"✕ حذف"</strong> يحذف الجسم المحدَّد (لا يمكن حذف آخر جسم متبقٍ).
-            </li>
-            <li>
-              اختر <strong>الشكل</strong> (مكعب/كرة) و<strong>الحجم</strong> من الأزرار والشريط.
-            </li>
-            <li>غيّر <strong>السائل</strong> من القائمة، وتحكّم بعرض الجاذبية/الطفو/القيم/خطوط العمق من خانات الاختيار.</li>
-            <li>زر 🔊 يشغّل أو يوقف المؤثرات الصوتية.</li>
           </ul>
         </section>
 
         <section className="help-section">
-          <h3>⚖️ كثافة المواد (كغم/م³)</h3>
+          <h3>كثافة المواد (كغم/م³)</h3>
           <HelpTable source={MATERIALS} />
         </section>
 
         <section className="help-section">
-          <h3>🌊 كثافة السوائل (كغم/م³)</h3>
+          <h3>كثافة السوائل (كغم/م³)</h3>
           <HelpTable source={LIQUIDS} />
         </section>
       </div>

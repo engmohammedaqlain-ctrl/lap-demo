@@ -1,88 +1,87 @@
 /**
- * staticData.js — ثوابت التخطيط والألوان ومولّدات الشحنات لتجربة
- * "البالونات والكهرباء الساكنة". الأبعاد بإحداثيات منطقية داخل اللوحة
- * (canvas) ثم تُقاس بصرياً عبر CSS، فيبقى المشهد حاداً على كل الشاشات.
+ * staticData.js — التخطيط والثوابت لتجربة الكهرباء الساكنة في غرفة جلوس.
+ * كل الإحداثيات "تصميمية" (design px) تُكبَّر لتناسب الشاشة، تماماً كتجربة الطفو.
+ * لا لوحات واجهة: كل الأدوات داخل الغرفة (سلّة البالونات، لوح الجدار المنزلق، العدسة).
  */
-
-export const SCENE_W = 940;
-export const SCENE_H = 560;
-
-/* منطقة السترة (يمين المشهد في RTL بصرياً، لكن الإحداثيات يسار اللوحة) */
-export const SWEATER = { x: 60, y: 96, w: 300, h: 380 };
-/* شبكة الشحنات داخل السترة */
-export const SWEATER_GRID = { cols: 5, rows: 6, padX: 46, padY: 60 };
-
-/* الجدار: شريط رأسي على أقصى اليمين */
-export const WALL = { x: 872, y: 40, w: 48, h: 480 };
-export const WALL_ROWS = 11;
-
-/* البالونات: ألوان زاهية بلمعان زجاجي */
-export const BALLOON_SPECS = [
-  { color: "#E8433F", dark: "#B02722", light: "#FF8A7A", start: { x: 560, y: 350 } },
-  { color: "#F2A93B", dark: "#C97F16", light: "#FFD98A", start: { x: 690, y: 250 } },
-];
-export const BALLOON_R = 62;
-
-/* ألوان الشحنات (موحّدة مع بقيّة الموقع: أحمر علم/أزرق هادئ) */
-export const CHARGE = {
-  plus: "#D93B3B",
-  plusDark: "#9e2020",
-  minus: "#2F6FB0",
-  minusDark: "#1c4a7d",
-  r: 11,
-};
-
-/**
- * يبني أزواج شحنات السترة: لكل موقع شحنة موجبة ثابتة (+) وإلكترون سالب (−)
- * متحرّك يمكن للبالون سحبه. مُقترنان بالفهرس نفسه ليُحسب "الفرق" (net +).
- */
-export function buildSweaterCharges() {
-  const plus = [];
-  const minus = [];
-  const { x, y, w, h } = SWEATER;
-  const { cols, rows, padX, padY } = SWEATER_GRID;
-  const innerW = w - padX * 2;
-  const innerH = h - padY * 2;
-  let id = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = x + padX + (cols === 1 ? innerW / 2 : (c / (cols - 1)) * innerW);
-      const cy = y + padY + (rows === 1 ? innerH / 2 : (r / (rows - 1)) * innerH);
-      plus.push({ x: cx - 9, y: cy });
-      minus.push({
-        id: id++,
-        homeX: cx + 9,
-        homeY: cy,
-        x: cx + 9,
-        y: cy,
-        vx: 0,
-        vy: 0,
-        owner: null, // null على السترة، أو فهرس البالون الذي التقطه
-        ox: 0,
-        oy: 0,
-      });
-    }
-  }
-  return { plus, minus };
-}
-
-/**
- * يبني شحنات الجدار: عمود من الأزواج (+ ثابت، − قابل للإزاحة عند الاستقطاب).
- * الجدار متعادل كلياً؛ يقترب سطحه الموجب من البالون السالب فيجذبه.
- */
-export function buildWallCharges() {
-  const rows = [];
-  const { x, y, w, h } = WALL;
-  const cx = x + w / 2;
-  for (let i = 0; i < WALL_ROWS; i++) {
-    const cy = y + 34 + (i / (WALL_ROWS - 1)) * (h - 68);
-    rows.push({
-      plus: { x: cx - 10, y: cy },
-      minusHome: { x: cx + 10, y: cy },
-      minus: { x: cx + 10, y: cy }, // تُزاح لحظياً عند اقتراب بالون مشحون
-    });
-  }
-  return rows;
-}
 
 export const CLAMP = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/** عدد أزواج الشحنات على السترة (إلكترون سالب + شحنة موجبة ثابتة) */
+export const SWEATER_COLS = 5;
+export const SWEATER_ROWS = 6;
+export const MAX_Q = 14; // أقصى عدد إلكترونات يلتقطها بالون واحد
+
+export const BALLOON_R = 62;
+export const BALLOONS = [
+  { name: "red", base: "#e0303f", light: "#ff8b86", dark: "#8f1226", rim: "#ffb3a8" },
+  { name: "teal", base: "#12a9b2", light: "#8ff0ea", dark: "#066a74", rim: "#b8fff7" },
+];
+
+export const CHARGE = { plus: "#e0443f", minus: "#2f7fe0" };
+
+export const LENS_R = 96;
+export const LENS_ZOOM = 1.55;
+
+/**
+ * يحسب مقاس المشهد وأماكن العناصر نسبةً إلى الأرضية والعرض، فيبقى التكوين
+ * متوازناً على الحاسوب والجوال (عرضي) وكذلك الاحتياطي الطولي.
+ */
+export function computeLayout(W, H) {
+  const portrait = H > W * 1.05;
+  const s = portrait ? Math.max(0.28, W / 820) : Math.max(0.3, Math.min(W / 1280, H / 700));
+  const dW = W / s;
+  const dH = H / s;
+  const floorY = dH - (portrait ? 230 : 150);
+  const pillarW = portrait ? 150 : 210;
+  const pillarX = dW - pillarW;
+  const x0 = 30;
+  const free = pillarX - x0;
+
+  const sweaterCx = portrait ? 250 : x0 + free * 0.24;
+  const sweaterCy = floorY - (portrait ? 250 : 270);
+  const windowCx = portrait ? dW * 0.5 : x0 + free * 0.55;
+  const windowW = portrait ? 230 : 250;
+  const windowH = 250;
+  const windowBottom = floorY - 240;
+  const tableCx = portrait ? dW * 0.62 : x0 + free * 0.86;
+  const tableTop = floorY - 150;
+  const basketCx = portrait ? dW * 0.5 : sweaterCx + 250;
+
+  return {
+    s,
+    dW,
+    dH,
+    portrait,
+    floorY,
+    baseY: floorY + 62,
+    pillarW,
+    pillarX,
+    sweater: { cx: sweaterCx, cy: sweaterCy },
+    window: { cx: windowCx, w: windowW, h: windowH, bottom: windowBottom, top: windowBottom - windowH },
+    table: { cx: tableCx, top: tableTop, w: 170 },
+    basket: { cx: basketCx, base: floorY + 64, w: 150, h: 96 },
+    lensRest: { x: tableCx - 36, y: tableTop - 70 },
+    handle: { y: floorY - 150 },
+  };
+}
+
+/** مواضع الأزواج على السترة (إحداثيات محلية، مركز الجسم = 0,0) */
+export function sweaterPairSlots() {
+  const slots = [];
+  for (let r = 0; r < SWEATER_ROWS; r++) {
+    for (let c = 0; c < SWEATER_COLS; c++) {
+      const x = -70 + (c / (SWEATER_COLS - 1)) * 140;
+      const y = -78 + (r / (SWEATER_ROWS - 1)) * 176;
+      slots.push({ x, y });
+    }
+  }
+  return slots;
+}
+
+/** هل النقطة المحلية (بالنسبة لمركز السترة) داخل السترة (جسم + كمّان)؟ */
+export function insideSweater(lx, ly, pad = 0) {
+  const body = lx > -104 - pad && lx < 104 + pad && ly > -136 - pad && ly < 152 + pad;
+  const sl = lx > -168 - pad && lx < -102 + pad && ly > -118 - pad && ly < 132 + pad;
+  const sr = lx > 102 - pad && lx < 168 + pad && ly > -118 - pad && ly < 132 + pad;
+  return body || sl || sr;
+}

@@ -1,0 +1,83 @@
+/**
+ * mobile.css — وضع "اللعبة" على الجوال.
+ * الجوال بالعرض (landscape): المشهد يملأ الشاشة، عمود أدوات جانبي (rail) على
+ * اليمين فيه أزرار الواجهة (رئيسية/شرح/صوت)، ولوحة المعلومات دُرج بزرّ.
+ * الجوال بالطول: شاشة "أدِر جوالك" للتجارب المركّبة بالعرض.
+ * لا تأثير على شاشات الحاسوب/اللوحي: كل شيء داخل media queries.
+ */
+
+/* ---------- عام (كل الأجهزة): الدُرج شفّاف على الشاشات الكبيرة ---------- */
+.info-drawer { display: contents; }
+.info-fab, .info-scrim { display: none; }
+.info-body { display: contents; }
+
+/* شاشة تدوير الجهاز */
+.rotate-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  background: radial-gradient(circle at 50% 30%, #1f8a4f 0%, var(--ps-green-dark) 70%);
+}
+.rotate-prompt h2 { font-size: 1.5rem; font-weight: 700; }
+.rotate-prompt p { font-size: 0.95rem; opacity: 0.85; }
+.rotate-skip {
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 22px;
+  padding: 10px 20px;
+  min-height: 44px;
+}
+.rotate-phone { width: 84px; height: 84px; display: grid; place-items: center; animation: rotate-hint 2.6s ease-in-out infinite; }
+.rotate-phone-body {
+  width: 40px;
+  height: 70px;
+  border-radius: 9px;
+  border: 4px solid #fff;
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+}
+.rotate-phone-body::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 10px;
+  height: 3px;
+  margin-left: -5px;
+  border-radius: 2px;
+  background: #fff;
+}
+@keyframes rotate-hint {
+  0%, 15% { transform: rotate(0deg); }
+  55%, 85% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* لمس: بلا تحديد نص/قوائم ضغط مطوّل (إحساس لعبة) + اللوحات تلتقط الإيماءات */
+@media (pointer: coarse) {
+  body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .color-canvas, .st-canvas, .cl-canvas, .ph-scene { touch-action: none; }
+  button, [role="button"], select { touch-action: manipulation; }
+}
+
+/* ======================================================================
+   الجوال بالطول
+   ====================================================================== */
+@media (orientation: portrait) and (max-width: 560px) {
+  :root .g-hide-phone { display: none; }
+  /* لمسات أكبر لأزرار التجارب في الوضع الطولي الاحتياطي */
+  :root .g-btn { min-width: 44px; min-height: 44px; }
+}

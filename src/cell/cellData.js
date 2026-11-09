@@ -323,14 +323,14 @@ export const ENVELOPE = {
 /* الفروق التي تُبرَز عند تبديل نوع الخلية */
 export const DIFFERENCES = {
   plant: [
-    { id: "wall", label: "جدار خلوي صلب", emoji: "🧱" },
-    { id: "chloroplast", label: "بلاستيدات خضراء (بناء ضوئي)", emoji: "🌿" },
-    { id: "vacuole", label: "فجوة مركزية ضخمة", emoji: "💧" },
+    { id: "wall", label: "جدار خلوي صلب", kind: "has" },
+    { id: "chloroplast", label: "بلاستيدات خضراء (بناء ضوئي)", kind: "has" },
+    { id: "vacuole", label: "فجوة مركزية ضخمة", kind: "has" },
   ],
   animal: [
-    { id: "no-wall", label: "بلا جدار — غشاء مرن فقط", emoji: "🚫🧱" },
-    { id: "no-chloroplast", label: "بلا بلاستيدات (لا تصنع غذاءها)", emoji: "🚫🌿" },
-    { id: "small-vacuole", label: "فجوات صغيرة متعدّدة", emoji: "•" },
+    { id: "no-wall", label: "بلا جدار — غشاء مرن فقط", kind: "no" },
+    { id: "no-chloroplast", label: "بلا بلاستيدات (لا تصنع غذاءها)", kind: "no" },
+    { id: "small-vacuole", label: "فجوات صغيرة متعدّدة", kind: "few" },
   ],
 };
 
