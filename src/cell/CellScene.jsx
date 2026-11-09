@@ -179,7 +179,7 @@ function makeSim(cellType, reduced) {
 }
 
 const CellScene = forwardRef(function CellScene(
-  { cellType, mode, selectedId, reducedMotion, soundEnabled, onPick, onZoom, onPerf, onFocus },
+  { cellType, mode, selectedId, reducedMotion, soundEnabled, paused, onPick, onZoom, onPerf, onFocus },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -194,7 +194,7 @@ const CellScene = forwardRef(function CellScene(
   const gestureRef = useRef(null);
 
   const propsRef = useRef({});
-  propsRef.current = { cellType, mode, selectedId, reducedMotion, soundEnabled, onPick, onZoom, onPerf, onFocus };
+  propsRef.current = { cellType, mode, selectedId, reducedMotion, soundEnabled, paused, onPick, onZoom, onPerf, onFocus };
 
   useImperativeHandle(ref, () => ({
     resetView() {
@@ -230,6 +230,23 @@ const CellScene = forwardRef(function CellScene(
     },
     exitDive() {
       simRef.current.diveTarget = 0;
+    },
+    /** حالة الزووم اللحظية (يقرؤها المجهر كل إطار لتدوير المقابض ومؤشّر المقياس) */
+    getZoom() {
+      const s = simRef.current;
+      return { p: s.p, target: s.pTarget, dive: s.diveP, auto: s.autoplay };
+    },
+    /** قفزة إلى مستوى تكبير (برج العدسات) */
+    setZoom(p) {
+      const s = simRef.current;
+      s.autoplay = false;
+      s.pTarget = CLAMP(p, 0, 1);
+    },
+    /** مقبض التركيز: تغيير نسبي ناعم */
+    nudgeZoom(d) {
+      const s = simRef.current;
+      s.autoplay = false;
+      s.pTarget = CLAMP(s.pTarget + d, 0, 1);
     },
   }));
 
@@ -1657,6 +1674,12 @@ const CellScene = forwardRef(function CellScene(
     if (propsRef.current.soundEnabled && !propsRef.current.reducedMotion) CellSound.startAmbient();
 
     const loop = (ts) => {
+      if (propsRef.current.paused) {
+        // المجهر معروض: لا نحاكي ولا نرسم (توفير للبطارية)، ونبدأ المقدّمة عند أول نظرة
+        lastTsRef.current = 0;
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
       const last = lastTsRef.current || ts;
       const dt = CLAMP((ts - last) / 16.667, 0, 2.5);
       lastTsRef.current = ts;

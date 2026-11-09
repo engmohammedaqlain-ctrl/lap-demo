@@ -68,8 +68,8 @@ function buildStatic(L, dpr, tex) {
 
   // --- الجدار: بلاط أبيض ---
   const wall = g.createLinearGradient(0, 0, 0, benchY);
-  wall.addColorStop(0, "#f4f8f6");
-  wall.addColorStop(1, "#e4ece9");
+  wall.addColorStop(0, "#cfe0da");
+  wall.addColorStop(1, "#b9d0c9");
   g.fillStyle = wall;
   g.fillRect(0, 0, dW, benchY + 4);
   const tile = document.createElement("canvas");
@@ -77,11 +77,11 @@ function buildStatic(L, dpr, tex) {
   tile.height = 48;
   const t = tile.getContext("2d");
   const tg = t.createLinearGradient(0, 0, 96, 48);
-  tg.addColorStop(0, "rgba(255,255,255,0.55)");
-  tg.addColorStop(1, "rgba(190,210,206,0.25)");
+  tg.addColorStop(0, "rgba(255,255,255,0.32)");
+  tg.addColorStop(1, "rgba(120,160,152,0.2)");
   t.fillStyle = tg;
   t.fillRect(0, 0, 96, 48);
-  t.strokeStyle = "rgba(110,140,134,0.28)";
+  t.strokeStyle = "rgba(70,105,98,0.42)";
   t.lineWidth = 2;
   t.strokeRect(0, 0, 96, 48);
   t.fillStyle = "rgba(255,255,255,0.5)";
@@ -273,6 +273,24 @@ function buildStatic(L, dpr, tex) {
   return c;
 }
 
+/* ======================= ظلال الطاولة (الضوء من النافذة أعلى اليسار) ======================= */
+function benchShadow(g, cx, y, halfW, strength = 1) {
+  const len = halfW * 1.9;
+  const sg = g.createLinearGradient(cx - halfW, 0, cx + len, 0);
+  sg.addColorStop(0, `rgba(12,8,4,${0.34 * strength})`);
+  sg.addColorStop(0.55, `rgba(12,8,4,${0.16 * strength})`);
+  sg.addColorStop(1, "rgba(12,8,4,0)");
+  g.fillStyle = sg;
+  g.beginPath();
+  g.ellipse(cx + halfW * 0.45, y + 1, halfW * 1.45, 9, 0, 0, Math.PI * 2);
+  g.fill();
+  // ظل تلامس داكن تحت القاعدة
+  g.fillStyle = `rgba(8,5,2,${0.5 * strength})`;
+  g.beginPath();
+  g.ellipse(cx, y + 1, halfW * 0.96, 3.4, 0, 0, Math.PI * 2);
+  g.fill();
+}
+
 /* ======================= رسم الزجاجيات ======================= */
 function glassBeaker(g, L, liquid, level, time, st) {
   const { bx, y0 } = L;
@@ -281,10 +299,7 @@ function glassBeaker(g, L, liquid, level, time, st) {
   const top = y0 - BEAKER_H;
 
   // ظل وانعكاس لون السائل على الطاولة
-  g.fillStyle = "rgba(20,14,8,0.22)";
-  g.beginPath();
-  g.ellipse(bx + 6, L.benchY - 1, BEAKER_W / 2 + 18, 7, 0, 0, Math.PI * 2);
-  g.fill();
+  benchShadow(g, bx, L.benchY - 1, BEAKER_W / 2 + 8, 1);
 
   // الجسم الخلفي
   g.save();
@@ -410,10 +425,7 @@ function drawJar(g, L, waste, time) {
   const x1 = L.jarX + JAR_W / 2;
   const y1 = L.jarBase;
   const top = y1 - JAR_H;
-  g.fillStyle = "rgba(20,14,8,0.2)";
-  g.beginPath();
-  g.ellipse(L.jarX + 4, y1 - 1, JAR_W / 2 + 12, 6, 0, 0, Math.PI * 2);
-  g.fill();
+  benchShadow(g, L.jarX, y1 - 1, JAR_W / 2 + 4, 0.9);
   g.save();
   g.beginPath();
   g.roundRect(x0, top, JAR_W, JAR_H, [4, 4, 10, 10]);
@@ -621,10 +633,7 @@ function drawStopcock(g, L, on, hover) {
 function drawMeter(g, L, pH, empty, time, tone) {
   const m = L.meter;
   // الجسم
-  g.fillStyle = "rgba(20,14,8,0.22)";
-  g.beginPath();
-  g.ellipse(m.x + m.w / 2, L.benchY - 1, m.w / 2 + 10, 6, 0, 0, Math.PI * 2);
-  g.fill();
+  benchShadow(g, m.x + m.w / 2, L.benchY - 1, m.w / 2, 0.9);
   const body = g.createLinearGradient(0, m.y, 0, m.y + m.h);
   body.addColorStop(0, "#f2f5f6");
   body.addColorStop(1, "#c3cbcf");
@@ -726,10 +735,7 @@ function makerGeom(L) {
 
 function drawMaker(g, L, active, pH, vol, hover) {
   const { m, kx, ky, kr, lx, ly0, ly1 } = makerGeom(L);
-  g.fillStyle = "rgba(20,14,8,0.22)";
-  g.beginPath();
-  g.ellipse(m.x + m.w / 2, L.benchY - 1, m.w / 2 + 10, 6, 0, 0, Math.PI * 2);
-  g.fill();
+  benchShadow(g, m.x + m.w / 2, L.benchY - 1, m.w / 2, 0.9);
   const body = g.createLinearGradient(0, m.y, 0, m.y + m.h);
   body.addColorStop(0, "#38444a");
   body.addColorStop(1, "#1e282d");
@@ -814,92 +820,246 @@ function bottleBox(L, i) {
   const r = Math.floor(i / sh.cols);
   const c = i % sh.cols;
   const pitch = sh.w / sh.cols;
-  return { cx: sh.x + pitch * (c + 0.5), base: sh.y + (r + 1) * sh.rowH, w: Math.min(80, pitch - 16), h: Math.min(104, sh.rowH - 18) };
+  return { cx: sh.x + pitch * (c + 0.5), base: sh.y + (r + 1) * sh.rowH, w: Math.min(78, pitch - 16), h: Math.min(108, sh.rowH - 16) };
+}
+
+// شكل الحاوية لكل سائل: أسطوانة / زجاجة بكتف / دورق كروي
+const BOTTLE_KIND = {
+  lemon: "bottle",
+  soda: "cylinder",
+  vinegar: "bottle",
+  orange: "cylinder",
+  coffee: "jar",
+  milk: "cylinder",
+  water: "flask",
+  blood: "tube",
+  seawater: "flask",
+  toothpaste: "jar",
+  soap: "bottle",
+  bleach: "bottle",
+};
+
+function shade3d(g, x0, x1, y0, y1, strength = 1) {
+  // تظليل أسطواني: حواف داكنة، قلب أفتح، لمعة طولية — يعطي إحساس الحجم
+  const cg = g.createLinearGradient(x0, 0, x1, 0);
+  cg.addColorStop(0, `rgba(0,0,0,${0.34 * strength})`);
+  cg.addColorStop(0.16, `rgba(0,0,0,${0.06 * strength})`);
+  cg.addColorStop(0.32, "rgba(255,255,255,0.0)");
+  cg.addColorStop(0.5, `rgba(255,255,255,${0.1 * strength})`);
+  cg.addColorStop(0.82, `rgba(0,0,0,${0.1 * strength})`);
+  cg.addColorStop(1, `rgba(0,0,0,${0.38 * strength})`);
+  g.fillStyle = cg;
+  g.fillRect(x0, y0, x1 - x0, y1 - y0);
+}
+
+function bottlePath(g, kind, cx, y1, w, h) {
+  const x0 = cx - w / 2;
+  const x1 = cx + w / 2;
+  g.beginPath();
+  if (kind === "cylinder") {
+    const nw = w * 0.62;
+    g.moveTo(x0 + 7, y1);
+    g.quadraticCurveTo(x0, y1, x0, y1 - 7);
+    g.lineTo(x0, y1 - h * 0.86);
+    g.quadraticCurveTo(x0, y1 - h * 0.9, cx - nw / 2, y1 - h * 0.92);
+    g.lineTo(cx - nw / 2, y1 - h);
+    g.lineTo(cx + nw / 2, y1 - h);
+    g.lineTo(cx + nw / 2, y1 - h * 0.92);
+    g.quadraticCurveTo(x1, y1 - h * 0.9, x1, y1 - h * 0.86);
+    g.lineTo(x1, y1 - 7);
+    g.quadraticCurveTo(x1, y1, x1 - 7, y1);
+  } else if (kind === "jar") {
+    const jh = h * 0.74;
+    g.moveTo(x0 + 8, y1);
+    g.quadraticCurveTo(x0, y1, x0, y1 - 8);
+    g.lineTo(x0, y1 - jh);
+    g.lineTo(x1, y1 - jh);
+    g.lineTo(x1, y1 - 8);
+    g.quadraticCurveTo(x1, y1, x1 - 8, y1);
+  } else if (kind === "flask") {
+    // دورق كروي بعنق طويل
+    const r = w * 0.5;
+    const cy = y1 - r;
+    const nw = w * 0.3;
+    const dy = Math.sqrt(r * r - (nw / 2) ** 2);
+    g.moveTo(cx - nw / 2, y1 - h);
+    g.lineTo(cx - nw / 2, cy - dy);
+    g.arc(cx, cy, r, Math.atan2(-dy, -nw / 2), Math.atan2(-dy, nw / 2), true);
+    g.lineTo(cx + nw / 2, y1 - h);
+  } else if (kind === "tube") {
+    // أنبوب اختبار على قاعدة
+    const tw = w * 0.5;
+    g.moveTo(cx - tw / 2, y1 - h);
+    g.lineTo(cx - tw / 2, y1 - tw / 2);
+    g.arc(cx, y1 - tw / 2, tw / 2, Math.PI, 0, true);
+    g.lineTo(cx + tw / 2, y1 - h);
+  } else {
+    // زجاجة بكتف
+    const nw = w * 0.34;
+    const shoulder = y1 - h * 0.62;
+    g.moveTo(x0 + 6, y1);
+    g.quadraticCurveTo(x0, y1, x0, y1 - 8);
+    g.lineTo(x0, shoulder + 12);
+    g.quadraticCurveTo(x0, shoulder, cx - nw / 2 - 2, shoulder - 8);
+    g.lineTo(cx - nw / 2, y1 - h + 10);
+    g.lineTo(cx + nw / 2, y1 - h + 10);
+    g.lineTo(cx + nw / 2 + 2, shoulder - 8);
+    g.quadraticCurveTo(x1, shoulder, x1, shoulder + 12);
+    g.lineTo(x1, y1 - 8);
+    g.quadraticCurveTo(x1, y1, x1 - 6, y1);
+  }
+  g.closePath();
+}
+
+function richen(c) {
+  const avg = (c[0] + c[1] + c[2]) / 3;
+  return c.map((v) => clamp(avg + (v - avg) * 1.45, 0, 255));
 }
 
 function drawBottle(g, b, key, state) {
-  const sol = SOLUTIONS[key];
+  const sol0 = SOLUTIONS[key];
+  const sol = { ...sol0, color: richen(sol0.color), alpha: Math.max(0.92, sol0.alpha) };
+  const kind = BOTTLE_KIND[key] || "bottle";
   const { cx, base, w, h } = b;
   const lift = state.selected ? 8 : state.hover ? 4 : 0;
   const y1 = base - lift;
   const x0 = cx - w / 2;
-  const neckW = w * 0.34;
-  const shoulder = y1 - h * 0.62;
-  // ظل
-  g.fillStyle = "rgba(0,0,0,0.28)";
+  const x1 = cx + w / 2;
+  const light = [-0.55, -0.3]; // الضوء من أعلى اليسار (النافذة)
+
+  // ظل ساقط على الرف باتجاه اليمين + ظل تلامس
+  const sw = w * 0.9;
+  const cast = g.createLinearGradient(cx, 0, cx + sw + h * 0.45, 0);
+  cast.addColorStop(0, "rgba(10,6,2,0.38)");
+  cast.addColorStop(1, "rgba(10,6,2,0)");
+  g.fillStyle = cast;
   g.beginPath();
-  g.ellipse(cx, base + 1, w * 0.46, 4, 0, 0, Math.PI * 2);
+  g.moveTo(x0 + 4, base + 1);
+  g.lineTo(x1 - 2, base + 1);
+  g.lineTo(x1 + h * 0.45, base + 8);
+  g.lineTo(x0 + h * 0.3, base + 8);
+  g.closePath();
   g.fill();
+  g.fillStyle = "rgba(10,6,2,0.5)";
+  g.beginPath();
+  g.ellipse(cx, base + 1, w * 0.46, 3.2, 0, 0, Math.PI * 2);
+  g.fill();
+
+  // الحجم الداخلي للسائل
+  const lvl = kind === "tube" ? 0.62 : kind === "flask" ? 0.52 : 0.5;
   g.save();
   if (state.selected) {
-    g.shadowColor = "rgba(255,240,150,0.95)";
-    g.shadowBlur = 22;
+    g.shadowColor = "rgba(255,236,140,0.95)";
+    g.shadowBlur = 24;
   }
-  const body = () => {
-    g.beginPath();
-    g.moveTo(x0 + 6, y1);
-    g.quadraticCurveTo(x0, y1, x0, y1 - 8);
-    g.lineTo(x0, shoulder + 12);
-    g.quadraticCurveTo(x0, shoulder, cx - neckW / 2 - 2, shoulder - 8);
-    g.lineTo(cx - neckW / 2, y1 - h + 10);
-    g.lineTo(cx + neckW / 2, y1 - h + 10);
-    g.lineTo(cx + neckW / 2 + 2, shoulder - 8);
-    g.quadraticCurveTo(x0 + w, shoulder, x0 + w, shoulder + 12);
-    g.lineTo(x0 + w, y1 - 8);
-    g.quadraticCurveTo(x0 + w, y1, x0 + w - 6, y1);
-    g.closePath();
-  };
-  body();
-  g.fillStyle = "rgba(225,242,246,0.5)";
+  bottlePath(g, kind, cx, y1, w, h);
+  g.fillStyle = "rgba(205,228,234,0.28)";
   g.fill();
   g.restore();
-  // السائل داخل القارورة
+
   g.save();
-  body();
+  bottlePath(g, kind, cx, y1, w, h);
   g.clip();
-  const lvlY = y1 - h * 0.5;
+  const bodyTop = kind === "jar" ? y1 - h * 0.74 : y1 - h;
+  const lvlY = y1 - (y1 - bodyTop) * lvl;
+  // السائل: لون كامل + تدرّج عمق + تظليل أسطواني
   const lg = g.createLinearGradient(0, lvlY, 0, y1);
-  lg.addColorStop(0, rgba(sol.color, Math.min(1, sol.alpha + 0.1)));
-  lg.addColorStop(1, rgba(sol.color.map((v) => v * 0.72), 1));
+  lg.addColorStop(0, rgba(sol.color, Math.min(1, sol.alpha + 0.12)));
+  lg.addColorStop(1, rgba(sol.color.map((v) => v * 0.7), 1));
   g.fillStyle = lg;
   g.fillRect(x0, lvlY, w, y1 - lvlY);
-  g.fillStyle = "rgba(255,255,255,0.35)";
-  g.fillRect(x0, lvlY, w, 2);
-  g.restore();
-  // ملصق
-  const ly0 = y1 - h * 0.5 - 4;
-  const lh = h * 0.36;
-  g.fillStyle = "rgba(255,252,244,0.95)";
+  // سطح السائل (قطع ناقص) ليظهر الحجم
+  g.fillStyle = rgba(sol.color.map((v) => Math.min(255, v * 1.15 + 20)), 0.9);
   g.beginPath();
-  g.roundRect(x0 + 3, ly0, w - 6, lh, 4);
+  g.ellipse(cx, lvlY, w * 0.5, 3.6, 0, 0, Math.PI * 2);
   g.fill();
-  g.strokeStyle = "rgba(60,50,30,0.35)";
-  g.lineWidth = 1;
-  g.stroke();
-  g.font = `${Math.round(lh * 0.74)}px ${EMOJI_FONT}`;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillStyle = "#222";
-  g.fillText(sol.emoji, cx, ly0 + lh * 0.54);
-  g.textBaseline = "alphabetic";
-  // غطاء
-  const capCol = ["#d64545", "#2b7de0", "#2f8f56", "#e8b04a", "#7d56c2", "#e07a2b"][(key.charCodeAt(0) + key.length) % 6];
+  shade3d(g, x0, x1, bodyTop, y1, 1.35);
+  // لمعة انعكاس
+  g.fillStyle = "rgba(255,255,255,0.55)";
+  g.fillRect(x0 + w * 0.17, bodyTop + 10, w * 0.09, (y1 - bodyTop) * 0.62);
+  g.fillStyle = "rgba(255,255,255,0.22)";
+  g.fillRect(x0 + w * 0.3, bodyTop + 14, w * 0.04, (y1 - bodyTop) * 0.5);
+  g.fillStyle = "rgba(255,255,255,0.14)";
+  g.fillRect(x1 - w * 0.2, bodyTop + 16, w * 0.06, (y1 - bodyTop) * 0.45);
+  // قاع زجاجي سميك
+  g.fillStyle = "rgba(235,248,250,0.35)";
+  g.fillRect(x0, y1 - 8, w, 8);
+  g.restore();
+
+  // ملصق ورقي مقوّس
+  if (kind !== "tube") {
+    const ly0 = kind === "flask" ? y1 - w * 0.62 : y1 - (y1 - bodyTop) * 0.5;
+    const lh = Math.min(h * 0.3, w * 0.5);
+    const lx = x0 + (kind === "flask" ? w * 0.14 : 2.5);
+    const lw = kind === "flask" ? w * 0.72 : w - 5;
+    g.save();
+    g.fillStyle = "#fbf7ea";
+    g.beginPath();
+    g.roundRect(lx, ly0, lw, lh, 4);
+    g.fill();
+    g.clip();
+    shade3d(g, lx, lx + lw, ly0, ly0 + lh, 0.75);
+    g.restore();
+    g.strokeStyle = "rgba(60,50,30,0.4)";
+    g.lineWidth = 1;
+    g.beginPath();
+    g.roundRect(lx, ly0, lw, lh, 4);
+    g.stroke();
+    const showName = fsz(11) <= 13.5;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = "#222";
+    if (showName) {
+      g.font = `${Math.round(lh * 0.5)}px ${EMOJI_FONT}`;
+      g.fillText(sol.emoji, cx, ly0 + lh * 0.34);
+      g.font = `700 ${Math.round(Math.min(11, lw / 7))}px ${FONT}`;
+      g.fillStyle = "#3b3326";
+      g.fillText(sol.nameAr, cx, ly0 + lh * 0.8, lw - 6);
+    } else {
+      g.font = `${Math.round(lh * 0.72)}px ${EMOJI_FONT}`;
+      g.fillText(sol.emoji, cx, ly0 + lh * 0.54);
+    }
+    g.textBaseline = "alphabetic";
+  } else {
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.font = `${Math.round(w * 0.36)}px ${EMOJI_FONT}`;
+    g.fillStyle = "#222";
+    g.fillText(sol.emoji, cx, y1 - h * 0.28);
+    g.textBaseline = "alphabetic";
+  }
+
+  // غطاء بسطح أسطواني
+  const capCol = ["#d64545", "#2b7de0", "#2f8f56", "#e8a52b", "#7d56c2", "#e07a2b"][(key.charCodeAt(0) + key.length) % 6];
+  const cw = kind === "tube" ? w * 0.54 : kind === "flask" ? w * 0.34 : kind === "jar" ? w + 4 : kind === "cylinder" ? w * 0.66 : w * 0.38;
+  const ch2 = kind === "jar" ? 14 : 15;
+  const capY = kind === "jar" ? y1 - h * 0.74 - ch2 + 2 : y1 - h;
+  const capX = cx - cw / 2;
   g.fillStyle = capCol;
   g.beginPath();
-  g.roundRect(cx - neckW / 2 - 2, y1 - h, neckW + 4, 14, 3);
+  g.roundRect(capX, capY, cw, ch2, 3);
   g.fill();
-  g.fillStyle = "rgba(255,255,255,0.35)";
-  g.fillRect(cx - neckW / 2, y1 - h + 2, neckW * 0.3, 10);
-  // حواف زجاج + لمعة
-  body();
-  g.strokeStyle = "rgba(255,255,255,0.8)";
+  g.save();
+  g.beginPath();
+  g.roundRect(capX, capY, cw, ch2, 3);
+  g.clip();
+  shade3d(g, capX, capX + cw, capY, capY + ch2, 1.1);
+  g.fillStyle = "rgba(0,0,0,0.18)";
+  for (let i = 1; i < 7; i++) g.fillRect(capX + (cw / 7) * i, capY, 1, ch2);
+  g.restore();
+  g.fillStyle = "rgba(255,255,255,0.4)";
+  g.fillRect(capX + 3, capY + 2, cw * 0.16, ch2 - 5);
+
+  // حواف الزجاج
+  bottlePath(g, kind, cx, y1, w, h);
+  g.strokeStyle = "rgba(255,255,255,0.85)";
   g.lineWidth = 2;
   g.stroke();
-  g.strokeStyle = "rgba(60,110,120,0.4)";
+  bottlePath(g, kind, cx, y1, w, h);
+  g.strokeStyle = "rgba(30,70,80,0.55)";
   g.lineWidth = 1;
   g.stroke();
-  g.fillStyle = "rgba(255,255,255,0.5)";
-  g.fillRect(x0 + 6, shoulder + 14, 5, h * 0.4);
+  void light;
 }
 
 /* ======================= طبقات ديناميكية ======================= */
@@ -1171,7 +1331,7 @@ const PhLab = forwardRef(function PhLab(props, ref) {
       g.setTransform(dpr * L.s, 0, 0, dpr * L.s, 0, 0);
 
       // الرف: القوارير
-      if (p.mode === "explore") {
+      if (p.mode) {
         SOLUTION_ORDER.forEach((key, i) => {
           drawBottle(g, bottleBox(L, i), key, { selected: !p.customActive && key === p.solutionKey, hover: s.hover === key });
         });

@@ -6,10 +6,6 @@
  * لا تأثير على شاشات الحاسوب/اللوحي: كل شيء داخل media queries.
  */
 
-/* ---------- عام (كل الأجهزة): الدُرج شفّاف على الشاشات الكبيرة ---------- */
-.info-drawer { display: contents; }
-.info-fab, .info-scrim { display: none; }
-.info-body { display: contents; }
 
 /* شاشة تدوير الجهاز */
 .rotate-prompt {
@@ -79,5 +75,4 @@
 @media (orientation: portrait) and (max-width: 560px) {
   :root .g-hide-phone { display: none; }
   /* لمسات أكبر لأزرار التجارب في الوضع الطولي الاحتياطي */
-  :root .g-btn { min-width: 44px; min-height: 44px; }
 }

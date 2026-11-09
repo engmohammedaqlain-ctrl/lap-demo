@@ -2,68 +2,59 @@
  * colorData.js — ثوابت ومعادلات رؤية الألوان (نمط فاتح بدون إيموجي)
  */
 
-export const SCENE_W = 1000;
-export const SCENE_H = 540;
+/* ===== مشهد "غرفة البصريات": إحداثيات التصميم 1280×720 ===== */
+export const DW = 1280;
+export const DH = 720;
+export const TABLE_Y = 660; // سطح الطاولة
+export const EYE = { x: 640, y: 330 };
+export const CORTEX = { x: 430, y: 312 };
+export const LENS_X = 955; // مقدّمة عدسات الكشّافات
+export const GEL_X = 850; // موضع إطار الشفّاف الملوّن بين الكشّافات والعين
+export const GEL_TOP = 132;
+export const GEL_BOT = 560;
 
-export const FLASHLIGHTS = [
-  {
-    id: "red",
-    name: "أحمر",
-    nameEn: "Red",
-    color: "#E23B3B",
-    rgb: [226, 59, 59],
-    glow: "rgba(226, 59, 59, 0.3)",
-    particleColor: "#F05252",
-    y: 96,
-    wavelength: 700,
-  },
-  {
-    id: "green",
-    name: "أخضر",
-    nameEn: "Green",
-    color: "#22B04B",
-    rgb: [34, 176, 75],
-    glow: "rgba(34, 176, 75, 0.3)",
-    particleColor: "#2ECC5B",
-    y: 235,
-    wavelength: 530,
-  },
-  {
-    id: "blue",
-    name: "أزرق",
-    nameEn: "Blue",
-    color: "#2F6FE0",
-    rgb: [47, 111, 224],
-    glow: "rgba(47, 111, 224, 0.3)",
-    particleColor: "#4A86F0",
-    y: 360,
-    wavelength: 470,
-  },
+export const LIGHTS = [
+  { id: "red", name: "أحمر", nameEn: "Red", color: "#E23B3B", rgb: [226, 59, 59], particleColor: "#FF5C5C", y: 158, wavelength: 700 },
+  { id: "green", name: "أخضر", nameEn: "Green", color: "#22B04B", rgb: [34, 176, 75], particleColor: "#3CE070", y: 314, wavelength: 530 },
+  { id: "blue", name: "أزرق", nameEn: "Blue", color: "#2F6FE0", rgb: [47, 111, 224], particleColor: "#5C98FF", y: 466, wavelength: 470 },
 ];
 
-/* هندسة المشهد: صورة الشخص التشريحية تُرسم في اليسار، وكشّافات مائلة على
-   اليمين تتجمّع أشعّتها في العين. الإحداثيات بمقياس اللوحة (1000×540).
-   PERSON: تحويل رسم الصورة (مقياس وإزاحة). EYE/CORTEX: مواضع بؤبؤ العين
-   والقشرة البصرية داخل المشهد بعد التحويل. */
-/* تحويل رسم كل شخصية (مقياس وإزاحة) بحيث تقع عينها على EYE_CENTER الثابت،
-   فلا تتغيّر الأشعّة/الكشّافات عند التبديل بين الولد والبنت. */
-export const CHARACTERS = {
-  boy: { scale: 0.6, dx: -66, dy: 29 },
-  girl: { scale: 0.757, dx: -83, dy: 16 },
+/* الشخصيتان: صور مقصوصة؛ نقطتا العين والقشرة بالبكسل داخل الصورة، و k تحوّلها
+   لوحدات التصميم بحيث تقع العين على EYE دائماً (فلا تتغيّر الأشعّة بالتبديل). */
+export const SUBJECTS = {
+  boy: { w: 697, h: 898, k: 0.619, eye: [583, 308], head: [277, 0, 420, 560] },
+  girl: { w: 558, h: 746, k: 0.781, eye: [451, 262], head: [138, 0, 420, 560] },
 };
 export const DEFAULT_CHARACTER = "boy";
-export const EYE_CENTER = { x: 535, y: 231 };
-export const CORTEX_CENTER = { x: 332, y: 214 };
-export const BULB_LENS_X = 848; // مقدّمة عدسة الكشّاف (منها تنطلق الفوتونات)
-export const BUBBLE_CENTER = { x: 150, y: 110 };
+
+export const FILTERS = [
+  { id: "red", name: "أحمر", color: "#E23B3B", rgb: [226, 59, 59], pass: [1, 0.08, 0.08] },
+  { id: "green", name: "أخضر", color: "#22B04B", rgb: [34, 176, 75], pass: [0.08, 1, 0.08] },
+  { id: "blue", name: "أزرق", color: "#2F6FE0", rgb: [47, 111, 224], pass: [0.08, 0.08, 1] },
+  { id: "yellow", name: "أصفر", color: "#EAB308", rgb: [234, 179, 8], pass: [1, 1, 0.08] },
+];
+
+/* أهداف التحدّي: ألوان يمكن بلوغها بشدّات الأضواء الثلاثة */
+export const TARGETS = [
+  [100, 100, 0], [0, 100, 100], [100, 0, 100], [100, 50, 0], [50, 0, 100], [0, 100, 50],
+  [100, 0, 50], [50, 100, 0], [0, 50, 100], [50, 50, 50], [100, 100, 100], [100, 50, 50],
+];
+
+export const MIXES = [
+  { id: "yellow", name: "أحمر + أخضر = أصفر", rgb: [100, 100, 0], color: "#F2D21B" },
+  { id: "cyan", name: "أخضر + أزرق = سماوي", rgb: [0, 100, 100], color: "#16BFD0" },
+  { id: "magenta", name: "أحمر + أزرق = أرجواني", rgb: [100, 0, 100], color: "#C43AA3" },
+  { id: "white", name: "الثلاثة = أبيض", rgb: [100, 100, 100], color: "#F4F4F0" },
+  { id: "black", name: "بلا ضوء = أسود", rgb: [0, 0, 0], color: "#262B30" },
+];
 
 export const CLAMP = (v, min, max) => Math.max(min, Math.min(max, v));
 
 export const VISION_MODES = [
-  { id: "normal", name: "رؤية طبيعية" },
-  { id: "protanopia", name: "عمى الأحمر" },
-  { id: "deuteranopia", name: "عمى الأخضر" },
-  { id: "tritanopia", name: "عمى الأزرق" },
+  { id: "normal", name: "رؤية طبيعية", short: "طبيعية", tint: null },
+  { id: "protanopia", name: "عمى الأحمر", short: "عمى الأحمر", tint: [230, 90, 70] },
+  { id: "deuteranopia", name: "عمى الأخضر", short: "عمى الأخضر", tint: [60, 190, 90] },
+  { id: "tritanopia", name: "عمى الأزرق", short: "عمى الأزرق", tint: [70, 120, 230] },
 ];
 
 /* تحويل تقريبي من تدرّج اللون (hue) إلى الطول الموجي المهيمن بالنانومتر */

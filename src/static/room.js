@@ -757,7 +757,7 @@ export function renderWallPanel(L, dpr) {
     g.fill();
   }
   // صورة معلّقة
-  drawFrame(g, 70, 86, 96, 124, 4);
+  drawFrame(g, 74, 118, 96, 124, 4);
   // مقبض سحب نحاسي
   const hx = 40;
   const hy = L.floorY - 270;

@@ -5,11 +5,11 @@
  *   - لوحة السائل (يسار) مع مفاتيح الإظهار.
  *   - في الجسم الغامض: اختر مادة الجسم بعد تجربته في السوائل.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BuoyancyScene from "./buoyancy/BuoyancyScene.jsx";
 import HelpModal from "./components/HelpModal.jsx";
 import { LIQUIDS, LIQUID_ORDER, MYSTERY_MATERIALS, MYSTERY_ORDER } from "./buoyancy/catalog.js";
-import { iconFor } from "./buoyancy/textures.js";
+import { iconFor, getTextures } from "./buoyancy/textures.js";
 import {
   IconHome,
   IconHelp,
@@ -43,6 +43,7 @@ export default function BuoyancyApp({ onHome }) {
   const [sound, setSound] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [guess, setGuess] = useState({ status: "idle", wrong: [], msg: "" });
+  const woodImg = useMemo(() => `url(${getTextures().wood.front.toDataURL("image/jpeg", 0.8)})`, []);
 
   useEffect(() => {
     setMuted(false);
@@ -90,7 +91,7 @@ export default function BuoyancyApp({ onHome }) {
   }
 
   return (
-    <div id="sim-stage" className="bu-stage" data-liquid={liquidKey}>
+    <div id="sim-stage" className="bu-stage" data-liquid={liquidKey} style={{ "--wood-img": woodImg }}>
       <BuoyancyScene
         ref={sceneRef}
         mode={mode}

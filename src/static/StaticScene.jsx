@@ -562,7 +562,7 @@ const StaticScene = forwardRef(function StaticScene({ soundEnabled }, ref) {
       }
       if (!label && w.wallOn && lx > L.pillarX - R * 0.4) label = { sign: "", n: 0 };
       if (label && !resting) {
-        const text = `${label.n === 0 ? "" : label.sign}${ar(label.n)}`;
+        const text = label.n === 0 ? "متعادل" : `⁦${label.sign}${ar(label.n)}⁩`;
         const size = fsz(16);
         g2.font = `700 ${size}px ${FONT}`;
         const tw = g2.measureText(text).width + 20;

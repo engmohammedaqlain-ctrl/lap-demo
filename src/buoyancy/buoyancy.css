@@ -246,3 +246,81 @@
 @media (prefers-reduced-motion: reduce) {
   .bu-btn, .bu-liquid, .bu-choice { transition: none; }
 }
+
+
+/* ======================================================================
+   ستايل "مدمج بالبيئة": اللوحات خزائن خشبية مثبّتة على الجدار بنفس خامة
+   الرف والطاولة، والأزرار صفائح نحاسية ومنقوشة — لا زجاج عائم.
+   ====================================================================== */
+.bu-stage {
+  --brass-a: #f1d27e;
+  --brass-b: #c1902f;
+  --paper-a: #fbf4e2;
+  --paper-b: #e9dcb9;
+  --ink-wood: #3b2a14;
+}
+.bu-panel,
+.bu-tabs {
+  background:
+    linear-gradient(180deg, rgba(150,96,46,0.22), rgba(48,26,10,0.38)),
+    var(--wood-img, none) #a9733f;
+  background-size: cover, 260px;
+  border: 3px solid #5a3818;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 222, 165, 0.28),
+    inset 0 4px 10px rgba(0, 0, 0, 0.4),
+    0 12px 26px rgba(30, 14, 4, 0.4);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #f5e6c8;
+}
+.bu-h,
+.bu-panel-head { color: #f0d9a8; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
+.bu-fluid { padding: 12px 12px 10px; }
+.bu-liquid {
+  background: linear-gradient(180deg, var(--paper-a), var(--paper-b));
+  border: 1.5px solid #8a6a3a;
+  border-radius: 7px;
+  color: var(--ink-wood);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 #fff;
+}
+.bu-liquid:hover { transform: none; filter: brightness(1.04); }
+.bu-liquid.active {
+  background: linear-gradient(180deg, #fff0bd, #f2cd6c);
+  border-color: #fff4c9;
+  box-shadow: 0 0 0 2px #d9a63a, 0 0 16px rgba(255, 214, 110, 0.65), inset 0 1px 0 #fff;
+}
+.bu-liquid-d { color: #7a6340; }
+.bu-density { border-top: 1px dashed rgba(240, 217, 168, 0.35); }
+.bu-density b { color: #ffe9b0; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.bu-density small { color: #dcc08a; }
+.bu-tog {
+  background: linear-gradient(180deg, #4a321a, #2c1c0b);
+  color: #e8cf9a;
+  border: 1px solid #1c1208;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.25), 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.bu-tog.on {
+  background: linear-gradient(180deg, var(--brass-a), var(--brass-b));
+  color: #2e1e0a;
+  border-color: #6b4a14;
+}
+.bu-tabs button { color: #e8cf9a; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.bu-tabs button.on {
+  background: linear-gradient(180deg, var(--brass-a), var(--brass-b));
+  color: #2e1e0a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.bu-choice {
+  background: linear-gradient(180deg, var(--paper-a), var(--paper-b));
+  border: 1.5px solid #8a6a3a;
+  color: var(--ink-wood);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.bu-msg { color: #f0d9a8; }
+.bu-guess.is-right .bu-msg { color: #b8f0c4; }
+.bu-guess.is-wrong .bu-msg { color: #ffb99a; }
+.bu-next { background: linear-gradient(180deg, var(--brass-a), var(--brass-b)); color: #2e1e0a; border: 1px solid #6b4a14; }
+.bu-pop { background: var(--paper-a); }

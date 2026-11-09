@@ -4,7 +4,7 @@
  * برج العدسات، طاولة العيّنة والشرائح الزجاجية، رافعة الغوص، ولوحة النحاس
  * المنقوشة. الجزء الثابت يُرسم مرة واحدة على طبقة خارج الشاشة، والمتحرّك كل إطار.
  */
-import { OBJECTIVES } from "./layout.js";
+import { OBJECTIVES, formatMag } from "./layout.js";
 
 const FONT = "'IBM Plex Sans Arabic', sans-serif";
 
@@ -205,6 +205,126 @@ function head(g, L) {
   ].forEach(([x, y]) => screw(g, x, y, L.orient === "landscape" ? 8 : 6));
 }
 
+/** عمود وقاعدة: يربطان الرأس بالطاولة فيُقرأ الشكل كمجهر كامل */
+function baseAndPillar(g, L) {
+  const { head: h, turret: t } = L;
+  // العمود خلف برج العدسات
+  const pw = t.R * 1.7;
+  const px = t.cx - pw / 2;
+  const py = h.y + h.h - 70;
+  const ph = L.benchY + 24 - py;
+  g.save();
+  g.shadowColor = "rgba(0,0,0,0.4)";
+  g.shadowBlur = 16;
+  g.fillStyle = "#222a30";
+  rr(g, px, py, pw, ph, 18);
+  g.fill();
+  g.restore();
+  const pg = g.createLinearGradient(px, 0, px + pw, 0);
+  pg.addColorStop(0, "#1b2126");
+  pg.addColorStop(0.3, "#48525b");
+  pg.addColorStop(0.5, "#2f373e");
+  pg.addColorStop(1, "#171c20");
+  g.fillStyle = pg;
+  rr(g, px, py, pw, ph, 18);
+  g.fill();
+
+  // القاعدة: بلاطة معدنية تحمل الطاولة والرافعة
+  const x0 = Math.max(6, L.stage.x - 30);
+  const x1 = Math.min(L.dW - 6, L.lever.x + L.lever.w + 30);
+  const y0 = L.benchY - 2;
+  const hh = Math.max(L.stage.h, L.lever.h) + 40;
+  g.save();
+  g.shadowColor = "rgba(30,14,0,0.55)";
+  g.shadowBlur = 22;
+  g.shadowOffsetY = 12;
+  const bg = g.createLinearGradient(0, y0, 0, y0 + hh);
+  bg.addColorStop(0, "#58626b");
+  bg.addColorStop(0.12, "#363e46");
+  bg.addColorStop(1, "#1a1f24");
+  g.fillStyle = bg;
+  rr(g, x0, y0, x1 - x0, hh, 22);
+  g.fill();
+  g.restore();
+  g.strokeStyle = "rgba(255,255,255,0.28)";
+  g.lineWidth = 2;
+  rr(g, x0 + 1.5, y0 + 1.5, x1 - x0 - 3, hh - 3, 21);
+  g.stroke();
+  // قدمان مطّاطيتان
+  g.fillStyle = "#0d0f11";
+  for (const fx of [x0 + 40, x1 - 40]) {
+    rr(g, fx - 28, y0 + hh - 2, 56, 10, 5);
+    g.fill();
+  }
+}
+
+/** أشياء على الطاولة (إن وُجدت مساحة): طبق بتري وزجاجة قطّارة */
+function props(g, L) {
+  const free = L.dH - (L.benchY + Math.max(L.stage.h, L.lever.h) + 40 + 18);
+  if (free < 64) return;
+  const y = L.benchY + Math.max(L.stage.h, L.lever.h) + 40 + 18 + free * 0.5;
+  // طبق بتري
+  const px = L.stage.x + L.stage.w * 0.45;
+  const rx = Math.min(58, free * 0.9);
+  const ry = rx * 0.34;
+  g.save();
+  g.fillStyle = "rgba(30,14,0,0.3)";
+  g.beginPath();
+  g.ellipse(px + 4, y + ry * 0.4, rx + 6, ry + 4, 0, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+  g.fillStyle = "rgba(225,240,246,0.5)";
+  g.strokeStyle = "rgba(255,255,255,0.9)";
+  g.lineWidth = 2;
+  g.beginPath();
+  g.ellipse(px, y, rx, ry, 0, 0, Math.PI * 2);
+  g.fill();
+  g.stroke();
+  const agar = g.createRadialGradient(px - rx * 0.2, y - ry * 0.2, 2, px, y, rx * 0.85);
+  agar.addColorStop(0, "#f7d9c4");
+  agar.addColorStop(1, "#e2a98a");
+  g.fillStyle = agar;
+  g.beginPath();
+  g.ellipse(px, y, rx * 0.86, ry * 0.8, 0, 0, Math.PI * 2);
+  g.fill();
+  const rr0 = rng(3);
+  for (let i = 0; i < 9; i++) {
+    const a = rr0() * Math.PI * 2;
+    const d = Math.sqrt(rr0()) * 0.7;
+    g.fillStyle = `rgba(${150 + rr0() * 60},${70 + rr0() * 50},${60 + rr0() * 40},0.8)`;
+    g.beginPath();
+    g.ellipse(px + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d, 3 + rr0() * 3, 2 + rr0() * 1.5, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  // زجاجة قطّارة
+  const bx = L.lever.x + L.lever.w * 0.55;
+  const bw = 34;
+  const bh = Math.min(70, free * 1.4);
+  g.fillStyle = "rgba(30,14,0,0.3)";
+  g.beginPath();
+  g.ellipse(bx + 6, y + 10, bw * 0.8, 8, 0, 0, Math.PI * 2);
+  g.fill();
+  const glass = g.createLinearGradient(bx - bw / 2, 0, bx + bw / 2, 0);
+  glass.addColorStop(0, "#6e3a12");
+  glass.addColorStop(0.35, "#c0782e");
+  glass.addColorStop(1, "#5a2e0c");
+  g.fillStyle = glass;
+  rr(g, bx - bw / 2, y + 10 - bh, bw, bh, 10);
+  g.fill();
+  g.fillStyle = "rgba(255,255,255,0.35)";
+  rr(g, bx - bw / 2 + 5, y + 10 - bh + 8, 4, bh - 18, 2);
+  g.fill();
+  g.fillStyle = "#1c2024";
+  rr(g, bx - 8, y + 10 - bh - 20, 16, 22, 6);
+  g.fill();
+  g.beginPath();
+  g.ellipse(bx, y + 10 - bh - 22, 9, 7, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "rgba(250,246,230,0.92)";
+  rr(g, bx - bw / 2 + 4, y + 10 - bh * 0.62, bw - 8, bh * 0.3, 3);
+  g.fill();
+}
+
 function axles(g, L) {
   for (const a of L.axles) {
     const gr = g.createLinearGradient(0, a.y, 0, a.y + a.h);
@@ -266,6 +386,20 @@ function tray(g, L) {
   g.fillStyle = inner;
   rr(g, ix, iy, iw, ih, 10);
   g.fill();
+  // حجرتا الشرائح (مخمل غائر + حافة نحاسية)
+  const sw = Math.min(176, t.w - 28) + 10;
+  for (let i = 0; i < 2; i++) {
+    const cy = t.y + t.h * (0.3 + 0.4 * i);
+    g.fillStyle = "rgba(0,0,0,0.38)";
+    rr(g, t.x + t.w / 2 - sw / 2, cy - 29, sw, 58, 8);
+    g.fill();
+    g.strokeStyle = "rgba(214,176,96,0.55)";
+    g.lineWidth = 1.4;
+    g.setLineDash([7, 5]);
+    rr(g, t.x + t.w / 2 - sw / 2, cy - 29, sw, 58, 8);
+    g.stroke();
+    g.setLineDash([]);
+  }
 }
 
 function stagePlate(g, L) {
@@ -352,6 +486,8 @@ export function buildStatic(L, dpr) {
   wall(g, L);
   bench(g, L);
   head(g, L);
+  baseAndPillar(g, L);
+  props(g, L);
   axles(g, L);
   tray(g, L);
   stagePlate(g, L);
@@ -486,17 +622,19 @@ function plate(g, L, st) {
   g.textAlign = "left";
   g.font = `700 ${fsz(14, L.s)}px ${FONT}`;
   g.fillStyle = "rgba(255,255,255,0.5)";
-  g.fillText(z.mag, p.x + 28, p.y + 24.2);
-  g.fillStyle = "#2b2316";
-  g.fillText(z.mag, p.x + 28, p.y + 23);
+  const magText = formatMag(st.pShown);
+  const beyond = st.pShown > 0.615;
+  g.fillText(magText, p.x + 28, p.y + 24.2);
+  g.fillStyle = beyond ? "#9a1b12" : "#2b2316";
+  g.fillText(magText, p.x + 28, p.y + 23);
   // مسطرة تقدّم الزووم
   const rx = p.x + 28;
   const rw = p.w - 56;
   const ry = p.y + p.h - 12;
-  g.strokeStyle = "rgba(43,35,22,0.75)";
   g.lineWidth = 1.2;
   for (let i = 0; i <= 20; i++) {
     const x = rx + (rw * i) / 20;
+    g.strokeStyle = i / 20 > 0.61 ? "rgba(154,27,18,0.85)" : "rgba(43,35,22,0.75)";
     g.beginPath();
     g.moveTo(x, ry);
     g.lineTo(x, ry - (i % 5 === 0 ? 7 : 4));
@@ -596,19 +734,22 @@ function turretDraw(g, L, st) {
     const y = t.cy + Math.sin(a) * t.ring;
     const active = i === st.activeObj;
     objective(g, x, y, t.objR, OBJECTIVES[i], active, a);
-    // التسمية المنقوشة على القرص
-    const lx = t.cx + Math.cos(a) * (t.ring + t.objR + 11);
-    const ly = t.cy + Math.sin(a) * (t.ring + t.objR + 11);
-    if (Math.hypot(lx - t.cx, ly - t.cy) < t.R + 8) {
+    // التسمية: لوحة صغيرة داكنة مقروءة فوق أي خلفية
+    const lx = t.cx + Math.cos(a) * (t.ring + t.objR + 10);
+    const ly = t.cy + Math.sin(a) * (t.ring + t.objR + 10);
+    if (Math.sin(a) > -0.2) {
       g.save();
-      g.font = `700 ${fsz(12, L.s)}px ${FONT}`;
+      const size = fsz(13, L.s);
+      g.font = `700 ${size}px ${FONT}`;
+      g.direction = "ltr";
+      const tw = g.measureText(OBJECTIVES[i].label).width + 14;
+      g.fillStyle = active ? "rgba(255,214,102,0.95)" : "rgba(18,22,26,0.82)";
+      rr(g, lx - tw / 2, ly - size * 0.75, tw, size * 1.5, size * 0.75);
+      g.fill();
       g.textAlign = "center";
       g.textBaseline = "middle";
-      g.direction = "ltr";
-      g.fillStyle = "rgba(255,255,255,0.7)";
+      g.fillStyle = active ? "#2d2200" : "#fff";
       g.fillText(OBJECTIVES[i].label, lx, ly + 0.8);
-      g.fillStyle = active ? "#1d2329" : "#4a535a";
-      g.fillText(OBJECTIVES[i].label, lx, ly);
       g.restore();
     }
   }
@@ -650,8 +791,10 @@ function slide(g, L, key, sl, hot) {
   g.lineWidth = 1;
   rr(g, x, y, w, h, 4);
   g.stroke();
-  // مسطّح الملصق (مصقول)
-  const lw = w * 0.26;
+  // مسطّح الملصق (مصقول): يتّسع لعرض النص على الشاشات الصغيرة
+  g.font = `700 ${fsz(11, L.s)}px ${FONT}`;
+  g.direction = "rtl";
+  const lw = Math.min(w * 0.55, Math.max(w * 0.26, g.measureText(key === "plant" ? "نباتية" : "حيوانية").width + 16));
   g.fillStyle = "rgba(250,248,240,0.96)";
   rr(g, x + w - lw, y + 1, lw - 1, h - 2, 3);
   g.fill();

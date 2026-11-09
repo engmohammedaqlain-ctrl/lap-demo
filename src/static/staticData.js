@@ -28,24 +28,24 @@ export const LENS_ZOOM = 1.55;
  */
 export function computeLayout(W, H) {
   const portrait = H > W * 1.05;
-  const s = portrait ? Math.max(0.28, W / 820) : Math.max(0.3, Math.min(W / 1280, H / 700));
+  const s = portrait ? Math.max(0.28, W / 760) : Math.max(0.3, Math.min(W / 1280, H / 700));
   const dW = W / s;
   const dH = H / s;
   const floorY = dH - (portrait ? 230 : 150);
-  const pillarW = portrait ? 150 : 210;
+  const pillarW = portrait ? 140 : 210;
   const pillarX = dW - pillarW;
   const x0 = 30;
   const free = pillarX - x0;
 
-  const sweaterCx = portrait ? 250 : x0 + free * 0.24;
+  const sweaterCx = portrait ? 200 : x0 + free * 0.24;
   const sweaterCy = floorY - (portrait ? 250 : 270);
-  const windowCx = portrait ? dW * 0.5 : x0 + free * 0.55;
+  const windowCx = portrait ? 380 : x0 + free * 0.55;
   const windowW = portrait ? 230 : 250;
   const windowH = 250;
-  const windowBottom = floorY - 240;
-  const tableCx = portrait ? dW * 0.62 : x0 + free * 0.86;
+  const windowBottom = floorY - (portrait ? 540 : 240);
+  const tableCx = portrait ? 505 : x0 + free * 0.86;
   const tableTop = floorY - 150;
-  const basketCx = portrait ? dW * 0.5 : sweaterCx + 250;
+  const basketCx = portrait ? 380 : sweaterCx + 250;
 
   return {
     s,
@@ -58,7 +58,7 @@ export function computeLayout(W, H) {
     pillarX,
     sweater: { cx: sweaterCx, cy: sweaterCy },
     window: { cx: windowCx, w: windowW, h: windowH, bottom: windowBottom, top: windowBottom - windowH },
-    table: { cx: tableCx, top: tableTop, w: 170 },
+    table: { cx: tableCx, top: tableTop, w: portrait ? 130 : 170 },
     basket: { cx: basketCx, base: floorY + 64, w: 150, h: 96 },
     lensRest: { x: tableCx - 36, y: tableTop - 70 },
     handle: { y: floorY - 150 },

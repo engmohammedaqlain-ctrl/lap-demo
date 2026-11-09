@@ -550,9 +550,14 @@ export class StaticWorld {
         }
         if (d < b.r + 8) {
           c.attached = b.i;
-          const ang = Math.atan2(c.y - b.y, c.x - b.x);
-          c.ox = Math.cos(ang) * (b.r * 0.92);
-          c.oy = Math.sin(ang) * (b.r * 0.98);
+          // وزّع القصاصات على قوس السطح السفلي/الجانبي بدل تكتّلها في نقطة واحدة
+          const n = this.confetti.filter((o) => o.attached === b.i).length;
+          const spread = [0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5, 2.0, -2.0][n % 9];
+          const ang = Math.PI / 2 + spread * 0.62 + (Math.random() - 0.5) * 0.18;
+          const rad = b.r * (0.9 + (n % 2) * 0.06);
+          c.ox = Math.cos(ang) * rad;
+          c.oy = Math.sin(ang) * rad * 1.02;
+          c.rot = ang + Math.PI / 2 + (Math.random() - 0.5) * 0.5;
           this.events.push({ type: "paper" });
         }
       }
@@ -580,6 +585,22 @@ export class StaticWorld {
   }
 
   stepSparks(dt) {
+    // بالون مشحون: وميض كهربائي خفيف حول سطحه (يُرى بلا عدسة)
+    for (const b of this.balloons) {
+      if (!b.out || b.q <= 0 || b.held) continue;
+      if (Math.random() < dt * (0.5 + b.q * 0.18)) {
+        const a = Math.random() * Math.PI * 2;
+        this.sparks.push({
+          x: b.x + Math.cos(a) * b.r * 1.02,
+          y: b.y + Math.sin(a) * b.r * 1.04,
+          vx: Math.cos(a) * 24,
+          vy: Math.sin(a) * 24 - 12,
+          age: 0,
+          life: 0.35,
+          kind: "elec",
+        });
+      }
+    }
     for (const s of this.sparks) {
       s.age += dt;
       if (!s.bolt) {

@@ -6,12 +6,45 @@
  */
 
 /** مراحل برج العدسات: التكبير المطبوع ومقدار الزووم (p) الذي يقفز إليه المشهد */
+/* التكبير الكلي = العدسة × ١٠ (العينية). المراسي تتطابق مع مراحل المشهد:
+   ×٤→×٤٠ (نسيج) ، ×١٠→×١٠٠ ، ×٤٠→×٤٠٠ (خلية واحدة) ، ×١٠٠→×١٠٠٠ وهو
+   حدّ المجهر المدرسي (MICRO_LIMIT_P ≈ 0.61). ما بعده يتطلّب المقبض فقط. */
 export const OBJECTIVES = [
-  { label: "×4", p: 0.1, band: "#d8453c" },
-  { label: "×10", p: 0.32, band: "#e5b82e" },
+  { label: "×4", p: 0.3, band: "#d8453c" },
+  { label: "×10", p: 0.4035, band: "#e5b82e" },
   { label: "×40", p: 0.56, band: "#2f7fd1" },
-  { label: "×100", p: 0.84, band: "#e9edf0" },
+  { label: "×100", p: 0.603, band: "#e9edf0" },
 ];
+
+const MAG_ANCHORS = [
+  [0, 1],
+  [0.3, 40],
+  [0.56, 400],
+  [0.82, 100000],
+  [1, 1000000],
+];
+
+/** التكبير الكلي المقدّر عند تقدّم الزووم p (استيفاء لوغاريتمي بين المراسي) */
+export function totalMag(p) {
+  const x = Math.max(0, Math.min(1, p));
+  for (let i = 1; i < MAG_ANCHORS.length; i++) {
+    const [p1, m1] = MAG_ANCHORS[i];
+    const [p0, m0] = MAG_ANCHORS[i - 1];
+    if (x <= p1) {
+      const t = (x - p0) / (p1 - p0);
+      return Math.exp(Math.log(m0) + t * (Math.log(m1) - Math.log(m0)));
+    }
+  }
+  return 1e6;
+}
+
+export function formatMag(p) {
+  const m = totalMag(p);
+  const digits = Math.max(0, Math.floor(Math.log10(m)) - 1);
+  const f = Math.pow(10, digits);
+  const r = Math.round(m / f) * f;
+  return "×" + r.toLocaleString("en-US");
+}
 
 export function computeLayout(W, H) {
   const portrait = H > W * 1.02;
@@ -22,9 +55,9 @@ function landscapeLayout(W, H) {
   const s = Math.max(0.3, Math.min(W / 1240, H / 700));
   const dW = W / s;
   const dH = H / s;
-  const FR = Math.min(dH * 0.3, dW * 0.172);
+  const FR = Math.min(dH * 0.285, dW * 0.172);
   const cx = dW / 2;
-  const cy = dH / 2 - 14;
+  const cy = dH / 2 - 22;
   const HW = FR + 48; // نصف عرض رأس المجهر
   const rim = 36;
 
@@ -42,8 +75,8 @@ function landscapeLayout(W, H) {
   const rightEdge = cx + HW + axle + fineW + coarseW;
   const leftEdge = cx - HW - axle - fineW - coarseW;
 
-  const benchY = cy + FR + 34;
-  const turret = { cx, cy: cy + FR + 48, R: 92, ring: 60, objR: 24 };
+  const benchY = cy + FR + 30;
+  const turret = { cx, cy: cy + FR + 44, R: 88, ring: 57, objR: 23 };
   const plate = { x: cx - 158, y: cy - FR - rim - 62, w: 316, h: 54 };
 
   const trayW = Math.max(150, Math.min(214, leftEdge - 40));
@@ -80,7 +113,7 @@ function portraitLayout(W, H) {
   const FR = Math.min(dW * 0.37, dH * 0.2);
   const cx = dW / 2;
   const rim = 30;
-  const cy = 78 + rim + FR;
+  const cy = 134 + rim + FR;
   const HW = FR + 40;
   const turret = { cx, cy: cy + FR + 34, R: 66, ring: 44, objR: 17 };
   const kY = turret.cy + 6;
@@ -88,7 +121,7 @@ function portraitLayout(W, H) {
     { kind: "coarse", side: -1, cx: cx - 148, cy: kY, w: 50, h: 118 },
     { kind: "fine", side: 1, cx: cx + 148, cy: kY, w: 38, h: 96 },
   ];
-  const plate = { x: cx - 128, y: 14, w: 256, h: 46 };
+  const plate = { x: cx - 128, y: 66, w: 256, h: 46 };
   const row2 = turret.cy + turret.R + 18;
   const stage = { x: 18, y: row2, w: dW * 0.5 - 24, h: 56 };
   const lever = { x: dW * 0.5 + 6, y: row2, w: dW * 0.5 - 24, h: 56 };
