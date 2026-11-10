@@ -173,215 +173,23 @@
   .home { align-items: flex-start; }
 }
 
-/* ===== سطح المكتب: خريطة مراحل بميداليات بهوية شاشة التحميل (حلقة العلم) ===== */
-@media (min-width: 901px) and (min-height: 561px) {
+/* ===== سطح المكتب: كل شيء يتسع في الشاشة بلا تمرير ===== */
+@media (min-width: 901px) {
   .home { padding: clamp(12px, 3vh, 32px) 24px; }
-  .home-inner {
-    --d: clamp(90px, calc((100dvh - 440px) / 2), 190px);
-    --t: 0.085;
-    width: min(960px, 100%);
-    gap: clamp(8px, 2vh, 22px);
-  }
+  .home-inner { width: min(960px, 100%); gap: clamp(10px, 2.4vh, 28px); }
   .home-header { flex: none; }
   .home-cards {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: clamp(6px, 1.6vh, 16px) clamp(20px, 4vw, 56px);
-    max-width: calc(var(--d) * 4.8 + 112px + 2px);
-    counter-reset: stage;
+    grid-template-columns: repeat(6, 1fr);
+    gap: clamp(10px, 2vh, 18px);
   }
-  .home-card {
-    --dy: 0px;
-    position: relative;
-    width: calc(var(--d) * 1.55);
-    align-items: center;
-    justify-content: flex-start;
-    text-align: center;
-    padding: 0;
-    gap: 2px;
-    border: 0;
-    border-radius: 24px;
-    background: none;
-    box-shadow: none;
-    overflow: visible;
-    translate: 0 var(--dy);
-    animation: isle-bob 4.2s ease-in-out infinite;
-    transition: scale 0.2s cubic-bezier(.3, 1.6, .5, 1);
-    counter-increment: stage;
-  }
-  .home-card:nth-child(2) { --dy: -14px; animation-delay: -0.9s; }
-  .home-card:nth-child(3) { animation-delay: -1.8s; }
-  .home-card:nth-child(4) { --dy: 4px; animation-delay: -2.7s; }
-  .home-card:nth-child(5) { --dy: -10px; animation-delay: -3.4s; }
-
-  /* الميدالية: حلقة ألوان العلم تدور حول قرص كريمي فيه أيقونة التجربة */
-  .home-card-emoji {
-    position: relative;
-    isolation: isolate;
-    display: grid;
-    place-items: center;
-    width: var(--d);
-    height: var(--d);
-    margin: 0 0 calc(var(--d) * 0.07);
-    font-size: calc(var(--d) * 0.42);
-    filter: none;
-  }
-  .home-card-emoji::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: 50%;
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      conic-gradient(var(--ps-black) 0 25%, #fff 25% 50%, var(--ps-green) 50% 75%, var(--ps-red) 75% 100%);
-    box-shadow:
-      0 10px 22px color-mix(in srgb, currentColor 38%, transparent),
-      0 0 0 5px color-mix(in srgb, currentColor 14%, transparent);
-    animation: loading-spin 14s linear infinite;
-  }
-  /* ===== إطار خاص بكل تجربة ===== */
-  .home-card-emoji::after {
-    content: "";
-    position: absolute;
-    inset: calc(var(--d) * var(--t));
-    z-index: -1;
-    border-radius: 50%;
-    pointer-events: none;
-  }
-  /* الطفو: عوّامة نجاة (أحمر/أبيض) + ماء متموّج داخلها */
-  .home-card.accent-green .home-card-emoji::before {
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      conic-gradient(from 22.5deg, #e53935 0 12.5%, #fff 12.5% 25%, #e53935 25% 37.5%, #fff 37.5% 50%, #e53935 50% 62.5%, #fff 62.5% 75%, #e53935 75% 87.5%, #fff 87.5% 100%);
-    box-shadow: 0 10px 22px rgba(33, 150, 243, 0.35), 0 0 0 5px rgba(33, 150, 243, 0.14);
-  }
-  .home-card.accent-green .home-card-emoji::after {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q12.5 2 25 12 T50 12 T75 12 T100 12 V40 H0Z' fill='%2329a0e6' fill-opacity='.42'/%3E%3C/svg%3E") repeat-x 0 100% / calc(var(--d) * 0.6) 42%;
-    animation: wave-flow 3.2s linear infinite;
-  }
-  /* الأس الهيدروجيني: طيف pH حول الحلقة + سائل وفقاعات */
-  .home-card.accent-violet .home-card-emoji::before {
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      conic-gradient(#e53935, #fb8c00, #fdd835, #7cb342, #26a69a, #1e88e5, #5e35b1, #e53935);
-  }
-  .home-card.accent-violet .home-card-emoji::after {
-    background:
-      radial-gradient(circle at 28% 62%, rgba(255,255,255,.85) 0 calc(var(--d) * 0.02), transparent calc(var(--d) * 0.025)),
-      radial-gradient(circle at 66% 74%, rgba(255,255,255,.85) 0 calc(var(--d) * 0.015), transparent calc(var(--d) * 0.02)),
-      linear-gradient(to top, rgba(94, 53, 177, 0.28) 0 30%, transparent 30%);
-  }
-  /* الكهرباء الساكنة: حلقة شرارة مسنّنة بلون العنبر */
-  .home-card.accent-amber { --t: 0.105; }
-  .home-card.accent-amber .home-card-emoji { filter: drop-shadow(0 8px 10px rgba(199, 125, 10, 0.4)); }
-  .home-card.accent-amber .home-card-emoji::before {
-    clip-path: polygon(50.00% 0.00%, 58.49% 7.34%, 69.13% 3.81%, 74.17% 13.83%, 85.36% 14.64%, 86.17% 25.83%, 96.19% 30.87%, 92.66% 41.51%, 100.00% 50.00%, 92.66% 58.49%, 96.19% 69.13%, 86.17% 74.17%, 85.36% 85.36%, 74.17% 86.17%, 69.13% 96.19%, 58.49% 92.66%, 50.00% 100.00%, 41.51% 92.66%, 30.87% 96.19%, 25.83% 86.17%, 14.64% 85.36%, 13.83% 74.17%, 3.81% 69.13%, 7.34% 58.49%, 0.00% 50.00%, 7.34% 41.51%, 3.81% 30.87%, 13.83% 25.83%, 14.64% 14.64%, 25.83% 13.83%, 30.87% 3.81%, 41.51% 7.34%);
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      conic-gradient(#ffe082, #ffb300, #ff8f00, #ffd54f, #ffb300, #ffe082);
-    box-shadow: none;
-    animation-duration: 9s;
-  }
-  .home-card.accent-amber .home-card-emoji::after {
-    background: radial-gradient(circle, rgba(255, 213, 79, 0.45), transparent 70%);
-  }
-  /* رؤية الألوان: حلقة RGB والطيف + قزحية ضوئية */
-  .home-card.accent-blue .home-card-emoji::before {
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      conic-gradient(#ff2d2d, #ffe600, #2dff6a, #00d5ff, #2d4dff, #d02dff, #ff2d2d);
-    animation-direction: reverse;
-  }
-  .home-card.accent-blue .home-card-emoji::after {
-    background: conic-gradient(from 0deg, rgba(255,0,0,.13), rgba(0,200,0,.13), rgba(0,0,255,.13), rgba(255,0,0,.13));
-  }
-  /* الخلية: غشاء من حبيبات + عضيّات داخلية */
-  .home-card.accent-crimson { --t: 0.1; }
-  .home-card.accent-crimson .home-card-emoji::before {
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      repeating-conic-gradient(#d81b60 0 8deg, #f8bbd0 8deg 12deg);
-  }
-  .home-card.accent-crimson .home-card-emoji::after {
-    background:
-      radial-gradient(circle at 24% 30%, #f48fb1 0 calc(var(--d) * 0.045), transparent calc(var(--d) * 0.05)),
-      radial-gradient(circle at 76% 66%, #ba68c8 0 calc(var(--d) * 0.035), transparent calc(var(--d) * 0.04)),
-      radial-gradient(circle at 72% 24%, #81c784 0 calc(var(--d) * 0.03), transparent calc(var(--d) * 0.035)),
-      radial-gradient(circle at 28% 74%, #ffb74d 0 calc(var(--d) * 0.028), transparent calc(var(--d) * 0.033));
-  }
-  /* الدوائر الكهربائية */
-  .home-card.accent-gold .home-card-emoji::before {
-    background:
-      radial-gradient(farthest-side, var(--ps-cream) calc(100% - var(--d) * var(--t)), transparent calc(100% - var(--d) * var(--t) + 1px)),
-      repeating-conic-gradient(#b8860b 0 20deg, #ffd54f 20deg 30deg);
-  }
-  /* شريط لون التجربة تحت الاسم */
-  .home-card::after {
-    content: "";
-    position: static;
-    width: 34px;
-    height: 5px;
-    margin-top: 7px;
-    border-radius: 5px;
-    background: currentColor;
-    opacity: 1;
-    transition: width 0.2s ease;
-  }
-  /* رقم المرحلة */
-  .home-card::before {
-    content: counter(stage);
-    position: absolute;
-    z-index: 2;
-    top: calc(var(--d) * 0.02);
-    left: calc(50% + var(--d) * 0.34);
-    width: calc(var(--d) * 0.24);
-    height: calc(var(--d) * 0.24);
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--acc, #1b7340);
-    color: #fff;
-    border: 3px solid var(--ps-cream);
-    font-size: calc(var(--d) * 0.12);
-    font-weight: 700;
-    line-height: 1;
-  }
-  .home-card.accent-green { --acc: var(--ps-green); }
-  .home-card.accent-violet { --acc: #5e35b1; }
-  .home-card.accent-amber { --acc: #c77d0a; }
-  .home-card.accent-blue { --acc: #1565c0; }
-  .home-card.accent-crimson { --acc: #c2185b; }
-  .home-card.accent-gold { --acc: #b8860b; }
-  .home-card:hover,
-  .home-card:focus-visible {
-    transform: none;
-    box-shadow: none;
-    scale: 1.08;
-  }
-  .home-card:focus-visible { outline: 3px solid currentColor; outline-offset: 6px; }
-  .home-card:hover .home-card-emoji::before { animation-duration: 3s; }
-  .home-card:hover::after { width: 64px; }
-  .home-card:hover .home-card-emoji { animation: emoji-hop 0.5s ease; }
-  .home-card:active { scale: 0.96; }
-  .home-card-title { font-size: clamp(1rem, calc(var(--d) * 0.115), 1.35rem); line-height: 1.25; }
-  .home-card-subtitle { font-size: clamp(0.7rem, calc(var(--d) * 0.07), 0.86rem); line-height: 1.3; }
-  .home-card-desc, .home-card-cta { display: none; }
+  .home-card { grid-column: span 2; padding: clamp(12px, 2vh, 22px) 22px; }
+  .home-card:nth-child(4) { grid-column: 2 / span 2; }
+  .home-card:nth-child(5) { grid-column: 4 / span 2; }
+  .home-card-emoji { font-size: clamp(2rem, 5vh, 2.6rem); }
+  .home-card-desc { line-height: 1.6; }
 }
-@keyframes wave-flow {
-  from { background-position: 0 100%; }
-  to { background-position: calc(var(--d) * -0.6) 100%; }
-}
-@keyframes isle-bob {
-  from { transform: translateY(0); }
-  to { transform: translateY(-8px); }
-}
-@keyframes emoji-hop {
-  40% { transform: translateY(-8px) scale(1.1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .home-card, .home-card-emoji, .home-card-emoji::before, .home-card-emoji::after { animation: none !important; }
+@media (min-width: 901px) and (max-height: 900px) {
+  .home-card-desc { display: none; }
 }
 
 /* ===== جوال: شاشة اختيار المراحل ===== */
