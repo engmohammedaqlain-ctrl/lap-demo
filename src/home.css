@@ -194,7 +194,7 @@
   .home-footer { flex: none; }
 }
 /* شاشات قصيرة (مثلاً تكبير ويندوز 150%): بطاقة مدمجة، الأيقونة بجانب الاسم، والوصف يبقى */
-@media (min-width: 901px) and (min-height: 561px) and (max-height: 760px) {
+@media (min-width: 901px) and (min-height: 561px) and (max-height: 640px) {
   .home-inner { gap: 8px; }
   .home-flag { display: none; }
   .home-title { font-size: 1.7rem; }
