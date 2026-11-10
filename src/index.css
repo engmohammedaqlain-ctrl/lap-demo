@@ -370,3 +370,8 @@ body {
 }
 
 .app-loading { position: absolute; inset: 0; background: var(--ps-cream); }
+
+/* انتقال سلس بين الشاشات */
+.screen-fade { position: absolute; inset: 0; animation: screen-in 0.4s ease both; }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .screen-fade { animation: none; } }

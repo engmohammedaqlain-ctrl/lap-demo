@@ -4,7 +4,7 @@
   inset: 0;
   overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 32px 18px;
   background: radial-gradient(circle at 50% -10%, #ffffff 0%, var(--ps-cream) 45%, #f0e8d8 100%);
@@ -13,6 +13,7 @@
 
 .home-inner {
   width: min(880px, 100%);
+  margin-block: auto;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -61,7 +61,9 @@ export default function App() {
 
   return (
     <>
-      <Suspense fallback={<div className="app-loading" />}>{screens[view] || <HomeScreen onOpen={open} />}</Suspense>
+      <div key={view} className="screen-fade">
+        <Suspense fallback={<div className="app-loading" />}>{screens[view] || <HomeScreen onOpen={open} />}</Suspense>
+      </div>
       {needRotate && <RotatePrompt onDismiss={() => setPortraitOk(true)} />}
     </>
   );
