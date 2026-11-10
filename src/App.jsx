@@ -29,6 +29,7 @@ export default function App() {
   const { phone, landscape } = useDevice();
   const [portraitOk, setPortraitOk] = useState(false);
   const [booting, setBooting] = useState(true);
+  const [pending, setPending] = useState(null); // تجربة قيد التحميل
   useWakeLock(view !== "home");
 
   useEffect(() => {
@@ -39,8 +40,12 @@ export default function App() {
 
   function open(key) {
     enterGame({ landscape: LANDSCAPE_ONLY.has(key) });
-    window.location.hash = `/${key}`;
-    setView(key);
+    setPending(key);
+  }
+  function finishOpen() {
+    window.location.hash = `/${pending}`;
+    setView(pending);
+    setPending(null);
   }
   function home() {
     leaveGame();
@@ -58,6 +63,7 @@ export default function App() {
   const needRotate = phone && !landscape && LANDSCAPE_ONLY.has(view) && !portraitOk;
 
   if (booting) return <LoadingScreen onDone={() => setBooting(false)} />;
+  if (pending) return <LoadingScreen key={pending} duration={1100} onDone={finishOpen} />;
 
   return (
     <>

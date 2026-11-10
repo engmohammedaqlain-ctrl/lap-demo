@@ -4,11 +4,10 @@
  * Sans Arabic). شريط تقدّم زمني بسيط (لا ينتظر تحميل موارد فعلية) مع
  * رسائل متبدّلة تمنح إحساساً بالتجهيز، ثم يتلاشى ليكشف الشاشة الرئيسية.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./home.css";
 import "./loading.css";
 
-const DURATION = 1500; // مدة شريط التقدم بالمللي ثانية
 const FADE_OUT = 380; // مدة تلاشي الخروج، يجب أن تطابق loading.css
 
 const MESSAGES = [
@@ -19,7 +18,9 @@ const MESSAGES = [
   { at: 92, text: "على وشك الانطلاق…" },
 ];
 
-export default function LoadingScreen({ onDone }) {
+export default function LoadingScreen({ onDone, duration = 1500 }) {
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
   const [progress, setProgress] = useState(0);
   const [leaving, setLeaving] = useState(false);
 
@@ -29,19 +30,19 @@ export default function LoadingScreen({ onDone }) {
 
     function tick(now) {
       const elapsed = now - start;
-      const pct = Math.min(100, Math.round((elapsed / DURATION) * 100));
+      const pct = Math.min(100, Math.round((elapsed / duration) * 100));
       setProgress(pct);
-      if (elapsed < DURATION) {
+      if (elapsed < duration) {
         raf = requestAnimationFrame(tick);
       } else {
         setLeaving(true);
-        setTimeout(onDone, FADE_OUT);
+        setTimeout(() => doneRef.current(), FADE_OUT);
       }
     }
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [onDone]);
+  }, [duration]);
 
   const message = [...MESSAGES].reverse().find((m) => progress >= m.at)?.text ?? MESSAGES[0].text;
 
