@@ -12,3 +12,6 @@ Thumbs.db
 
 # Logs
 npm-debug.log*
+
+# Banfoush: voice cache + usage ledger (regenerable, contains no secrets)
+.banfoush-cache/
