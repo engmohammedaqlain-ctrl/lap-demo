@@ -1,12 +1,15 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import banfoushApi from "./server/banfoushApi.js";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: { host: true, port: 5173 },
   preview: { host: true, port: 4173 },
   plugins: [
     react(),
+    // مساعد بنفوش: المفتاح من .env.local على الخادم فقط (لا يُضمَّن في الحزمة)
+    banfoushApi(loadEnv(mode, process.cwd(), "XAI_")),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
@@ -32,7 +35,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,woff2,ico,png,jpg,jpeg,webp,mp3}"],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
-});
+}));

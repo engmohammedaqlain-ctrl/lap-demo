@@ -14,6 +14,7 @@ const ColorApp = lazy(() => import("./color/ColorApp.jsx"));
 const CellApp = lazy(() => import("./cell/CellApp.jsx"));
 
 import { RotatePrompt } from "./mobile/GameChrome.jsx";
+import BanfoushLayer from "./banfoush/BanfoushLayer.jsx";
 import { enterGame, leaveGame, useDevice, useWakeLock } from "./mobile/device.js";
 const ROUTES = new Set(["buoyancy", "ph", "static", "color", "cell"]);
 // تجارب مركّبة بالعرض: على الجوال الطولي نطلب تدوير الجهاز
@@ -62,8 +63,23 @@ export default function App() {
   };
   const needRotate = phone && !landscape && LANDSCAPE_ONLY.has(view) && !portraitOk;
 
-  if (booting) return <LoadingScreen onDone={() => setBooting(false)} />;
-  if (pending) return <LoadingScreen key={pending} duration={1100} onDone={finishOpen} />;
+  // بنفوش يبقى مركّباً طوال الوقت (حتى أثناء التحميل) ليحتفظ بذاكرته ومراقبته
+  const banfoush = <BanfoushLayer key="banfoush" view={view} hidden={booting || !!pending || needRotate} onOpenExp={open} />;
+
+  if (booting)
+    return (
+      <>
+        <LoadingScreen onDone={() => setBooting(false)} />
+        {banfoush}
+      </>
+    );
+  if (pending)
+    return (
+      <>
+        <LoadingScreen key={pending} duration={1100} onDone={finishOpen} />
+        {banfoush}
+      </>
+    );
 
   return (
     <>
@@ -71,6 +87,7 @@ export default function App() {
         <Suspense fallback={<div className="app-loading" />}>{screens[view] || <HomeScreen onOpen={open} />}</Suspense>
       </div>
       {needRotate && <RotatePrompt onDismiss={() => setPortraitOk(true)} />}
+      {banfoush}
     </>
   );
 }
