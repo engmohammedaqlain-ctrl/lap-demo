@@ -20,7 +20,6 @@ export default function ColorApp({ onHome }) {
   const [gVal, setGVal] = useState(100);
   const [bVal, setBVal] = useState(100);
 
-  const [isPlaying, setIsPlaying] = useState(true);
   const [beamMode, setBeamMode] = useState("particles");
   const [visionMode, setVisionMode] = useState("normal");
   const [filter, setFilter] = useState(null);
@@ -61,7 +60,6 @@ export default function ColorApp({ onHome }) {
     setBeamMode("particles");
     setVisionMode("normal");
     setFilter(null);
-    setIsPlaying(true);
     sceneRef.current?.reset();
   }
 
@@ -83,7 +81,6 @@ export default function ColorApp({ onHome }) {
         visionMode={visionMode}
         filter={filter}
         character={character}
-        isPlaying={isPlaying}
         onValChange={handleValChange}
         onStatus={handleStatus}
         onBeamMode={(m) => {
@@ -107,14 +104,11 @@ export default function ColorApp({ onHome }) {
           play("select");
           setCharacter(id);
         }}
-        onTogglePlay={() => {
-          play(isPlaying ? "back" : "select");
-          setIsPlaying((v) => !v);
+        onMatch={() => {
+          play("success", { volume: 0.9 });
+          play("sparkle", { volume: 0.6, delay: 0.1 });
         }}
-        onMix={(m) => {
-          stepRef.current = { red: Math.round(m.rgb[0] / 5), green: Math.round(m.rgb[1] / 5), blue: Math.round(m.rgb[2] / 5) };
-          play("color_bright", { rate: 0.9 + m.rgb.filter(Boolean).length * 0.08, volume: 0.8 });
-        }}
+        onTarget={() => play("select", { volume: 0.7 })}
       />
 
       <div className="co-hud">

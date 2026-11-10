@@ -51,7 +51,7 @@ function computeLayout(W, H) {
     standX: bx + 175,
     spoutX: bx - 105,
     shelf: { x: shelfX, y: shelfTop, w: shelfW, rows: 3, cols: 4, rowH: (benchY - 150 - shelfTop) / 3 },
-    chart: { x: 70, y1: 110, y2: benchY - 215 },
+    chart: { x: 70, y1: 110, y2: Math.min(benchY - 215, 110 + 430) },
     meter: { x: bx + 262, y: benchY - 128, w: 196, h: 118 },
     maker: { x: bx + 262 + 196 + 18, y: benchY - 128, w: 192, h: 118 },
   };
@@ -698,8 +698,8 @@ function drawProbe(g, L, level) {
   g.lineWidth = 4;
   g.lineCap = "round";
   g.beginPath();
-  g.moveTo(m.x + 30, m.y);
-  g.bezierCurveTo(m.x + 30, L.top - 120, px + 120, L.top - 120, px + 2, topY);
+  g.moveTo(px + 2, topY);
+  g.bezierCurveTo(px + 2, topY - 110, m.x - 130, m.y + 30, m.x + 2, m.y + 58);
   g.stroke();
   // جسم المسبار
   const pg = g.createLinearGradient(px - 6, 0, px + 6, 0);

@@ -958,7 +958,7 @@ export function drawScopeDynamic(g, L, st) {
   st.objHits = [];
   for (const o of order) {
     const r = objective(g, o.i, o.th, o.i === st.activeObj, st.hover === `obj:${o.i}` || (o.i === st.activeObj && st.press === "turret"));
-    if (r && o.d > 0.05) st.objHits.push({ i: o.i, x: r.x, lens: r.lens, tilt: r.tilt, d: o.d });
+    if (r && o.d > -0.3) st.objHits.push({ i: o.i, x: r.x, lens: r.lens, tilt: r.tilt, d: o.d });
   }
   nosepiece(g, st);
 

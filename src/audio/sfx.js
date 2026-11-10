@@ -59,7 +59,7 @@ export function setMuted(m) {
  * تُعيد كائناً فيه stop() و setVolume(v).
  */
 export function loop(name, { volume = 1, rate = 1 } = {}) {
-  const dead = { stop() {}, setVolume() {} };
+  const dead = { stop() {}, setVolume() {}, dead: true };
   if (muted || !ensure()) return dead;
   const buf = buffers[name];
   if (!buf) {

@@ -336,6 +336,7 @@ const CellScene = forwardRef(function CellScene(
     // صوت الزوم القوي (يتبع السرعة) + whoosh الغوص
     if (sound && !reduced) {
       const v = sim.zoomVel * 55 + Math.abs(sim.diveTarget - sim.diveP) * 8;
+      CellSound.startAmbient(); // لا يفعل شيئاً إن كان يعمل؛ يعيد المحاولة إن لم تُحمَّل الملفات بعد
       CellSound.updateZoom(v);
     }
 
@@ -525,10 +526,17 @@ const CellScene = forwardRef(function CellScene(
     ctx.setTransform(v.cs * v.dpr, 0, 0, v.cs * v.dpr, v.tx * v.dpr, v.ty * v.dpr);
     drawBackdrop(ctx, sim);
 
-    const aIntro = fade(sim.p, STAGES.droplet.in, STAGES.droplet.out);
-    const aClu = fade(sim.p, STAGES.cluster.in, STAGES.cluster.out);
-    const aCell = fade(sim.p, STAGES.cell.in, STAGES.cell.out);
-    const aIn = fade(sim.p, STAGES.inside.in, null) * (1 - sim.diveP);
+    // تبديل المراحل: المرحلة الخارجة تبقى معتمة حتى تكتمل الداخلة تقريباً ثم تتلاشى،
+    // فلا ينخفض التغطية الكلية في المنتصف (لا لقطات شاحبة "شبحية")
+    const hold = (out, inc) => out * (1 - CLAMP((inc - 0.5) / 0.45, 0, 1));
+    const upIntro = fade(sim.p, STAGES.droplet.in, null);
+    const upClu = fade(sim.p, STAGES.cluster.in, null);
+    const upCell = fade(sim.p, STAGES.cell.in, null);
+    const upIn = fade(sim.p, STAGES.inside.in, null);
+    const aIntro = hold(upIntro, upClu);
+    const aClu = hold(upClu, upCell);
+    const aCell = hold(upCell, upIn);
+    const aIn = upIn * (1 - sim.diveP);
 
     if (aIntro > 0.01) drawIntro(ctx, sim, aIntro, type);
     if (aClu > 0.01) drawCluster(ctx, sim, aClu, type);
@@ -549,17 +557,26 @@ const CellScene = forwardRef(function CellScene(
       const it = interiorFor(sim.focusId);
       g.addColorStop(0, it.bg[0]);
       g.addColorStop(1, it.bg[1]);
-    } else if (sim.p < 0.55) {
+    } else {
       // خلفية المقدّمة — دافئة موحّدة مع ثيم الموقع
       g.addColorStop(0, "#fdf6ea");
       g.addColorStop(1, "#efe3cf");
-    } else {
-      g.addColorStop(0, PALETTE.cytoMid);
-      g.addColorStop(0.6, PALETTE.cytoDeep);
-      g.addColorStop(1, "#b98cc0");
     }
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+    // تدرّج ناعم إلى لون السيتوبلازم عند دخول الخلية (بلا قفزة)
+    const toCyto = sim.diveP > 0.4 && sim.focusId ? 0 : CLAMP((sim.p - 0.5) / 0.14, 0, 1);
+    if (toCyto > 0.001) {
+      const c = ctx.createRadialGradient(CX, CY * 0.7, 40, CX, CY, SCENE_W * 0.75);
+      c.addColorStop(0, PALETTE.cytoMid);
+      c.addColorStop(0.6, PALETTE.cytoDeep);
+      c.addColorStop(1, "#b98cc0");
+      ctx.save();
+      ctx.globalAlpha = toCyto * toCyto * (3 - 2 * toCyto);
+      ctx.fillStyle = c;
+      ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+      ctx.restore();
+    }
   }
 
   /* ---- المقدّمة حسب النوع: وجه حقيقي / بصلة حقيقية ---- */
@@ -1671,8 +1688,6 @@ const CellScene = forwardRef(function CellScene(
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    if (propsRef.current.soundEnabled && !propsRef.current.reducedMotion) CellSound.startAmbient();
-
     const loop = (ts) => {
       if (propsRef.current.paused) {
         // المجهر معروض: لا نحاكي ولا نرسم (توفير للبطارية)، ونبدأ المقدّمة عند أول نظرة
@@ -1729,10 +1744,14 @@ const CellScene = forwardRef(function CellScene(
   }, [cellType]);
 
   useEffect(() => {
-    if (soundEnabled && !reducedMotion) CellSound.startAmbient();
-    else CellSound.stopAmbient();
     CellSound.setMuted(!soundEnabled);
-  }, [soundEnabled, reducedMotion]);
+    // الجوّ المائي يعمل فقط أثناء النظر من العينية (لا أثناء عرض المجهر)
+    if (soundEnabled && !reducedMotion && !paused) CellSound.startAmbient();
+    else {
+      CellSound.stopAmbient();
+      CellSound.stopZoom();
+    }
+  }, [soundEnabled, reducedMotion, paused]);
 
   /* ===== التفاعل ===== */
   function onPointerDown(e) {

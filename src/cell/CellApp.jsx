@@ -67,6 +67,7 @@ export default function CellApp({ onHome }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  if (import.meta.env.DEV) window.__cell = { scene: () => sceneRef.current, setView, setSel: setSelectedId };
   const L = computeLayout(size.w, size.h);
   const SL = scopeLayout(size.w, size.h);
 
@@ -230,12 +231,9 @@ export default function CellApp({ onHome }) {
   const roomVars = {
     "--ex": `${ex}px`,
     "--ey": `${ey}px`,
-    "--fdx": `${ex - fcx}px`,
-    "--fdy": `${ey - fcy}px`,
-    "--fsc": Math.max(0.04, er / fr),
-    "--fox": `${fcx}px`,
-    "--foy": `${fcy}px`,
+    "--maxr": `${Math.hypot(size.w, size.h) * 1.08}px`,
   };
+
 
   return (
     <div className="cl-room" ref={roomRef} data-view={view} style={roomVars}>

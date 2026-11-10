@@ -325,34 +325,44 @@
 
 
 /* ======================================================================
-   حالتا العرض: مجهر كامل ↔ النظر من العينية (انتقال كاميرا سلس)
+   حالتا العرض: مجهر كامل ↔ النظر من العينية.
+   الدخول: الكاميرا تقترب من العينية ثم تتّسع "حدقة" دائرية من مركز العدسة
+   كاشفةً مجال الرؤية. العودة بالعكس تماماً.
    ====================================================================== */
 .cl-view {
   position: absolute;
   inset: 0;
-  will-change: transform, opacity;
-  transition: transform 0.95s cubic-bezier(0.62, 0, 0.18, 1), opacity 0.7s ease;
+  will-change: transform, opacity, clip-path;
 }
 .cl-scope-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-/* مجهر ظاهر */
-.cl-room[data-view="scope"] .cl-view-scope { transform: none; opacity: 1; transform-origin: var(--ex) var(--ey); }
+.cl-view-scope { transform-origin: var(--ex) var(--ey); }
+.cl-view-fov { clip-path: circle(0px at var(--ex) var(--ey)); }
+
+/* حالة المجهر */
+.cl-room[data-view="scope"] .cl-view-scope {
+  transform: none;
+  opacity: 1;
+  transition: transform 0.9s cubic-bezier(0.5, 0, 0.2, 1) 0.15s, opacity 0.4s ease 0.15s;
+}
 .cl-room[data-view="scope"] .cl-view-fov {
-  transform-origin: var(--fox) var(--foy);
-  transform: translate(var(--fdx), var(--fdy)) scale(var(--fsc));
-  opacity: 0;
+  clip-path: circle(0px at var(--ex) var(--ey));
   pointer-events: none;
-  transition-delay: 0s, 0s;
+  visibility: hidden;
+  transition: clip-path 0.8s cubic-bezier(0.5, 0, 0.2, 1), visibility 0s linear 0.8s;
 }
-/* نظر من العينية: الكاميرا تدخل في العدسة */
+/* حالة النظر */
 .cl-room[data-view="fov"] .cl-view-scope {
-  transform-origin: var(--ex) var(--ey);
-  transform: scale(7);
+  transform: scale(3.6);
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.95s cubic-bezier(0.62, 0, 0.18, 1), opacity 0.45s ease 0.35s;
+  transition: transform 1s cubic-bezier(0.55, 0, 0.25, 1), opacity 0.4s ease 0.7s;
 }
-.cl-room[data-view="fov"] .cl-view-fov { transform: none; opacity: 1; transition-delay: 0s, 0.25s; }
+.cl-room[data-view="fov"] .cl-view-fov {
+  clip-path: circle(var(--maxr) at var(--ex) var(--ey));
+  visibility: visible;
+  transition: clip-path 0.95s cubic-bezier(0.5, 0, 0.2, 1) 0.32s;
+}
 
 /* زر العودة إلى المجهر: حلقة نحاسية مثبّتة على إطار العدسة */
 .cl-back {
@@ -377,7 +387,6 @@
   .cl-back svg { width: 24px; height: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cl-view { transition: opacity 0.2s ease; }
+  .cl-room[data-view] .cl-view { transition: none !important; }
   .cl-room[data-view="fov"] .cl-view-scope { transform: none; }
-  .cl-room[data-view="scope"] .cl-view-fov { transform: none; }
 }

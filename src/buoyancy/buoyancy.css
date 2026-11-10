@@ -324,3 +324,36 @@
 .bu-guess.is-wrong .bu-msg { color: #ffb99a; }
 .bu-next { background: linear-gradient(180deg, var(--brass-a), var(--brass-b)); color: #2e1e0a; border: 1px solid #6b4a14; }
 .bu-pop { background: var(--paper-a); }
+
+
+/* ======================================================================
+   الجوال بالطول (تخطيط احتياطي): السوائل شريط سفلي أفقي والتبويبات وسط الأعلى
+   ====================================================================== */
+@media (orientation: portrait) and (max-width: 560px) {
+  .bu-stage { --pad-t: max(10px, env(safe-area-inset-top)); }
+  .bu-topbar { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .bu-spacer { display: none; }
+  .bu-tabs { order: 2; }
+  .bu-tabs button { padding: 0 14px; font-size: 0.82rem; }
+  .bu-fluid {
+    top: auto;
+    left: var(--pad-l);
+    right: var(--pad-r);
+    bottom: var(--pad-b);
+    width: auto;
+    max-height: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .bu-fluid > .bu-h, .bu-density { display: none; }
+  .bu-liquid-list { flex-direction: row; gap: 6px; }
+  .bu-liquid { min-width: 104px; min-height: 48px; flex: 0 0 auto; }
+  .bu-toggles { flex-direction: row; gap: 6px; flex: 0 0 auto; }
+  .bu-tog { min-width: 44px; }
+  .bu-slider { flex: 0 0 120px; }
+  .bu-guess { bottom: calc(var(--pad-b) + 74px); }
+}
