@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>مختبري — العرض</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="deck.css">
+<style>
+.photo{background:none}
+.photo.has img{animation-duration:30s}
+.bgphoto.has::after{background:linear-gradient(180deg,rgba(6,9,22,.55),rgba(6,9,22,.32) 45%,rgba(6,9,22,.82))}
+#s2 .bgphoto.has~.stage .rule{display:none}
+#s2 .bgphoto.has~.stage .s{color:#c3cae0}
+#s3 .photo{width:860px}
+#s3 .l2{font-size:116px;white-space:nowrap}
+#s3 .l1 .strike{margin:0 12px}
+.photo .miss.low{inset:auto 40px 36px auto;border:none;padding:0;font-size:22px;flex-direction:row;align-items:baseline;color:rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-touch" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="10" opacity=".5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M10 8v8M14 8v8"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 11a8 8 0 0 1 14-4l2 2M20 5v4h-4M20 13a8 8 0 0 1-14 4l-2-2M4 19v-4h4"/></symbol>
+  <symbol id="i-avoid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M5.5 5.5l13 13"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-snd" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM16 9.5l5 5M21 9.5l-5 5"/></symbol>
+</svg>
+
+<div id="gate">
+  <div class="gin">
+    <img class="logo" src="assets/img/logo_clean.png" alt="مختبري">
+    <button id="go" type="button">ابدأ العرض</button>
+    <div class="keys"><kbd>Space</kbd>التالي <kbd>F</kbd>ملء الشاشة <kbd>M</kbd>الصوت <kbd>T</kbd>المؤقت <kbd>H</kbd>التحكم</div>
+  </div>
+</div>
+
+<main id="deck">
+
+<!-- 1 · الحنين -->
+<section class="slide warm" id="s1" data-in="fade">
+  <div class="bg"></div><div class="dust"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="photo">
+      <img src="assets/photos/01-hook.webp" alt="">
+      <div class="alt">
+        <div class="spot"></div>
+        <svg class="flask a fade" style="--d:.2s" viewBox="0 0 300 420" fill="none">
+          <path class="o" d="M105 20H195V40H182V170L270 340Q290 385 245 392H55Q10 385 30 340L118 170V40H105Z" stroke="#f0b35c" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M236 326L216 350L230 364L206 390" stroke="#f0b35c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="shelf"></div>
+      </div>
+      <div class="miss low">صورة: طالبة في نقطة تعليمية <small>photos/01-hook.webp</small></div>
+    </div>
+    <div class="quote">
+      <div class="q1">
+        <span class="a word" style="--d:.9s">يا</span><span class="a word" style="--d:1.15s">ريت</span><span class="a word" style="--d:1.4s">كان</span><span class="a word" style="--d:1.65s">عنا</span>
+      </div>
+      <div class="q2">
+        <span class="a word" style="--d:2.3s">مختبر</span><span class="dots a fade" style="--d:3.2s"><span></span><span></span><span></span></span>
+      </div>
+    </div>
+    <div class="who a" style="--d:3.4s"><i></i><span>أمل · طالبة في غزة</span></div>
+  </div>
+</section>
+
+<!-- 2 · الأرقام -->
+<section class="slide warm" id="s2" data-in="fade" data-steps="1">
+  <div class="bg"></div>
+  <div class="photo bgphoto"><img src="assets/photos/02-lab.jpg" alt=""><div class="miss">صورة خلفية: مختبر مدرسي متضرر <small>photos/02-lab.jpg</small></div></div>
+  <div class="vig"></div>
+  <div class="stage">
+    <div class="stu">
+      <div class="n a" style="--d:.5s"><span class="num" id="c1">+0</span></div>
+      <div class="u a" style="--d:.8s">ألف طالب</div>
+      <div class="s a" style="--d:1s">الصفوف 7 · 8 · 9</div>
+    </div>
+    <div class="rule st" data-s="1"></div>
+    <div class="labs st" data-s="1">
+      <div class="n"><span class="num"><span id="c2">0</span>%</span></div>
+      <div class="u">من مختبرات المدارس متضررة</div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · السؤال -->
+<section class="slide warm" id="s3" data-in="fade" data-steps="1">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="photo a fade" style="--d:.2s">
+      <img src="assets/photos/03-phone.webp" alt="">
+      <div class="miss">صورة: يد طالب تمسك هاتفاً<small>photos/03-phone.webp</small></div>
+    </div>
+    <div class="l1 a" style="--d:.5s">هل يبقى المختبر <span class="strike">داخل المدرسة</span>؟</div>
+    <div class="l2 st" data-s="1">لماذا لا يكون<br>في <em>يد الطالب</em>؟</div>
+  </div>
+</section>
+
+<!-- 4 · الكشف -->
+<section class="slide cool" id="s4" data-in="bloom" data-steps="1">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <img class="logo a" style="--d:.9s" src="assets/img/logo_clean.png" alt="مختبري">
+    <div class="tag a" style="--d:1.4s">مختبر علوم تفاعلي <b>على شكل لعبة</b></div>
+    <div class="strip st" data-s="1">
+      <div><b><span class="num">6</span> تجارب</b><span>علوم تفاعلية</span></div>
+      <div><b>الصف <span class="num">7–8</span></b><span>وفق المنهاج</span></div>
+      <div><b>بلا إنترنت دائم</b><span>يعمل على الهاتف</span></div>
+      <div><b>تعلّم بالاكتشاف</b><span>يعوّض الفاقد التعليمي</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · التجارب -->
+<section class="slide cool" id="s5" data-in="fade" data-steps="3">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="grp a" style="--d:.3s">
+      <div class="phone"><div class="scr">
+        <img class="on" src="assets/shots/static.png" alt="">
+        <img src="assets/shots/buoyancy.png" alt="">
+        <img src="assets/shots/ph.png" alt="">
+      </div></div>
+      <div class="panel">
+        <div class="exp on"><div class="k"><i></i>التجربة 1</div><h2>الكهرباء الساكنة</h2><p>افرك <b>·</b> قرّب <b>·</b> شاهد</p></div>
+        <div class="exp"><div class="k"><i></i>التجربة 2</div><h2>الطفو والغرق</h2><p>اغمر <b>·</b> بدّل السائل <b>·</b> استنتج</p></div>
+        <div class="exp"><div class="k"><i></i>التجربة 3</div><h2>الرقم الهيدروجيني</h2><p>قِس <b>·</b> أضف الماء <b>·</b> لاحظ</p></div>
+      </div>
+    </div>
+    <div class="fin">
+      <div class="list">
+        <div style="--i:0"><span>01</span>الكهرباء الساكنة</div>
+        <div style="--i:1"><span>02</span>الطفو والغرق</div>
+        <div style="--i:2"><span>03</span>الرقم الهيدروجيني</div>
+        <div style="--i:3"><span>04</span>رؤية الألوان</div>
+        <div style="--i:4"><span>05</span>داخل الخلية</div>
+        <div style="--i:5"><span>06</span>الدارات الكهربائية</div>
+      </div>
+      <div class="big">يجرّب<br>يخطئ<br><em>يعيد</em></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · بنفوش -->
+<section class="slide cool" id="s6" data-in="push" data-steps="2">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="ttl">
+      <div class="kick a" style="--d:.3s"><i></i>المرشد</div>
+      <h2 class="a" style="--d:.45s">بنفوش</h2>
+      <p class="a" style="--d:.65s">يرشد الطالب بسيناريوهات جاهزة</p>
+    </div>
+    <div class="mon a" style="--d:.6s"><img src="assets/img/char_purple_monster.png" alt=""></div>
+    <div class="bub a" style="--d:.9s">
+      <div class="lab">تجربة الطفو</div>
+      <div class="card">
+        <span class="sizer">لماذا تطفو السفينة الضخمة ويغرق المسمار الصغير؟ تعال نكتشف!</span>
+        <span class="on">لماذا تطفو السفينة الضخمة ويغرق المسمار الصغير؟ تعال نكتشف!</span>
+        <span>هل تستطيع أن تجعل البيضة تطفو؟ عندي فكرة مالحة!</span>
+        <span>قارب الورق ما زال يطفو بفضلك يا خبير الكثافة!</span>
+      </div>
+    </div>
+    <div class="modes a" style="--d:1.1s"><span class="on">أول مرة</span><span>عند العودة</span><span>بعد الإنجاز</span></div>
+  </div>
+</section>
+
+<!-- 7 · الذكاء الاصطناعي -->
+<section class="slide cool" id="s7" data-in="push" data-steps="3">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="ttl a" style="--d:.2s">بنفوش يرشد · والنموذج يلاحظ</div>
+    <div class="kk a" style="right:120px;top:208px;color:var(--cyan);--d:.4s"><i></i>يُرصد أثناء اللعب</div>
+    <div class="sig a" style="top:250px;--d:.5s"><svg class="ic"><use href="#i-touch"/></svg>حركة اللمس والفأرة</div>
+    <div class="sig a" style="top:350px;--d:.6s"><svg class="ic"><use href="#i-pause"/></svg>التردد</div>
+    <div class="sig a" style="top:450px;--d:.7s"><svg class="ic"><use href="#i-timer"/></svg>زمن الاستجابة</div>
+    <div class="sig a" style="top:550px;--d:.8s"><svg class="ic"><use href="#i-repeat"/></svg>التكرار</div>
+    <div class="sig a" style="top:650px;--d:.9s"><svg class="ic"><use href="#i-avoid"/></svg>تجنّب التجارب</div>
+
+    <div class="net a" style="--d:.8s"></div>
+    <svg class="netsvg a fade" style="--d:1s" id="netsvg" viewBox="0 0 400 520"></svg>
+    <div class="netlbl a" style="--d:1.2s">نموذج الذكاء الاصطناعي</div>
+    <div class="mon a" style="--d:1s"><img src="assets/img/char_purple_monster.png" alt=""></div>
+    <svg class="flows" id="flows" viewBox="0 0 1920 1080"></svg>
+
+    <div class="kk st" data-s="2" style="left:120px;top:208px;color:var(--amber)"><i></i>مؤشرات للمتابعة</div>
+    <div class="tag st" data-s="2" style="top:250px;--sd:0s"><i></i>خوف أو قلق</div>
+    <div class="tag st" data-s="2" style="top:338px;--sd:.1s"><i></i>تأخر تعلّمي</div>
+    <div class="tag st" data-s="2" style="top:426px;--sd:.2s"><i></i>تميّز في التعلّم</div>
+    <div class="tag st" data-s="2" style="top:514px;--sd:.3s"><i></i>طيف التوحد</div>
+
+    <div class="rec st" data-s="3"><div class="h">توصية</div><div class="m">للمعلم أو الأخصائي</div></div>
+    <div class="pill st" data-s="3" style="--sd:.4s">فرز لا تشخيص</div>
+  </div>
+</section>
+
+<!-- 8 · الأثر المستهدف -->
+<section class="slide cool" id="s8" data-in="push" data-steps="2">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="kick a" style="right:120px;top:90px;--d:.2s"><i></i>الأثر المستهدف</div>
+    <div class="b8 r a" style="--d:.4s"><div class="n"><span class="num">70,000</span></div><div class="lb">الفئة المستهدفة</div></div>
+    <div class="arr st" data-s="1"></div>
+    <div class="b8 l st" data-s="1"><div class="n am"><span class="num">10,000</span></div><div class="lb">خلال 6 أشهر</div></div>
+    <div class="dots7 a" style="--d:.8s" id="dots7"></div>
+    <div class="cap7 st" data-s="1">طالب من كل 7 يتعرف على النظام</div>
+    <div class="strip s8s st" data-s="2">
+      <div><b>غرب غزة</b><span>المرحلة الأولى</span></div>
+      <div><b><span class="num">184</span> نقطة</b><span>تعليمية بلا مختبر</span></div>
+      <div><b><span class="num">5,000</span>$</b><span>رأس المال الأولي</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · الاستدامة -->
+<section class="slide cool" id="s9" data-in="fade" data-steps="2">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="kick a" style="right:120px;top:90px;--d:.2s"><i></i>الاستدامة</div>
+    <h2 class="h9 a" style="--d:.35s">مصدران للإيراد</h2>
+    <div class="c9 r a" style="--d:.6s"><div class="no">01</div><h3>مؤسسات داعمة</h3><p>جهات تعالج الفاقد التعليمي للأطفال المتأثرين بالكوارث والحروب، مثل <b>UNDP</b> ومبادراتها.</p></div>
+    <div class="c9 l st" data-s="1"><div class="no">02</div><h3>فريميوم</h3><p>التطبيق مجاني للمدارس ومدراء المراكز وأولياء الأمور، والميزات المتقدمة والاستشارات <b>بمقابل</b>.</p></div>
+    <div class="band9 st" data-s="2"><b>بيانات مجمّعة</b> بمعالجة المختصين، تُشارك مع مؤسسات موثوقة <b>مقابل عائد</b></div>
+  </div>
+</section>
+
+<!-- 10 · الباب -->
+<section class="slide warm" id="s10" data-in="fade" data-steps="3">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <div class="door"></div>
+    <div class="t10 a" style="--d:.4s">لا نقدّم أداة فقط<br><em>نحن نفتح باباً</em></div>
+    <div class="who10">
+      <div class="st" data-s="1">لطفلة تتمنى مختبراً</div>
+      <div class="st" data-s="2">لطالب يريد أن يفهم</div>
+      <div class="st" data-s="3">لمعلم يكبر أثره حين تتوفر الأدوات</div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · الختام -->
+<section class="slide cool" id="s11" data-in="fade">
+  <div class="bg"></div><div class="vig"></div>
+  <div class="stage">
+    <img class="logo11 a" style="--d:.3s" src="assets/img/logo_clean.png" alt="مختبري">
+    <div class="q11 a" style="--d:.9s">كل تجربة نصنعها اليوم قد تصبح غداً شغفاً… ثم معرفة… ثم قصة نجاح</div>
+    <div class="ask11 a" style="--d:1.4s">ندعوكم لتكونوا جزءاً من هذا الأثر</div>
+    <div class="thx a" style="--d:2s">شكراً لكم</div>
+  </div>
+</section>
+</main>
+
+<div id="flash"></div>
+<div id="clock">0:00</div>
+<div id="toast"></div>
+<nav id="hud">
+  <button id="bPrev" title="السابق"><svg class="ic"><use href="#i-prev"/></svg></button>
+  <div class="dots" id="dots"></div>
+  <button id="bNext" title="التالي"><svg class="ic"><use href="#i-next"/></svg></button>
+  <span class="sep"></span>
+  <button id="bSnd" title="الصوت (M)"><svg class="ic"><use href="#i-snd"/></svg></button>
+  <button id="bFull" title="ملء الشاشة (F)"><svg class="ic"><use href="#i-full"/></svg></button>
+</nav>
+
+<script src="assets/sfx-data.js"></script>
+<script src="deck.js"></script>
+</body>
+</html>
