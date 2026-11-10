@@ -173,24 +173,15 @@
   .home { align-items: flex-start; }
 }
 
-/* ===== سطح المكتب: خريطة جزر (دخول اللعبة) بلا تمرير ===== */
+/* ===== سطح المكتب: جزر بأسلوب اللعبة بلا تمرير ===== */
 @media (min-width: 901px) and (min-height: 561px) {
-  .home {
-    padding: clamp(12px, 3vh, 32px) 24px;
-    background:
-      radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.55), transparent 55%),
-      repeating-radial-gradient(circle at 20% 120%, transparent 0 46px, rgba(255, 255, 255, 0.10) 47px 50px),
-      linear-gradient(180deg, #6fd0e6 0%, #3fa7d3 55%, #2b7fb8 100%);
-  }
+  .home { padding: clamp(12px, 3vh, 32px) 24px; }
   .home-inner {
     --s: clamp(140px, calc((100dvh - 320px) / 2), 250px);
     width: min(960px, 100%);
     gap: clamp(8px, 2vh, 24px);
   }
   .home-header { flex: none; }
-  .home-title { color: #fff; text-shadow: 0 3px 0 #1d6a99, 0 8px 18px rgba(0, 50, 90, 0.35); }
-  .home-tagline { color: #fff6d8; text-shadow: 0 2px 6px rgba(0, 50, 90, 0.45); }
-  .home-footer { color: rgba(255, 255, 255, 0.85); }
   .home-cards {
     display: flex;
     flex-wrap: wrap;
@@ -212,9 +203,9 @@
     background:
       radial-gradient(circle at 50% 30%, #fffef5 0 58%, #f2e2b0 59% 100%);
     box-shadow:
-      0 0 0 7px rgba(255, 255, 255, 0.55),
-      0 0 0 13px rgba(255, 255, 255, 0.22),
-      0 16px 24px rgba(0, 50, 90, 0.38);
+      0 0 0 6px color-mix(in srgb, currentColor 30%, #fff),
+      0 0 0 11px color-mix(in srgb, currentColor 12%, transparent),
+      0 14px 22px rgba(15, 77, 42, 0.18);
     translate: 0 var(--dy);
     animation: isle-bob 4.2s ease-in-out infinite;
     transition: scale 0.18s ease, box-shadow 0.18s ease;
@@ -241,9 +232,9 @@
     transform: none;
     scale: 1.08;
     box-shadow:
-      0 0 0 7px rgba(255, 255, 255, 0.8),
-      0 0 0 16px rgba(255, 255, 255, 0.3),
-      0 22px 30px rgba(0, 50, 90, 0.45);
+      0 0 0 6px color-mix(in srgb, currentColor 55%, #fff),
+      0 0 0 14px color-mix(in srgb, currentColor 18%, transparent),
+      0 20px 28px rgba(15, 77, 42, 0.26);
   }
   .home-card:active { scale: 0.96; }
   .home-card-emoji { font-size: calc(var(--s) * 0.3); margin: 8px 0 4px; }
