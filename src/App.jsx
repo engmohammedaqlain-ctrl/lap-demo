@@ -5,6 +5,7 @@
  * "رجوع" في المتصفح ويمكن مشاركة رابط تجربة مباشرة.
  */
 import { Suspense, lazy, useEffect, useState } from "react";
+import LoadingScreen from "./LoadingScreen.jsx";
 import HomeScreen from "./HomeScreen.jsx";
 const BuoyancyApp = lazy(() => import("./BuoyancyApp.jsx"));
 const PhApp = lazy(() => import("./ph/PhApp.jsx"));
@@ -27,6 +28,7 @@ export default function App() {
   const [view, setView] = useState(viewFromHash);
   const { phone, landscape } = useDevice();
   const [portraitOk, setPortraitOk] = useState(false);
+  const [booting, setBooting] = useState(true);
   useWakeLock(view !== "home");
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export default function App() {
     cell: <CellApp onHome={home} />,
   };
   const needRotate = phone && !landscape && LANDSCAPE_ONLY.has(view) && !portraitOk;
+
+  if (booting) return <LoadingScreen onDone={() => setBooting(false)} />;
 
   return (
     <>
